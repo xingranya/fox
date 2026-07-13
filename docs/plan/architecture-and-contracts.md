@@ -1,332 +1,316 @@
 # 架构与接口契约计划
 
+> 当前生效路线：Fox 本地单用户鸿日 MVP<br>
+> 权威决策：[ADR-0003](../adr/0003-local-first-hongri-validation.md)<br>
+> 团队服务器：[远期候选](team-server-architecture.md)，未批准进入当前 MVP
+> OpenWork：[条件性客户端候选](../adr/0002-openwork-primary-client.md)，服务端化不是前置
+
 ## 架构结论
 
-Brand Project OS 是团队服务器产品，不是以某位成员电脑为中心的同步工具。生产环境只有一个权威应用服务和一个 PostgreSQL 正式写入面；原始文件由团队控制的 S3 兼容对象存储保存。Web/PWA、远程 MCP、CLI、Skills、Dify 和其他自动化都必须经同一版本化应用 API 工作。
+Brand Project OS 当前不是团队服务器产品，而是运行在 `/Users/fox/work` 的本地品牌项目认知与状态协作层。第一用户是 Fox，第一项目是鸿日。当前技术目标是用最短纵向切片证明：AI 能正确读取当前状态、解释新会议、回到证据、区分探索与执行、生成增量 Proposal，并由 Fox 最终批准。
 
-完整部署、事务与客户端方案分别见：
+本地 MVP 使用一个领域应用层统一图形界面、CLI、MCP、Skills 和 Agent Runtime。SQLite 保存事件、人工批准和当前投影；内容寻址的本地证据区保存只读原件快照。OpenWork、OpenCode、Codex、Claude、全文/向量索引和模型摘要都在端口之后，删除或替换它们不能改变鸿日正式状态。
 
-- [团队服务器架构](team-server-architecture.md)
+完整边界见：
+
+- [运行时品牌 Agent 与会议解释协议](runtime-brand-agent-and-meeting-protocol.md)
 - [数据一致性与可靠性计划](data-consistency-and-reliability.md)
 - [前端与 AI 访问规划](frontend-and-ai-access.md)
-- [ADR-0001：团队服务器作为唯一权威运行面](../adr/0001-team-server-authority.md)
+- [OpenWork 深度集成计划](openwork-deep-integration.md)
+- [ADR-0001：团队服务器远期候选](../adr/0001-team-server-authority.md)
+- [ADR-0002：条件性采用 OpenWork](../adr/0002-openwork-primary-client.md)
+- [ADR-0003：本地优先鸿日验证](../adr/0003-local-first-hongri-validation.md)
 
-## 不可突破的不变量
+## 决策优先级
 
-1. S3 中的不可变原件证明“说过什么”；PostgreSQL 中的具名人工批准事件证明“现在正式是什么”。
-2. PostgreSQL 是正式对象、权限、审批、领域事件、最小投影、审计与 Outbox 的唯一可写数据库。
-3. SQLite 只用于开发、测试、单机演示和签名只读快照；离线客户端只能保存草稿/Proposal，不得形成正式写入。
-4. `VIEW`、`HYPOTHESIS`、`OPTION`、`OPEN` 不得自动升级为 `DECISION` 或 `CONSTRAINT`。
-5. AI、MCP、Skill、Dify、Open Notebook、Nubase Memory 和 FlowLong 只能读最小上下文或提出候选，不能批准。
-6. 搜索、向量、Notebook、Memory、工作流实例、摘要、通知和缓存均为派生层，可删除、禁用、替换或从权威数据重建。
-7. 领域核心只依赖版本化端口和可序列化 Schema，不导入基础设施或模型 SDK。
+发生冲突时按以下顺序解释：
 
-## 逻辑架构
+1. ADR-0003 定义当前 MVP；任何“生产服务器唯一权威”表述不能覆盖它。
+2. 本文与运行时协议定义当前实现契约。
+3. ADR-0002 只决定是否复用 OpenWork 客户端基础，不决定产品权威架构。
+4. ADR-0001 与团队服务器文档仅是 `future-candidate`，鸿日试点后经新 ADR 才能生效。
+
+## 当前不可突破的不变量
+
+1. 原始资料快照及其 SHA-256 证明“原文是什么”；SQLite 中的 Fox 人工批准事件证明“当前正式状态如何形成”。
+2. 图形界面、CLI、MCP、Skill、Agent 和导入器不能直接修改正式表或证据区，必须调用同一应用用例。
+3. AI 只生成 Proposal。只有 Fox 的显式人工动作可以产生批准事件。
+4. `VIEW`、`PREFERENCE`、`HYPOTHESIS`、`OPTION`、`TENDENCY`、`TARGET_DATE` 和 `OPEN` 不得自动升级为 `DECISION` 或 `CONSTRAINT`。
+5. 目标日期必须区分外部硬截止、内部目标、评审节点、暂定日期和未知；未知不能按硬截止处理。
+6. 探索协议与执行规格显式切换；AI 可以建议，不能自行切换。
+7. 新会议只产生基于 `base_state_version` 的增量 Proposal，不重新总结并覆盖全部历史。
+8. Task Packet 先给最小当前上下文，再按需回源；旧聊天和随机检索命中不是正式状态。
+9. SQLite 是当前单用户 MVP 的可写权威实现；PostgreSQL/S3 仅是未来端口实现，不得同时写入。
+10. OpenWork/OpenCode 会话、Tool Permission、索引、摘要、模型运行和缓存均为运行态或派生态。
+11. 开发仓库 `AGENTS.md` 约束软件开发；运行时品牌 Agent 只加载品牌宪法、工作模式、鸿日规则和本轮 Task Packet。
+12. 领域核心只依赖版本化端口和可序列化 Schema，不导入 OpenWork、OpenCode、Electron 或具体模型 SDK。
+
+## 当前逻辑架构
 
 ```mermaid
 flowchart TB
-    subgraph A_CLIENTS["访问面"]
-        A_WEB["Web / PWA"]
-        A_CLI["CLI / 本地上传代理"]
-        A_MCP["远程 MCP / stdio 代理"]
-        A_SKILLS["AI Skills"]
-    end
+    FOX["Fox"] --> UI["本地查看与确认界面"]
+    FOX --> CLI["本地 CLI"]
+    AI["Codex / Claude / OpenCode / 其他模型"] --> MCP["本地 MCP / CLI 适配"]
 
-    A_EDGE["HTTPS 入口：TLS、限流、请求标识"]
-    A_API["统一应用服务：鉴权、授权、幂等、并发和审计"]
-    A_CORE["领域核心：证据、状态、审批、任务和端口"]
-    A_PG[("PostgreSQL 唯一权威库")]
-    A_S3[("S3 兼容对象存储：不可变原件")]
-    A_WORKER["Outbox Worker / 对账 / 重建"]
+    UI --> APP["本地应用层：查询、Proposal、人工确认"]
+    CLI --> APP
+    MCP --> APP
+    APP --> CORE["领域核心：状态、会议、证据、模式与端口"]
 
-    A_WEB --> A_EDGE
-    A_CLI --> A_EDGE
-    A_MCP --> A_EDGE
-    A_SKILLS --> A_EDGE
-    A_EDGE --> A_API
-    A_API --> A_CORE
-    A_CORE --> A_PG
-    A_API --> A_S3
-    A_PG --> A_WORKER
+    CORE --> DB[("SQLite：事件、审批、投影")]
+    CORE --> EVIDENCE["内容寻址只读证据区"]
+    CORE --> SEARCH["SQLite FTS5 / 可重建索引"]
 
-    A_WORKER --> A_SEARCH["PostgreSQL FTS / Zvec"]
-    A_WORKER --> A_NOTEBOOK["Open Notebook / content-core"]
-    A_WORKER --> A_DIFY["直接 Worker / Dify"]
-    A_WORKER --> A_FLOW["核心审批 / FlowLong"]
-    A_API -. "条件调用" .-> A_NUBASE["Nubase 单项能力"]
-    A_API --> A_MODEL["ModelGateway"]
+    APP --> PACKET["Task Packet 装配器"]
+    PACKET --> RUNTIME["AgentRuntimePort"]
+    RUNTIME --> ADAPTERS["Codex / Claude / OpenCode 适配器"]
+    ADAPTERS -. "Artifact / 增量 Proposal" .-> APP
 
-    A_SEARCH -. "稳定 ID 回源" .-> A_API
-    A_NOTEBOOK -. "研究候选" .-> A_API
-    A_DIFY -. "结构化 Proposal" .-> A_API
-    A_FLOW -. "人工动作待复核" .-> A_API
+    UI -->|"Fox 批准、修改、驳回"| APP
 ```
+
+`APP` 可以是进程内服务或仅监听回环地址的本地 API。当前不要求远程 HTTPS、OIDC、团队身份网关或常驻服务器。无论采用哪种进程形态，只有应用层持有 SQLite 写连接。
 
 ## 规划目录
 
+目录是实现建议，不要求当前空仓库一次性生成全部结构：
+
 ```text
-apps/
-├─ api/                         # FastAPI、OpenAPI、OIDC 回调和统一错误模型
-├─ worker/                      # Outbox、Inbox、重试、死信、索引世代和对账
-├─ mcp/                         # Streamable HTTP MCP 与本地 stdio 代理
-├─ cli/                         # 登录、导入、诊断、Proposal 和受控管理动作
-└─ web/                         # React、TypeScript、Vite、PWA 团队工作台
-packages/
-├─ core/
-│  ├─ domain/                   # 领域对象、状态和不变量
-│  ├─ application/              # 用例编排，不含协议细节
-│  ├─ events/                   # 只追加权威事件
-│  ├─ projections/              # 最小同步投影和可重建派生投影
-│  ├─ auth/                     # RBAC、Scope、保密和审批策略
-│  └─ ports/                    # 版本化外部端口
-├─ adapters/
-│  ├─ postgres/                 # 权威存储、RLS、Alembic 和 Outbox
-│  ├─ object_store/             # S3/MinIO 与开发文件系统实现
-│  ├─ identity/                 # OIDC 提供商适配器
-│  ├─ search/                   # PostgreSQL FTS、pgvector、Zvec 和 NoOp
-│  ├─ content/                  # 内置解析、content-core、Open Notebook
-│  ├─ ai_workflow/              # 直接 Worker、Dify 和 NoOp
-│  ├─ approval_workflow/        # 核心审批、FlowLong 和 NoOp
-│  └─ nubase/                   # 单项能力 POC，不含权威库替换
-├─ ingestion/
-│  ├─ v5/                       # V5 预检、映射、对账和幂等导入
-│  └─ meetings/                 # 会议分段和候选抽取
-└─ operations/                  # doctor、verify、PITR、重建、对账和快照
-schemas/                        # JSON Schema、OpenAPI、MCP 和事件契约
-deploy/                         # 容器、反向代理、监控、备份和恢复
-tests/
-├─ unit/
-├─ contract/
-├─ integration/
-├─ golden/
-├─ security/
-└─ e2e/
+fox/
+├─ apps/
+│  ├─ local-api/                # 可选回环 API；本地用例与事件流
+│  ├─ local-ui/                 # 简单查看、回源、确认和诊断界面
+│  ├─ cli/                      # 状态、导入、会议、Task Packet 与诊断
+│  └─ mcp/                      # 本地 stdio MCP；只读、回源、Proposal
+├─ packages/
+│  ├─ core/
+│  │  ├─ domain/                # 陈述类型、会议模式、状态和关系
+│  │  ├─ application/           # 导入、解释、装配、确认与重建用例
+│  │  ├─ events/                # 只追加事件与审批记录
+│  │  ├─ projections/           # 当前状态、决定、开放项和行动
+│  │  └─ ports/                 # 存储、证据、检索、模型与运行时端口
+│  ├─ adapters/
+│  │  ├─ sqlite/                # 当前权威实现
+│  │  ├─ local-evidence/        # 本地内容寻址证据区
+│  │  ├─ search/                # FTS5 与可选增强索引
+│  │  ├─ model/                 # Codex、Claude、OpenCode 等适配器
+│  │  └─ openwork/              # 条件性客户端/运行时适配器
+│  ├─ ingestion/                # 文件清单、会议转写、分段与候选
+│  └─ runtime-rules/            # 品牌宪法、工作模式和鸿日项目规则
+├─ schemas/                     # JSON Schema 与版本兼容样本
+└─ tests/
+   ├─ golden/                   # 鸿日 10-20 个黄金用例
+   ├─ contract/                 # 端口与 Schema 契约
+   ├─ integration/              # SQLite、证据、增量 Proposal 和重建
+   └─ e2e/                      # 冷启动、会议、回源、确认和模型切换
+
+/Users/fox/work/
+└─ .fox/
+   ├─ project.db                # SQLite 权威库
+   ├─ evidence/sha256/          # 只读内容寻址快照
+   ├─ backups/                  # 原子数据库与清单备份
+   └─ runtime/                  # 可删除的会话、缓存和临时产物
 ```
 
-## 权威存储契约
+`.fox/runtime/` 不得保存唯一的正式事实、批准记录或原始证据。
+
+## 本地权威存储契约
 
 ### `CanonicalStorePort`
 
 ```text
-execute(command, identity_context, idempotency_key, expected_version)
-read_aggregate(workspace_id, aggregate_type, aggregate_id, at_version?)
-read_projection(workspace_id, project_id, projection_type, at_position?)
-read_event_stream(workspace_id, project_id, after_position?)
-verify_event_chain(workspace_id, project_id)
-rebuild_projection(workspace_id, project_id, projection_type)
+execute(command, actor, idempotency_key, expected_version)
+read_aggregate(project_id, aggregate_type, aggregate_id, at_version?)
+read_projection(project_id, projection_type, at_event_id?)
+read_event_stream(project_id, after_sequence?)
+verify_event_chain(project_id)
+rebuild_projection(project_id, projection_type)
+backup(destination)
 health()
 ```
 
-生产实现是标准 PostgreSQL。一次 `execute` 必须在同一事务完成：
+当前实现为 SQLite。一次 `execute` 必须在一个事务内：
 
-1. 注入并校验 OIDC/服务身份、工作空间、项目、动作 Scope 和保密策略。
-2. 登记幂等键及请求摘要；同键不同摘要返回冲突。
-3. 读取并校验聚合版本；版本不匹配返回 `409 Conflict` 和最新版本。
-4. 执行领域状态机；需要最终化时取得行锁并重新校验审批策略。
-5. 追加领域事件，更新最小正式投影，写入审计关联和 Outbox。
-6. 提交后返回新版本、事件位置、`request_id` 和派生层可能延迟的提示。
+1. 验证调用来自本地应用层，并确认命令是否要求 Fox 人工动作。
+2. 登记幂等键和请求摘要；同键不同摘要返回冲突。
+3. 校验 `expected_version`；版本过期返回当前版本和差异。
+4. 执行分类、模式和状态迁移规则。
+5. 追加事件与人工动作，更新最小当前投影。
+6. 返回新版本、事件序号和可回源引用。
 
-SQLite 只能实现 `DevelopmentStorePort` 或 `ReadonlySnapshotPort`；生产配置校验必须拒绝可写 SQLite。
+SQLite 使用 WAL、外键、繁忙超时和单写入队列。多个 AI 只能并行读取或生成候选，不共享可写连接。
 
-### `ObjectStorePort`
+## 原始证据契约
+
+### `EvidenceStorePort`
 
 ```text
-stage_upload(workspace_id, project_id, metadata)
-put_part(upload_id, bytes)
-verify_staged(upload_id, expected_hash?, expected_size?, expected_mime?)
-commit_content_addressed(upload_id, sha256)
-open_version(source_id, version_id)
-verify_object(source_id, version_id)
-revoke_version(source_id, version_id, reason)
-reconcile(workspace_id, project_id)
-health()
+inspect(path)
+stage_snapshot(path, source_metadata)
+verify_snapshot(staging_id, expected_hash?, expected_size?)
+commit_content_addressed(staging_id, sha256)
+open(evidence_ref)
+locate(evidence_ref, locator)
+verify(evidence_ref)
+mark_superseded(evidence_ref, replacement_ref)
+reconcile(project_id)
 ```
 
-临时对象键不能进入证据链。校验通过后复制为按 SHA-256 寻址的不可变对象，再由 PostgreSQL 事务登记 Source、谱系和事件。只有 ACTIVE 版本可作正式证据；删除使用墓碑和延迟清理。对象版本保留时间不得短于数据库 PITR 窗口。
+- 来源文件先只读检查，再复制为按 SHA-256 寻址的快照；只有提交成功的快照可支持正式结论。
+- 清单保存来源路径、相对项目路径、哈希、大小、MIME、时间、版本、保密级别和当前可用性。
+- 同名文件不能覆盖旧版本；新版本使用新哈希并通过 `supersedes` 关联。
+- 文件移动或删除不能让既有批准结论失去证据。若快照损坏，相关结论标记证据异常并阻止新的批准。
 
-## 身份与授权契约
+## 会议解释契约
 
-### `IdentityPort`
+### `MeetingInterpretationPort`
 
 ```text
-start_authorization(client_type, redirect_uri, scopes)
-exchange_code(code, verifier)
-refresh_session(refresh_reference)
-verify_access_token(token, audience)
-revoke_subject(subject_id, reason)
-issue_service_credential(service_account_id, scopes, ttl)
-health()
+ingest(meeting_source_ref, transcript_ref?, idempotency_key)
+segment(meeting_id, segmentation_policy)
+classify_modes(meeting_id, protocol_version)
+extract_statements(meeting_id, taxonomy_version)
+compare_with_state(meeting_id, base_state_version)
+build_incremental_proposals(meeting_id, base_state_version)
+get_run(run_id)
 ```
 
-- Web 使用 OIDC 授权码+PKCE和服务端安全 Cookie；高风险动作支持 MFA/重新认证。
-- CLI 使用设备授权或 PKCE 本机回调，刷新凭据进入系统钥匙串。
-- 远程 MCP 优先 OAuth；受控试点 Bearer Token 只能来自环境变量和最小权限服务账号。
-- 身份提供商只证明主体身份；工作空间/项目成员关系、角色和动作 Scope 由 Brand Project OS 权威库定义。
+输出每项必须绑定会议、片段、说话人、时间位置、原话、类型、状态、适用范围、置信度和分类理由。`DECISION_CANDIDATE` 至少需要决定人、明确决定动词、范围和证据；缺项必须降级。完整行为由[运行时协议](runtime-brand-agent-and-meeting-protocol.md)定义。
 
-### `AuthorizationContext`
+## Proposal 与人工确认契约
 
-每个请求至少包含 `actor_type`、`actor_id`、`workspace_id`、`project_id`、`scopes`、`confidentiality_clearance`、`session_id` 和 `request_id`。数据库事务必须用 `SET LOCAL` 注入上下文，避免连接池复用串租户。RLS 是第二道防线，不能替代应用层状态机和授权。
+### `ProposalPort`
 
-## 检索与内容处理端口
+```text
+create(proposal, base_state_version, idempotency_key)
+list(project_id, status?, kind?)
+get(proposal_id)
+compare(proposal_id)
+approve(proposal_id, human_action, expected_version)
+modify_and_approve(proposal_id, patch, human_action, expected_version)
+reject(proposal_id, human_action, expected_version)
+supersede(proposal_id, replacement_id, human_action)
+```
+
+`approve`、`modify_and_approve` 和 `reject` 只供本地人类界面调用。MCP、Skill、AgentRuntime 和模型适配器的能力表不得包含这些方法。每次人工动作记录 Fox、时间、理由、旧值、新值、证据、作用范围和基础版本。
+
+## Task Packet 契约
+
+### `TaskPacketPort`
+
+```text
+build(task_id, role, work_mode, base_state_version?)
+get_layer(packet_id, layer)
+resolve_evidence(packet_id, evidence_ref)
+validate(packet_id)
+record_consumption(packet_id, runtime_id, model_id)
+```
+
+Task Packet 使用 L0-L4 分层：任务头、当前状态、相关证据、按需原文、历史/废案。默认只加载 L0-L2。包必须区分已批准层与工作层，携带状态版本、证据哈希、索引水位、缺口、工具范围、数据外发策略、输出 Schema、一票否决项和工作模式切换权限。
+
+## Agent Runtime 契约
+
+### `AgentRuntimePort`
+
+```text
+list_runtimes(project_id)
+create_run(task_packet_ref, runtime_policy, idempotency_key)
+get_run(run_id)
+stream_events(run_id, after_cursor?)
+respond_tool_permission(request_id, decision, constraints)
+cancel_run(run_id, reason)
+list_artifacts(run_id)
+publish_artifact(run_id, artifact_ref)
+health(runtime_id)
+```
+
+首版可以通过本地 CLI/子进程调用 Codex、Claude 或 OpenCode。OpenWork 只是可选 UI/控制面适配器。Tool Permission 控制文件、命令、网络和工具，不得复用 Proposal 人工确认 Schema。`publish_artifact` 只能登记产物或创建 `proposed` 状态的 Proposal。
+
+## 检索与模型端口
 
 ### `SearchIndexPort`
 
 ```text
-apply(records, indexed_event_position)
-delete(record_ids, indexed_event_position)
-search(query, filters, top_k, authorization_context)
-watermark(workspace_id, project_id)
-build_generation(workspace_id, project_id, until_position)
-activate_generation(generation_id)
-health()
+apply(records, source_version)
+delete(record_ids)
+search(query, filters, top_k)
+rebuild(project_id)
+watermark(project_id)
 ```
 
-首发实现为 PostgreSQL FTS+`pg_trgm`，可选 pgvector。Zvec 仅作为独立单活动写 Worker 的可重建增强索引。索引记录至少含稳定来源 ID、内容哈希、领域版本、权限过滤字段和事件水位。任何命中都必须回 PostgreSQL 重新校验 RLS、版本与撤销状态。
-
-### `ContentProcessingPort`
-
-```text
-extract(source_ref, processing_policy)
-transcribe(source_ref, processing_policy)
-normalize(extraction, schema_version)
-get_run(run_id)
-cancel(run_id)
-health()
-```
-
-基线实现为直接 Worker；可选实现为 `content-core` 或 Open Notebook sidecar。输入只使用批准范围内的对象副本，返回解析文本、分段、引用和候选；不得直接更改 Source 权威角色、事实或审批。
-
-### `ResearchWorkspacePort`
-
-```text
-register_source(source_manifest, idempotency_key)
-get_research_result(external_id)
-list_citations(external_id)
-delete_derived_copy(external_id)
-reconcile(correlation_id)
-health()
-```
-
-研究结果统一标记 `DERIVED`，进入核心后只能生成 Proposal。Open Notebook 的任意创建、更新和删除 MCP 不直接暴露给主控 AI，必须经过允许列表包装器。
-
-## 人工审批与 AI 工作流端口
-
-### `ApprovalWorkflowPort`
-
-```text
-start(proposal_id, policy_snapshot, idempotency_key)
-get_status(correlation_id)
-receive_human_action(signed_action)
-cancel(correlation_id, reason)
-reconcile(correlation_id)
-health()
-```
-
-默认实现是核心状态机。FlowLong 只协调会签、或签、转办、提醒等复杂人工任务；回调必须重新验证主体映射、项目、流程版本、Proposal 版本、幂等键和签名，再调用核心用例。FlowLong 无权直接追加批准事件，AI 审批和超时自动通过必须关闭。
-
-### `AIWorkflowPort`
-
-```text
-run(workflow_key, workflow_version, task_packet, data_policy, idempotency_key)
-get_run(run_id)
-cancel(run_id)
-validate_output(run_id, output_schema)
-get_usage(run_id)
-health()
-```
-
-基线实现是直接 Worker，可选实现为 Dify。每次调用必须固定工作流导出版本、输入/输出 Schema、模型、插件、超时、重试、数据级别和退出方案。Dify 只返回结构化候选；后端校验后保存为 Proposal。Dify API Key 只由后端持有。首个 POC 限单内部 Workspace 和后端 API；源码多租户、白标或分发必须先取得书面许可结论。
+基线使用 SQLite FTS5 和结构化关系查询。向量索引是可选增强，命中必须返回稳定 ID，再从 SQLite 与证据区复核状态、版本和哈希。检索相似度不能决定内容是否当前有效。
 
 ### `ModelGatewayPort`
 
 ```text
-run(task_packet, model_policy, data_policy)
+run(task_packet_ref, runtime_role, model_policy, output_schema)
 compare(run_ids, rubric_id)
 get_usage(run_id)
 cancel(run_id)
-health()
 ```
 
-运行记录保存 Task Packet/Schema/模型/Prompt/参数/数据级别/授权/成本/时间/结果哈希和最终 Proposal。P2/P3 默认只允许批准的本地处理或脱敏副本，外发需任务级人工授权。
-
-## Outbox、Inbox 与外部回调
-
-```mermaid
-sequenceDiagram
-    participant C as 客户端
-    participant A as 应用服务
-    participant P as PostgreSQL
-    participant W as Worker
-    participant X as 外部组件
-    C->>A: 命令 + 幂等键 + 期望版本
-    A->>P: 领域变更 + 事件 + 投影 + Outbox
-    P-->>A: 原子提交 + 新版本
-    A-->>C: 结果 + request_id + 事件水位
-    W->>P: FOR UPDATE SKIP LOCKED 领取
-    W->>X: 带 correlation_id 的幂等调用
-    X-->>W: 派生结果或人工动作
-    W->>P: Inbox 去重并登记外部结果
-    W->>A: 调用提案或人工动作复核用例
-```
-
-Worker 采用至少一次投递；每个消费者通过 Inbox 或外部唯一键去重。Schema、权限或数据错误直接进入可见死信。外部写成功但确认前崩溃时，重放不能创建重复索引、通知、工作流或 Proposal。
+每次运行记录模型、适配器、Task Packet 版本、工作模式、规则版本、输出哈希、证据引用、成本和人工采用结果。模型切换不携带私有聊天记忆，只交换稳定对象。
 
 ## 关键 Schema
 
 | Schema | 作用 | 关键不变量 |
 |:---|:---|:---|
-| `tenant-context.v1` | 跨入口身份与租户上下文 | 主体、工作空间、项目、Scope、保密许可、会话和请求 ID 完整 |
-| `source-manifest.v1` | 原件准入与版本 | SHA-256、对象版本、来源、角色、保密级别和状态必填 |
-| `domain-command.v1` | 正式写命令 | 幂等键、期望版本、操作者和请求摘要必填 |
-| `domain-event.v1` | 只追加权威事件 | 聚合版本唯一；Schema 版本、因果链、操作者和提交时间完整 |
-| `state-proposal.v1` | AI/导入/外部候选 | 只能是 proposed；基础版本、影响范围、证据 ID 和生成来源必填 |
-| `approval-event.v1` | 具名人工动作 | 人、时间、理由、Scope、策略快照、旧新版本和幂等键必填 |
-| `task-packet.v1` | AI 最小上下文 | 工作模式、目标、批准状态、开放项、证据、禁区和事件水位必填 |
-| `search-record.v1` | 可重建检索记录 | 稳定 ID、哈希、领域版本、权限字段和索引水位必填 |
-| `outbox-message.v1` | 事务后派生任务 | 事件位置、消费者、重试策略、关联 ID 和载荷版本必填 |
-| `adapter-callback.v1` | 外部回调 | 适配器、版本、签名、重试号、外部动作人和目标版本必填 |
-| `ai-workflow-run.v1` | Dify/直接 Worker 留痕 | 工作流、模型/插件、Task Packet、数据级别、成本和输出哈希必填 |
-| `audit-record.v1` | 安全与管理审计 | 请求、会话、主体、资源、动作、结果、理由和时间必填；不保存密钥 |
+| `source-manifest.v1` | 原始资料清单 | 稳定 ID、SHA-256、来源、版本、角色、位置和状态完整 |
+| `evidence-ref.v1` | 可回源引用 | 来源版本、哈希、原文定位、作者/说话人、时间和引用目的完整 |
+| `meeting-context.v1` | 会议与片段上下文 | 会议模式、参与者、片段、转写版本和不确定性明确 |
+| `statement.v1` | 统一语义分类 | 类型、状态、原话、主体、范围、证据和分类理由完整 |
+| `target-date.v1` | 时间性质 | 日期、`date_kind`、主体、依据和是否人工确认明确 |
+| `state-proposal.v1` | 增量变化建议 | `proposed`、基础版本、单一变化、差异、影响、冲突和证据必填 |
+| `human-action.v1` | Fox 人工动作 | 动作、理由、旧新值、证据、范围、时间和版本必填 |
+| `domain-event.v1` | 只追加事件 | 项目序号、聚合版本、Schema 版本、因果链和操作者完整 |
+| `task-packet.v1` | 分层任务上下文 | 角色、模式、L0-L4、批准/工作层、证据、禁区和状态版本完整 |
+| `runtime-run.v1` | 模型/Agent 运行 | Task Packet、运行时、模型、规则、工具决策、成本和结果哈希完整 |
+| `tool-permission.v1` | 运行时工具权限 | 运行、工具、参数摘要、路径/网络、时限和决定人完整；不能表达业务批准 |
 
-## HTTP 与 MCP 契约
+## 本地 CLI 与 MCP 契约
 
-### HTTP 写入规则
-
-- `Idempotency-Key`：所有业务命令必填；同键不同摘要返回 409。
-- `If-Match` 或请求体 `expected_version`：所有可编辑聚合必填；版本冲突返回最新版本与差异链接。
-- `X-Request-Id`：入口可传，服务端校验或生成；响应和所有日志/事件保留。
-- 正式写入成功响应返回 `resource_version`、`event_position` 和 `derived_watermark`。
-- `401` 表示未认证，`403` 表示身份有效但 Scope 不足，`409` 表示幂等/版本冲突，`422` 表示 Schema/领域规则失败，`503` 只用于权威依赖不可用。
-
-### 首批远程 MCP 工具
+首批读取与 Proposal 工具：
 
 - `project_get_state`
 - `task_get_packet`
-- `meeting_list`、`meeting_get`
+- `meeting_list`、`meeting_get`、`meeting_interpret`
 - `evidence_search`、`evidence_get`
 - `decision_list`、`open_question_list`、`action_list`
-- `proposal_create`
+- `proposal_create`、`proposal_get`
+- `system_doctor`、`project_verify`
 
-禁止暴露 `approve`、`reject`、任意 SQL、成员管理、生产密钥、原件硬删除、Dify 任意工作流编辑、Open Notebook 任意写删或 FlowLong 自动批准。MCP、HTTP、CLI 和 Web 必须返回相同的正式状态版本和证据链。
+禁止向 AI 暴露批准、驳回、直接 SQL、证据硬删除、无边界文件访问和工作模式强制切换。CLI 中若提供人工批准，必须进入独立的交互式 Fox 确认流程，且不能被 Agent 非交互调用。
 
-## 契约演进规则
+## 未来服务器实现配置
 
-1. Schema 和端口使用显式主版本；新增可选字段保持向后兼容，删除/改义必须升主版本。
-2. 生产迁移采用 expand-migrate-contract；破坏性 contract 至少延迟一个发布周期。
-3. 消费者必须声明支持的版本范围；未知事件/回调版本进入死信，不做猜测性解析。
-4. 外部适配器通过共享 contract test、金标和故障注入后才能替换基线实现。
-5. 所有上游版本和镜像固定到版本/摘要；升级先通过 V5 金标、权限、恢复和 BrandBench。
-6. 每个端口保留 NoOp 或基线实现，关闭外部组件不改变权威读取与人工审批。
+服务器化不是当前实现任务。若 ADR-0001 通过复审，各端口可替换为：
 
-## 任务映射
+| 当前本地实现 | 未来候选实现 | 必须保持的契约 |
+|:---|:---|:---|
+| SQLite `CanonicalStorePort` | PostgreSQL、RLS、事件/投影/Outbox | 稳定 ID、事件顺序、人工批准和版本冲突语义 |
+| 本地证据区 | S3 兼容内容寻址对象存储 | SHA-256、来源版本、原文定位和不可变性 |
+| 本地 OS 用户 | OIDC + 应用层角色/Scope | 人工与 AI 身份分离、AI 禁止批准 |
+| 进程内派生 | Outbox/Inbox Worker | 至少一次投递、消费者幂等和权威事务不等待派生层 |
+| 本地 MCP/CLI | OAuth 远程 MCP/HTTPS API | 同一读取与 Proposal Schema，不新增 AI 批准工具 |
+| 本地 Agent 子进程 | 员工/托管 Worker | Task Packet、Tool Permission、Artifact 和 Proposal 边界 |
 
-| 契约域 | 实施任务 |
-|:---|:---|
-| 权威、Schema、租户与身份契约 | F1.2-F1.5、F2.1 |
-| PostgreSQL 事务、事件、Outbox 与恢复 | F2.2、F2.6、F2.7 |
-| 对象存储、导入、检索与回源 | F2.3-F2.5 |
-| 身份、授权、审批与 Task Packet | F3.1-F3.5 |
-| HTTP、远程 MCP、CLI 与 Skills | F3.6-F3.8 |
-| Web/PWA、离线和服务器验收 | F4.2-F4.8 |
-| 五个外部适配器门 | F5.1-F5.7 |
-| 选择性生产集成与回归 | F6.1-F6.6 |
+迁移必须先导出清单、事件、审批、投影校验值和证据哈希，导入服务器后全量对账，再冻结本地写入并一次性切换。禁止长期双写。
+
+## 契约演进
+
+1. Schema 显式版本化；新增可选字段保持兼容，删除或改义升主版本。
+2. 未知类型、事件或模型输出进入可见错误，不做猜测性解析。
+3. 存储、搜索、模型、AgentRuntime 和客户端适配器必须通过共享契约测试与鸿日金标。
+4. 运行时分类规则、品牌宪法和工作模式均有独立版本，并写入 Task Packet 与运行记录。
+5. OpenWork/OpenCode 或其他适配器退出时，不迁移正式业务数据，只清理运行态并切换端口实现。
+6. 从本地到服务器的实现替换不得改变已批准内容的语义等级或证据引用。
+
+## 当前验收
+
+1. 一个未读旧聊天的 AI 通过本地入口获得正确、最小、可回源的鸿日 Task Packet。
+2. 新会议生成增量 Proposal，不非法升级观点、偏好、选项、倾向或目标日期。
+3. Fox 可以逐项查看差异与原话，批准后事件和投影在同一事务生效。
+4. 两个模型读取同一版本时事实、决定、约束和证据一致。
+5. 删除索引、缓存、模型会话和 OpenWork 状态后可重建读取面。
+6. SQLite 备份恢复、事件重放、证据哈希和 10-20 个鸿日金标全部通过。

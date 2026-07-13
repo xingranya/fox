@@ -1,140 +1,150 @@
 # 目标模块清单
 
-当前没有实现代码。本清单描述团队服务器目标架构，文件数、行数和 S.U.P.E.R 分数均为规划值或预期值，不代表现有代码质量。
+## 范围说明
 
-## 总览
+当前没有业务实现代码。本清单按产品验证顺序重排：M00-M09 是鸿日本地单用户 MVP 的 **CURRENT** 模块；团队服务器和外部平台全部进入远期候选区。
 
-| ID | 模块 | 单一责任 | 主要依赖 | 复杂度 | S.U.P.E.R 预期 |
+远期模块统一标记为 `future-candidate`、`not-approved-for-current-mvp`、`review-after-hongri-pilot`，不得成为 M00-M09 的实现依赖。
+
+## CURRENT 模块总览
+
+| ID | 模块 | 服务场景 | 主要输入 | 主要输出 | S.U.P.E.R 目标 |
 |:---|:---|:---|:---|:---|:---|
-| M01 | 领域模型与契约 | 定义项目对象、事件、端口和状态规则 | 无外部实现依赖 | 高 | `S绿 U绿 P绿 E绿 R绿` 10/10 |
-| M02 | 原始文件与对象谱系 | 保存不可变原件、版本、哈希和对象键 | M01、ObjectStorePort | 高 | `S绿 U绿 P绿 E绿 R绿` 10/10 |
-| M03 | 资料准入与版本谱系 | 解析、去重、来源登记和版本关系 | M01、M02、ParserPort | 高 | `S黄 U绿 P绿 E绿 R绿` 9/10 |
-| M04 | 会议增量解析 | 分段、说话人、信息类型候选和上下文 | M01、M03、ModelPort | 高 | `S黄 U绿 P绿 E黄 R绿` 8/10 |
-| M05 | 事件账本与状态投影 | 原子追加事件并重建任意时间点状态 | M01、CanonicalStorePort | 关键 | `S绿 U绿 P绿 E绿 R绿` 10/10 |
-| M06 | 证据、主张与关系 | 管理支持、冲突、替代和不推导关系 | M01、M05 | 高 | `S绿 U绿 P绿 E绿 R绿` 10/10 |
-| M07 | 人工审批与状态策略 | 阻止 AI 或外部流程越权升级状态 | M01、M05、M06、M16 | 关键 | `S绿 U绿 P绿 E绿 R绿` 10/10 |
-| M08 | 混合检索与回源 | 全文、向量、过滤、关系扩展和权威复核 | M03、M06、SearchIndexPort | 高 | `S绿 U绿 P绿 E绿 R绿` 10/10 |
-| M09 | 任务与轻量工作流 | 管理任务、日期性质、依赖和行动候选 | M05、M07、WorkflowPort | 中 | `S黄 U绿 P绿 E绿 R黄` 8/10 |
-| M10 | 双轨 BrandSpec 与 Task Packet | 按工作模式生成最小任务上下文 | M05、M06、M08、M09 | 高 | `S绿 U绿 P绿 E绿 R绿` 10/10 |
-| M11 | 模型路由与 BrandBench | 模型调用、隔离、比较和质量留痕 | M10、ModelGatewayPort | 高 | `S黄 U绿 P绿 E绿 R绿` 9/10 |
-| M12 | 统一应用服务与访问接口 | 向 Web、API、远程 MCP、CLI 和 Skills 暴露同一用例 | M03-M11、M16 | 关键 | `S黄 U绿 P绿 E绿 R绿` 9/10 |
-| M13 | Web/PWA 团队工作台 | 提供今日、审批、检索、会议、任务和系统健康界面 | M12 | 高 | `S黄 U绿 P绿 E绿 R绿` 9/10 |
-| M14 | 审计、导出、备份与恢复 | 验证一致性、生成快照、恢复权威数据并重建派生层 | M02、M05、M08、M17 | 关键 | `S黄 U绿 P绿 E绿 R黄` 8/10 |
-| M15 | 能力与依赖登记 | 管理模型、Skill、MCP、组件版本和适配器准入 | M01、M05 | 中 | `S绿 U绿 P绿 E绿 R绿` 10/10 |
-| M16 | 身份、项目成员与授权 | 管理团队身份、角色、项目隔离和服务凭据 | M01、IdentityPort、CanonicalStorePort | 关键 | `S绿 U绿 P绿 E绿 R绿` 10/10 |
-| M17 | Outbox、Worker 与外部协调 | 可靠派发索引、解析、通知和外部流程任务 | M05、OutboxPort、各外部端口 | 关键 | `S黄 U绿 P绿 E绿 R绿` 9/10 |
+| M00 | 鸿日黄金测试集与 BrandBench | 所有场景的价值判定 | 真实任务、错误反例、Fox 评分 | 10-20 个金标、质量基线、一票否决集 | `S绿 U绿 P绿 E绿 R绿` |
+| M01 | 原始资料与来源索引 | 文件版本和证据回查 | `/Users/fox/work` 只读文件 | Source、版本、哈希、来源、定位 | `S绿 U绿 P绿 E黄 R绿` |
+| M02 | 会议增量解释 | 场景 1、4 | 新会议、当前状态、分类规则 | 原话片段、候选类型、冲突、变化 Proposal | `S黄 U绿 P绿 E绿 R绿` |
+| M03 | 当前项目状态 | 场景 2、4、5 | Fox 已确认变更 | 当前阶段、事实、决定、约束、开放问题、行动 | `S绿 U绿 P绿 E绿 R绿` |
+| M04 | 证据与认知关系 | 场景 2、3、4 | 来源、主张、批准和替代信息 | 回源链、支持/反对/冲突/替代关系 | `S绿 U绿 P绿 E绿 R绿` |
+| M05 | Proposal 与人工确认 | 场景 1、4 | AI 增量候选、旧状态版本 | 差异、确认、修改、驳回和状态事件 | `S绿 U绿 P绿 E绿 R绿` |
+| M06 | 品牌 Agent 宪法与工作模式 | 场景 3 | 品牌角色、品味规则、模式选择 | 探索协议或执行规格 | `S绿 U绿 P绿 E绿 R绿` |
+| M07 | Task Packet 上下文装配 | 场景 2、3、5 | 当前状态、模式、任务、证据 | 不可变版本 Task Packet | `S绿 U绿 P绿 E绿 R绿` |
+| M08 | 多模型本地入口 | 场景 5 | Task Packet、模型选择 | Codex/Claude 可读取的 API/MCP/CLI 响应 | `S绿 U绿 P绿 E绿 R绿` |
+| M09 | Fox 本地界面 | 场景 1、4、6 | 当前状态、Proposal、证据、运行结果 | 查看、确认、驳回、回源和任务入口 | `S黄 U绿 P绿 E黄 R绿` |
 
 ## 依赖方向
 
 ```text
-Web / PWA / HTTPS API / 远程 MCP / CLI / Skills
-                         ↓
-统一应用服务：鉴权、幂等、并发控制、导入、检索、审批、任务包
-                         ↓
-领域核心：对象、状态策略、事件、权限规则和版本化端口
-                         ↓
-PostgreSQL / S3 / Search / Dify / FlowLong / Open Notebook / Nubase 适配器
-                         ↓
-                  外部实现与基础设施
+鸿日只读原件 -> M01 来源索引 -> M02 增量解释 -> M05 Proposal -> Fox 确认 -> M03 当前状态
+                        |                 |                                |
+                        +---------------> M04 证据与关系 <----------------+
+M06 探索/执行协议 + M03 + M04 + 本轮任务 -> M07 同一 Task Packet -> M08 Codex/Claude
+M03 / M04 / M05 / M07 / M08 -> M09 Fox 本地界面
+M00 黄金测试与 BrandBench 横向验证 M01-M09
 ```
 
-外部实现只能依赖端口和版本化 Schema，领域核心不得导入 PostgreSQL 驱动、S3 SDK、Zvec、Nubase、Open Notebook、FlowLong、Dify 或具体模型 SDK。任何客户端也不得绕过 M12 直连数据库或外部组件。
+依赖必须保持单向：模型输出只能进入 Proposal，不能直接写 M03；M09 只调用用例，不直接修改轻量数据库；M08 不使用模型聊天记忆保存项目事实。
 
-## 核心模块说明
+## CURRENT 模块说明
 
-### M01 领域模型与契约
+### M00 鸿日黄金测试集与 BrandBench
 
-- 规划路径：`packages/core/domain/`、`packages/core/ports/`、`schemas/`。
-- 公共接口：Project、Source、Meeting、Segment、Evidence、Claim、Decision、Constraint、Action、Artifact、Proposal、Event、Actor、Membership。
-- 转换要求：先冻结 JSON Schema、稳定 ID、项目边界、幂等键、版本字段和错误码，再实现数据库或 UI。
-- S.U.P.E.R：零框架依赖；跨边界对象可序列化；可在无数据库和网络条件下单测。
+- **责任**：在实现前定义“什么叫理解正确、品牌工作有效”。
+- **内容**：冷启动、会议分类、证据回查、增量会议、策略探索、执行落地、多模型切换和品牌匿名评审。
+- **一票否决**：虚构事实、非法升级、暂定日期变死线、废案回主线、无法回源、AI 自动改状态、探索强行收口。
+- **输出契约**：固定输入、期望行为、反例、评分维度、Fox 评审记录和版本。
+- **非目标**：只测接口延迟、代码覆盖率或模型答题分数。
 
-### M02 原始文件与对象谱系
+### M01 原始资料与来源索引
 
-- 规划路径：`packages/core/sources/`、`packages/adapters/object_store/`。
-- 公共接口：`stage_upload`、`verify_hash`、`commit_source`、`open_version`、`verify_object`、`list_lineage`。
-- 生产实现：S3 兼容对象存储，开启版本控制、服务端加密和生命周期策略；数据库仅保存稳定对象键和完整元数据。
-- 原子边界：先写临时对象并计算 SHA-256，再在 PostgreSQL 事务登记；提交失败后的孤立对象由清理任务回收。
-- 降级实现：开发环境可使用本地文件系统适配器，但对象键和哈希契约保持一致。
+- **责任**：知道鸿日有哪些原件、来自哪里、何时形成、哪个版本和如何打开。
+- **输入**：`/Users/fox/work` 内 Fox 批准范围的 Brief、提案、录音、会议、调研、方案和交付物。
+- **输出**：稳定 Source ID、本地路径、SHA-256、文件时间、来源类型、版本、状态和内容定位。
+- **CURRENT 实现边界**：本地文件只读；允许轻量元数据和全文索引；不要求复制到 S3。
+- **关键规则**：内容相似不等于当前有效，过期/废案必须有显式状态或替代关系。
 
-### M05 事件账本与状态投影
+### M02 会议增量解释
 
-- 规划路径：`packages/core/events/`、`packages/core/projections/`、`packages/adapters/postgres/`。
-- 公共接口：`append_event`、`rebuild_projection`、`get_state_at`、`verify_projection`。
-- 生产实现：标准 PostgreSQL 是唯一权威库；普通领域表、只追加事件表、审计记录和 Outbox 在同一事务提交。
-- 并发规则：聚合携带 `version`；普通编辑使用乐观锁；批准、角色变更等关键操作使用版本校验，必要时取得行锁。
-- SQLite 边界：只用于开发、测试、单机演示和导出的只读快照，不接受团队生产写入。
-- 关键测试：重复事件、重复幂等键、并发审批、丢失更新、重放等价、投影删除后重建。
+- **责任**：解释一场新会议可能怎样改变项目，而不是生成确定性摘要。
+- **输入**：会议原文/转写、会议模式、当前状态、分类标准和时间性质规则。
+- **输出**：原话片段、发言人、时间点、VIEW/PREFERENCE/HYPOTHESIS/OPTION/TENDENCY/DECISION/CONSTRAINT/ACTION 候选、冲突和 Proposal。
+- **关键规则**：决定候选仍需明确决定人、决定动词、范围和证据，并由 Fox 确认；TARGET DATE 不自动成为 Deadline。
+- **增量要求**：只报告本次新增、冲突、替代和建议变化，不重写全部历史。
 
-### M07 人工审批与状态策略
+### M03 当前项目状态
 
-- 规划路径：`packages/core/approval/`。
-- 公共接口：`propose`、`approve`、`reject`、`request_edit`、`keep_open`、`supersede`。
-- 规则：只有经过身份确认且具备项目角色的人工入口可以批准；远程 MCP、Dify、Open Notebook、Nubase Memory 和模型输出只能提出候选。
-- 外部流程回调：FlowLong 返回的人工任务结果仍需核验操作者、项目、流程版本、目标对象版本和幂等键，再由核心写入正式事件。
-- 默认状态机：`PROPOSED -> APPROVED | REJECTED | NEEDS_EDIT | OPEN`。
+- **责任**：提供所有模型开始工作前共同读取的“现在有效是什么”。
+- **内容**：阶段、目标、已确认事实、决定、约束、开放问题、行动、当前方向和最新状态版本。
+- **写入门**：只有 Fox 对 M05 的确认/修改可以更新；所有更新保留旧新差异和来源。
+- **非目标**：项目全部历史的长篇摘要、模型自动记忆、文件目录清单。
 
-### M08 混合检索与回源
+### M04 证据与认知关系
 
-- 规划路径：`packages/core/search/`、`packages/adapters/search/`。
-- 公共接口：`upsert`、`delete`、`search`、`rebuild`、`health`、`watermark`。
-- 生产基线：PostgreSQL FTS；可选 pgvector。Zvec 只有通过 V5 中文金标 A/B 测试后才启用。
-- 一致性：索引由 M17 消费 Outbox 异步更新；查询响应显示 `indexed_at` 或事件水位，不宣称瞬时一致。
-- 规则：搜索结果必须携带稳定领域 ID，并回到 PostgreSQL 和对象原件复核后才能进入回答或 Task Packet。
+- **责任**：表达项目内容为何成立、何时失效以及彼此关系。
+- **对象**：会议、发言人、原件、事实、观点、假设、选项、决定、约束、开放问题、战略领地、方案、交付物。
+- **关系**：提出于、来源于、支持、反对、冲突、适用于、被谁批准、替代、依赖、回答、待确认。
+- **CURRENT 实现**：SQLite 关系表或等价轻量结构即可；不要求图数据库。
+- **查询门**：重要结论必须回到原件、原话、会议、发言人、时间和适用范围。
 
-### M10 双轨 BrandSpec 与 Task Packet
+### M05 Proposal 与人工确认
 
-- 规划路径：`packages/core/task_packet/`。
-- 输入：工作模式、当前目标、已批准状态、开放问题、相关证据、输出要求。
-- 输出：版本化 Task Packet，不包含无关历史，并记录生成时的权威事件水位。
-- 规则：探索任务保留矛盾；执行任务不得重写已批准策略；过期 Task Packet 必须明确提示。
+- **责任**：让 AI 提出变化，同时让 Fox 保有最终状态控制权。
+- **公共用例**：`propose_change`、`review_diff`、`approve`、`edit_and_approve`、`reject`、`keep_open`、`supersede`。
+- **输入**：基础状态版本、证据、候选类型、建议旧新差异和理由。
+- **输出**：待确认、已确认、已修改、已驳回或继续开放；每次动作可追溯。
+- **关键规则**：模型、OpenWork/OpenCode、Dify 或任何适配器均无批准能力。
 
-### M12 统一应用服务与访问接口
+### M06 品牌 Agent 宪法与工作模式
 
-- 规划路径：`apps/api/`、`apps/mcp/`、`apps/cli/`、`packages/application/`。
-- 职责：统一鉴权、授权、幂等、并发控制、请求追踪、审计和用例调用。
-- 远程 MCP 首批工具：状态、任务包、会议、证据检索与回源、决定、开放问题、行动和变更提案。
-- 写权限：MCP 和 Skills 只能提交 Proposal；批准仅允许 Web/PWA 或明确要求交互确认且通过授权的管理 CLI。
-- 网络边界：所有远程入口走 HTTPS；服务凭据按客户端、项目和能力最小授权，不共享管理员密钥。
+- **责任**：把品牌策略师、创意总监、文案等角色转成可验证行为，而非角色扮演标签。
+- **分层**：品牌 Agent 宪法、探索/评估/决策/执行协议、鸿日项目规则、本轮 Task Packet。
+- **探索协议**：保留矛盾、发展不同选择、说明取舍和证据缺口，不自行收口。
+- **执行规格**：服从已批准方向、事实、格式和禁区，不重写战略或带回废案。
+- **切换门**：只有 Fox 明确触发；模型置信度和多数意见都不是切换依据。
 
-### M13 Web/PWA 团队工作台
+### M07 Task Packet 上下文装配
 
-- 规划路径：`apps/web/`。
-- 一级视图：今日、当前状态、待我确认、会议与变化、证据检索、任务与交付、研究工作台、系统健康与 AI 连接。
-- 团队能力：项目切换、成员角色、在线冲突提示、版本差异、操作人和时间留痕。
-- 离线边界：PWA 可缓存壳和只读快照；离线修改不直接视为成功，恢复网络后必须按版本重新提交。
+- **责任**：为一个任务生成最小、相关、当前有效且可比较的上下文。
+- **核心字段**：项目/状态版本、任务目标、工作模式、角色、批准事实/决定、开放问题、相关证据、过期项、约束、输出契约和 Packet 版本。
+- **一致性**：同一任务的 Codex、Claude 和其他模型读取同一 Packet 内容摘要。
+- **过期处理**：状态版本变化后旧 Packet 标记过期，不静默重新解释。
+- **非目标**：把所有文件或全部聊天历史塞入上下文。
 
-### M14 审计、导出、备份与恢复
+### M08 多模型本地入口
 
-- 规划路径：`packages/operations/`、`apps/cli/commands/`、`deploy/`。
-- 公共接口：`doctor`、`verify`、`snapshot_export`、`restore_drill`、`rebuild_derived`、`reconcile_external`。
-- 恢复顺序：PostgreSQL PITR -> 对象版本校验 -> 状态投影重建 -> 索引重建 -> 外部协调层对账。
-- 规则：备份与生产必须位于独立故障域；只有定期恢复演练成功才算具备恢复能力。
+- **责任**：通过本地 API、MCP 或 CLI 向不同 AI 暴露同一组只读与 Proposal 用例。
+- **首批能力**：读取当前状态、获取 Task Packet、搜索/打开证据、查看开放问题、提交 Proposal。
+- **首批模型**：至少 Codex 与 Claude；其他模型后置。
+- **验证**：固定 Packet 下事实、决定和证据必须一致；差异主要来自推理质量和表达。
+- **边界**：不暴露批准、任意数据库写入、原件删除和项目规则切换。
 
-### M16 身份、项目成员与授权
+### M09 Fox 本地界面
 
-- 规划路径：`packages/core/auth/`、`packages/adapters/identity/`。
-- 最小角色：Owner、Approver、Contributor、Viewer；服务账号使用独立能力集合。
-- 授权粒度：组织、项目、对象和动作；API 在应用层强制校验，数据库可用 RLS 作为第二道防线而非唯一防线。
-- 关键测试：跨项目读取、对象枚举、服务密钥越权、成员移除、角色降级和审批自授权。
+- **责任**：让 Fox 最短路径查看当前状态、待确认变化、证据和 AI 工作结果。
+- **最小视图**：当前、待确认、证据、任务/模式和 AI 工作。
+- **命令**：确认、修改、驳回、保持开放、打开原件、创建 Task Packet、启动/切换模型任务。
+- **候选实现**：简单本地 Web 或 OpenWork MIT 社区客户端壳；选择由最小闭环成本决定。
+- **非目标**：通用项目管理、团队成员管理、系统健康大屏和完整企业设置。
 
-### M17 Outbox、Worker 与外部协调
+## OpenWork 当前定位
 
-- 规划路径：`packages/core/outbox/`、`apps/worker/`、`packages/adapters/workflows/`。
-- 公共接口：`claim`、`dispatch`、`ack`、`retry`、`dead_letter`、`reconcile`。
-- 规则：多个 Worker 使用 PostgreSQL `FOR UPDATE SKIP LOCKED` 竞争任务；处理器必须幂等；失败采用有限退避并进入死信与人工处理。
-- 适配器分工：Dify 处理 AI 生成和模型编排；FlowLong 处理复杂人工任务路由；二者都不能在回调中直接改变正式状态。
+OpenWork 只作为 M09 的本地桌面候选和 M08 的 Agent 运行辅助。OpenWork Server、OpenCode Session、Permission、SQLite/JSON 状态不是业务真相源；OpenCode Tool Permission 也不是 M05 的业务批准。是否深度 fork 必须在鸿日本地闭环证明有用之后决定。
 
-## 五个外部组件适配器
+## 后置可替换适配器
 
-| 项目 | 目标端口 | 允许保存 | 禁止成为唯一存储 | 替换成本 |
-|:---|:---|:---|:---|:---|
-| Zvec | `SearchIndexPort` | 文本、向量、过滤字段、回源 ID、索引水位 | 原文、批准事件、当前状态 | 低，删除后可从 Outbox/权威数据重建 |
-| Open Notebook | `ContentProcessingPort`、`ResearchWorkspacePort` | 临时解析、外部 source ID、研究笔记和摘要候选 | 权威来源角色、事实、决定 | 中；完整 fork 为高 |
-| Nubase | `MemoryPort`、`ModelGatewayPort`、可选 `IdentityFederationPort` | 派生 Memory、模型路由配置、外部身份映射 | PostgreSQL 正式状态、S3 原件、正式成员权限、自动 Memory 提取结果 | 中；全平台采用后为高 |
-| Dify | `AIWorkflowPort`、`ModelGatewayPort` | Workflow DSL、Prompt、运行日志、候选输出 | 正式审批、负责人、截止时间、决定和约束 | 中；直接嵌入其前端或多租户模型后为高 |
-| FlowLong | `ApprovalWorkflowPort` | 流程定义、实例、人工任务路由状态 | Evidence/Decision 正文、最终批准事件 | 中；直接承载业务状态后为高 |
+| 候选 | 未来端口 | CURRENT 状态 | 当前替代基线 |
+|:---|:---|:---|:---|
+| Zvec | `SearchIndexPort` | `future-candidate` | SQLite/本地全文与结构化过滤 |
+| Open Notebook | `ContentProcessingPort` / `ResearchWorkspacePort` | `future-candidate` | 直接解析、原件索引和证据回源 |
+| Nubase | `MemoryPort` / `ModelGatewayPort` | `future-candidate` | 本地状态、Task Packet 和直接模型配置 |
+| Dify | `AIWorkflowPort` | `future-candidate` | 直接 Worker/脚本调用模型 |
+| FlowLong | `ApprovalWorkflowPort` | `future-candidate` | Fox 本地确认队列 |
 
-## 规划态 S.U.P.E.R 结论
+五项均为 `not-approved-for-current-mvp`，必须 `review-after-hongri-pilot` 后按单端口、可禁用、可导出、可退出方式重新评估。
 
-当前准备度仍为 `S黄 U黄 P红 E黄 R黄`：目标边界已经形成，但端口、Schema、数据库约束、部署和恢复演练尚未落地。最高优先级不是安装五个组件，而是冻结单一权威写入、版本化端口、幂等与并发协议、Outbox 和恢复顺序。完成基础阶段后，目标准备度应达到五项全绿。
+## 远期团队模块
+
+以下模块不是 CURRENT：团队身份与账户、PostgreSQL 权威事件、S3 对象存储、RLS、远程 API、Outbox、多用户并发、完整 Web/PWA、服务监控、HA、PITR 和灾备。
+
+它们作为一个独立远期模块组保留，状态统一为：
+
+```text
+future-candidate
+not-approved-for-current-mvp
+review-after-hongri-pilot
+```
+
+只有鸿日试点证明个人价值，并出现真实多人/远程/恢复需求后，才重新分解和批准。
+
+## S.U.P.E.R 结论
+
+CURRENT 目标准备度为 `S绿 U黄 P黄 E绿 R绿`：职责和替换边界已收敛，但分类 Schema、Task Packet、Proposal 状态机和模型入口尚未落地。最高优先级是 M00 金标以及 M02/M05/M06/M07 的协议正确性，不是安装服务器、数据库或五个外部平台。

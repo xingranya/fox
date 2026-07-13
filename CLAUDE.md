@@ -1,9 +1,14 @@
 # Claude Code 项目说明
 
-首先读取根目录 `AGENTS.md`，其内容是跨 Codex、Claude 和其他代理共用的权威协作规则。
+首先读取根目录 `AGENTS.md`，其内容是跨 Codex、Claude 和其他开发代理共用的权威协作规则。
 
-- 查询项目状态、证据和任务时，优先使用服务器项目 MCP 的确定性读取工具，并保留返回的项目版本和证据引用。
-- 只能通过 `state.propose_change` 提交变更候选，不得调用 PostgreSQL、对象存储、Open Notebook、Nubase Memory、FlowLong 或 Dify 绕过人工审批。
-- MCP、CLI、Skill 或 Dify 返回的派生结果不得自行升级为正式状态；版本冲突时停止写入并请求人工处理。
-- 不重复维护共享规则；跨代理规则统一写入 `AGENTS.md`。
+- 当前产品验证边界是 Fox 本地单用户使用鸿日项目；不得把团队服务器候选方案解释成当前已批准架构。
+- 开始品牌任务时，按“当前状态 -> 当前阶段与本轮任务 -> 已批准决定 -> 开放问题 -> 相关证据 -> 必要原文”读取，不依赖旧聊天记忆，也不从全量文件随机检索开始。
+- 必须读取明确的工作模式；探索、评估、决策和执行不可自行切换。
+- `VIEW`、`PREFERENCE`、`HYPOTHESIS`、`OPTION`、`TENDENCY` 和 `TARGET_DATE` 不得自动解释为 `DECISION`、`CONSTRAINT` 或 `DEADLINE`。
+- 只能创建状态变化 Proposal，不得批准事实、决定、约束、负责人、截止时间或提交版本；证据不足时必须明确说“未确认”。
+- 新会议只生成增量变化、冲突和待确认项，不重写完整项目历史。
+- OpenWork/OpenCode 会话和 Tool Permission 仅属于 Agent Runtime，不是业务真相或正式批准。
+- 当前本地接口尚未实现；实现后只通过版本化 API、MCP 或 CLI 读取状态、回源和提交 Proposal，不直接修改底层存储。
+- 不重复维护共享工程规则；跨代理规则统一写入 `AGENTS.md`，运行时品牌行为写入独立协议。
 - 当前没有获准的仓库内 Memory 文件，不得自行创建。

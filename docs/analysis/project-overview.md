@@ -1,161 +1,173 @@
 # 项目概览
 
-## 初步方向
+## 当前结论
 
-开发一个由团队控制、自托管优先、跨模型的 Brand Project OS：服务器持续汇集项目资料和工作变化，AI 主动读取状态、准备任务、检索证据并提出变更；具名团队成员保留品牌判断、外部承诺和正式批准权。
+Brand Project OS 当前不是团队服务器产品。它首先是面向长期品牌营销项目的“项目状态与品牌认知协作层”。
 
-## 已确认任务定义
+| 项 | 当前结论 |
+|:---|:---|
+| 当前状态 | **CURRENT** |
+| 第一用户 | Fox |
+| 第一验证项目 | 鸿日 |
+| 当前工作空间 | `/Users/fox/work` |
+| 当前形态 | 本地优先、单用户、轻量结构化存储、统一 AI 读取入口、简单查看与确认界面 |
+| 当前目的 | 先证明系统正确理解品牌项目并让 Fox 提效，再决定是否团队化 |
 
-用户于 2026-07-13 将目标从“个人电脑上的本地程序”调整为“团队共同使用的服务器产品”，并允许把 Dify 纳入工作流候选。新的架构基线是：
+团队服务器、PostgreSQL、S3、OIDC、多用户并发、高可用和灾备研究保留，但统一标记为：
 
-- 生产环境只有一个权威服务端，标准 PostgreSQL 是唯一业务写入真相源；
-- 原始文件进入 S3 兼容对象存储，按 SHA-256 内容寻址并保留版本；
-- Web/PWA 是主客户端，HTTPS API、远程 MCP、CLI 和 Skills 连接同一应用服务；
-- SQLite 只用于开发、测试、单机演示或服务器导出的只读快照，不参与团队生产写入；
-- Zvec、Open Notebook、Nubase、FlowLong 和 Dify 均通过版本化端口接入，只能保存派生数据或协调状态，不得成为第二真相源。
+- `future-candidate`
+- `not-approved-for-current-mvp`
+- `review-after-hongri-pilot`
 
-纳入规划不等于首版同时部署所有候选组件。首版先建立权威数据、并发控制、权限、审计、备份恢复和降级能力，再逐项通过 POC 决策门。
+详见[两条需求线拆分说明](two-track-requirements.md)和[鸿日本地单用户 MVP 一页边界](hongri-local-mvp-boundary.md)。
 
-## 当前仓库基线
+## 产品定义
 
-- 当前目录不是 Git 仓库，追踪模式为 `LOCAL_ONLY`。
-- 现有业务资产只有 1 份 1812 行需求说明。
-- `.codegraph/` 已初始化，但没有源码可索引。
-- 没有应用代码、依赖、数据库迁移、测试、构建脚本或运行入口。
-- 本文档描述目标架构，不是现有代码审计结果。
+产品要让 Fox 和不同 AI 共同知道：
 
-## 架构原则
+- 什么是不可改写的原始证据；
+- 什么是事实、观点、假设、选项、方向倾向、决定、约束和开放问题；
+- 项目当前处于哪个阶段、本轮具体要做什么；
+- 本轮处于探索协议还是执行规格；
+- 当前有效内容为何有效，过期内容被什么替代；
+- 重要结论来自哪份文件、哪场会议、谁的哪句原话；
+- AI 提出了什么变化，Fox 最终确认、修改或驳回了什么。
 
-1. **单一权威写入**：正式对象、审批事件、权限和任务状态只写 PostgreSQL。
-2. **原件不可变**：原始文件按内容哈希写入对象存储；数据库记录对象键、哈希、大小、版本和来源。
-3. **事务内留痕**：业务变更、审计事件和 Outbox 消息在同一 PostgreSQL 事务提交。
-4. **并发可检测**：可编辑聚合携带 `version`；写请求携带幂等键；冲突返回当前版本，不静默覆盖。
-5. **派生层可重建**：全文、向量、Notebook、Memory、工作流实例和模型摘要均可禁用、丢弃或重建。
-6. **统一访问面**：Web/PWA、远程 MCP、CLI 和 Skills 不直连数据库或第三方组件，只调用应用服务。
-7. **人工批准闭环**：AI 和外部工作流只能提出候选；正式批准由应用核心重新校验身份、版本和权限后落账。
+产品不是通用项目管理软件、企业知识库、纯向量 RAG、团队文件同步平台，也不是一套先完成生产基础设施再寻找业务价值的系统。
 
-## 目标架构
+## 六个真实场景
+
+| 场景 | 正确行为 | 禁止行为 |
+|:---|:---|:---|
+| 会议中的“不要”未必是红线 | 识别会议模式和时间性质，保留原话，生成待确认分类 | 自动写成决定、永久约束或 Deadline |
+| 文件都在但版本可能错误 | 先读当前状态和任务，再按关系查证据与原文 | 仅按相似度采用过期方案 |
+| 品牌策略不是直接计算答案 | 保留矛盾，提出不同战略领地和代价 | 过早形成唯一结论或直接跳到口号 |
+| 新会议不应重写历史 | 增量提取变化、冲突、行动和原话证据 | 全量重总结后静默覆盖当前状态 |
+| 换模型不应重讲项目 | Codex、Claude 等读取同一 Task Packet | 各自用聊天记忆维护一套项目事实 |
+| 未来团队化不等于当前前置 | 先让 Fox 用鸿日连续验证价值 | 先建设账户、服务器、HA 和灾备 |
+
+## 当前工作协议
+
+### 探索协议
+
+用于研究、洞察、策略和创意方向。AI 应保留矛盾、重构问题、提出假设、发展真正不同的选择并说明获得与放弃；不得自行收口、把倾向升级成决定或用完整交付掩盖策略缺口。
+
+### 执行规格
+
+用于 Fox 已批准方向后的命名、文案、PPT 和物料。AI 必须服从已批准事实、方向、格式、禁区和验收标准；不得重新发明战略或把废案带回主线。
+
+模式切换必须由 Fox 显式确认。同一 Task Packet 必须记录 `work_mode`，模型不能因为信息充分或多数模型一致而自行切换。
+
+## CURRENT 本地架构
 
 ```mermaid
 flowchart TB
-    subgraph CLIENTS["团队访问面"]
-        WEB["Web / PWA"]
-        MCP["远程 MCP"]
-        CLI["CLI"]
-        SKILL["AI Skills"]
-    end
+    FOX["Fox"]
+    UI["本地查看与确认界面\nOpenWork 壳为候选"]
+    SOURCE["/Users/fox/work\n鸿日只读原件"]
+    CORE["本地项目认知核心\n分类、关系、当前状态、Proposal"]
+    STORE[("轻量结构化存储\nSQLite 或等价实现")]
+    PACKET["版本化 Task Packet"]
+    MCP["本地 API / MCP / CLI"]
+    MODE["品牌 Agent 宪法\n探索协议 / 执行规格"]
+    CODEX["Codex"]
+    CLAUDE["Claude"]
 
-    EDGE["Caddy / Nginx：TLS、限流、请求标识"]
-    APP["FastAPI 应用服务：用例、鉴权、幂等、并发控制"]
-    DOMAIN["领域核心：证据、状态、审批、事件、端口"]
-    PG[("PostgreSQL：唯一权威库")]
-    OBJ[("S3 / MinIO：不可变原件与版本")]
-    OUTBOX["Outbox Worker：索引、解析、通知、对账"]
-
-    WEB --> EDGE
-    MCP --> EDGE
-    CLI --> EDGE
-    SKILL --> EDGE
-    EDGE --> APP
-    APP --> DOMAIN
-    DOMAIN --> PG
-    APP --> OBJ
-    PG --> OUTBOX
-
-    OUTBOX --> SEARCH["SearchIndexPort：PostgreSQL FTS / pgvector / Zvec"]
-    OUTBOX --> RESEARCH["ResearchWorkspacePort：Open Notebook"]
-    APP --> AIFLOW["AIWorkflowPort：Dify"]
-    APP --> APPROVAL["ApprovalWorkflowPort：FlowLong"]
-    APP --> MODEL["ModelGatewayPort"]
-    APP -."条件评估".-> NUBASE["Nubase 平台能力"]
-
-    SEARCH -."稳定 ID 回源".-> APP
-    RESEARCH -."Proposal".-> APP
-    AIFLOW -."候选结果".-> APP
-    APPROVAL -."人工任务结果".-> APP
-    MODEL -."模型输出".-> APP
+    SOURCE --> CORE
+    CORE --> STORE
+    STORE --> CORE
+    MODE --> PACKET
+    CORE --> PACKET --> MCP
+    MCP --> CODEX
+    MCP --> CLAUDE
+    CODEX --> UI
+    CLAUDE --> UI
+    FOX --> UI
+    UI -->|"确认/修改/驳回"| CORE
 ```
 
-### 一致性边界
+CURRENT 约束：
 
-| 数据 | 一致性要求 | 写入方式 | 故障时行为 |
+- 原始文件只读，保存稳定路径、哈希、来源、时间和版本；
+- SQLite 或等价轻量存储可以承载当前单用户状态，不因此承诺未来生产数据库；
+- 新会议只产生增量 Proposal，Fox 确认后才改变当前状态；
+- 每个关键结论能回到原件、会议、发言人和时间点；
+- Codex 与 Claude 读取同一个不可变 Task Packet 版本；
+- OpenWork/OpenCode 若参与，只是本地客户端或 Agent 运行候选，不是业务真相源。
+
+## 当前模块
+
+1. 鸿日黄金测试集与 BrandBench；
+2. 原始资料与来源索引；
+3. 会议增量解释；
+4. 当前项目状态；
+5. 证据、决定与开放问题关系；
+6. 状态变更 Proposal 和 Fox 确认队列；
+7. 品牌 Agent 宪法与工作模式；
+8. Task Packet 与 Codex/Claude 固定读取入口；
+9. 简单本地查看、确认和证据回源界面。
+
+详细职责见[目标模块清单](module-inventory.md)。
+
+## 当前技术基线
+
+| 层 | CURRENT 建议 | 选择理由 | 升级条件 |
 |:---|:---|:---|:---|
-| 正式状态、审批、权限、负责人、截止时间、提交版本 | 强一致 | PostgreSQL ACID 事务、乐观锁或行锁 | 写入失败即整体回滚 |
-| 权威事件、审计、Outbox | 与业务写入原子一致 | 与领域表同一事务 | 不允许“业务成功但无事件” |
-| 原始文件与元数据 | 内容不可变、可对账 | 临时上传后校验 SHA-256，再提交元数据 | 孤立对象由清理任务回收，缺失对象阻断回源 |
-| 当前状态投影 | 可从事件和正式表重建 | 同事务更新或异步重放 | 显示重建状态，不伪装为最新 |
-| 全文、向量、Zvec 索引 | 最终一致 | Outbox Worker 异步更新 | 显示索引水位，回源后再回答 |
-| Notebook、Memory、Dify、FlowLong 状态 | 派生或协调一致 | 版本化适配器、幂等回调、定期对账 | 可禁用，不能阻断权威状态读取 |
+| 工作空间 | `/Users/fox/work` 的鸿日资料 | 直接验证真实工作，不复制出虚假样本世界 | Fox 确认需要可移植工作空间后再抽象 |
+| 原件 | 本地文件只读 + SHA-256/元数据索引 | 最小成本保留证据和版本 | 出现跨设备或团队共享后评估对象存储 |
+| 结构化状态 | SQLite 或同等轻量数据库 | 支持单用户关系、版本和增量变更 | 多人并发、远程或运维需求成立后评估 PostgreSQL |
+| 检索 | 结构化过滤 + 本地全文基线 | 先验证当前有效性和关系，而非堆向量能力 | 金标证明召回不足后再评估向量/Zvec |
+| AI 入口 | 本地 API、MCP 或 CLI | 让不同模型读取同一 Task Packet | 团队远程需求成立后再评估远程 API/OAuth |
+| 界面 | 最小本地界面；OpenWork 社区壳为候选 | Fox 能查看、确认、驳回和打开证据 | 本地闭环通过后再决定深度 fork |
 
-## 技术栈
+## Task Packet
 
-| 层 | 当前 | 团队生产基线 | 可替换候选 |
-|:---|:---|:---|:---|
-| 语言 | 无 | Python 3.12、TypeScript | Java 仅用于隔离的 FlowLong/Nubase 服务 |
-| 后端 | 无 | FastAPI、Pydantic、SQLAlchemy、Alembic | 保持 OpenAPI 和领域端口不变后可替换 |
-| 前端 | 无 | React、TypeScript、Vite、PWA | 桌面壳后置，不作为首发前提 |
-| 权威数据库 | 无 | PostgreSQL | SQLite 仅开发、测试、演示和只读快照 |
-| 对象存储 | 无 | S3 兼容存储；生产开启版本控制 | 自托管 MinIO 或托管 S3 服务 |
-| 检索 | 无 | PostgreSQL FTS 基线，可选 pgvector | Zvec 独立单写 Worker |
-| 异步任务 | 无 | PostgreSQL Outbox + Worker | 负载证明需要后再引入专用消息系统 |
-| 内容处理 | 无 | V5 导入器、`content-core` 适配器 | Open Notebook REST sidecar |
-| AI 流程 | 无 | 核心应用用例 + `AIWorkflowPort` | Dify 用于可视化 AI 流程，不处理正式审批 |
-| 人工审批 | 无 | 核心有限状态机 | FlowLong 用于复杂会签、转办和组织流程 |
-| AI 接入 | 无 | HTTPS API、远程 MCP、CLI、Skills、OpenAI-compatible ModelPort | Dify 或 Nubase Gateway 仅作适配器 |
-| 包管理 | 无 | `uv`、`pnpm`、固定版本和锁文件 | 外部镜像固定摘要 |
-| 部署 | 无 | Docker Compose 起步，反向代理统一 TLS | 负载均衡与多实例；规模证明前不上 Kubernetes |
+Task Packet 是多模型一致性的唯一任务入口，不是全项目历史摘要。它至少包含：
 
-## 访问入口
+- 项目与当前状态版本；
+- 本轮任务、目标和输出契约；
+- `EXPLORE` 或 `EXECUTE` 工作模式；
+- 本轮品牌角色和质量标准；
+- 已批准事实、决定和约束；
+- 开放问题和相关证据；
+- 需要防止误用的过期项；
+- 证据回源定位和 Packet 内容摘要。
 
-- Web/PWA：团队日常操作、待我确认、回源、会议、任务与系统健康。
-- HTTPS API：所有客户端和适配器共享的版本化应用接口。
-- 远程 MCP：只暴露查询和“提出变更”工具；不暴露批准、密钥或数据库能力。
-- CLI：导入、诊断、验证、运维和经确认的管理动作；默认连接服务器。
-- Skills：保存可复用的 AI 工作方法，通过远程 MCP/API 获取实时项目状态，不直接携带业务真相。
-- Worker：消费 Outbox，负责解析、索引、通知、外部流程调用和对账。
+同一对比任务中，Codex、Claude 或其他模型必须获得相同 Packet 版本。模型差异可以体现在推理和表达，不能体现在项目事实、工作模式或证据集合。
 
-规划中的命令入口：
+## 当前成功标准
 
-- `uv run brand-os api`
-- `uv run brand-os worker`
-- `uv run brand-os mcp`
-- `uv run brand-os doctor`
-- `uv run brand-os verify hongri`
-- `uv run brand-os snapshot export`
-- `pnpm --dir apps/web build`
+- Fox 重复解释鸿日背景的次数下降；
+- 新 AI 冷启动能准确说明当前阶段、决定、开放问题和任务；
+- 会议分类没有非法状态升级；
+- 重要结论回源率为 100%；
+- 新会议只产生增量变化，不覆盖历史；
+- 模型切换后项目事实与证据保持一致；
+- 探索输出形成真实选择和代价，执行输出服从已批准方向；
+- 策略和文案通过 Fox 的匿名品牌质量评审。
 
-以上均为待实现接口，本轮不启动任何服务。
+虚构事实、讨论升级成决定、暂定日期写成死线、过期方案当当前方向、关键结论无法回源、未经确认改变状态、探索模式强行唯一答案，任一发生即不通过。
 
-## 部署基线
+## 远期架构候选
 
-详细比较见 [部署拓扑评估](deployment-topology-evaluation.md)。推荐从“团队生产版”起步：应用和 Worker 可先共用一台服务器，但 PostgreSQL 应启用连续归档和时间点恢复，对象备份必须位于独立故障域。首发建议目标为月度可用性 `99.5%`、`RPO <= 5 分钟`、`RTO <= 1 小时`；单服务器仍是明确单点，不应宣称高可用。
+下列研究不是 CURRENT MVP 目标：
 
-## 测试基线
+| 候选 | 状态 | 复审问题 |
+|:---|:---|:---|
+| 团队服务器、PostgreSQL、S3 | `future-candidate` / `not-approved-for-current-mvp` | 鸿日试点后是否真的出现多人、远程、容量和恢复需求 |
+| OIDC、MFA、RBAC、RLS | `future-candidate` / `review-after-hongri-pilot` | 是否存在多个具名用户和不同权限边界 |
+| 并发、Outbox、HA、PITR、灾备 | `future-candidate` / `review-after-hongri-pilot` | 真实写并发、可用性和数据损失成本是否成立 |
+| 完整 Web/PWA | `future-candidate` | 本地桌面是否不足，是否需要无客户端或移动入口 |
+| OpenWork 深度企业改造 | `future-candidate` | 本地界面候选是否已证明能承载核心闭环 |
+| Zvec、Nubase、Open Notebook、FlowLong、Dify | 后置可替换适配器 | 对照本地基线是否有可测收益且可退出 |
+| FoxWork 团队文件线 | 独立后续议题 | 是否应与品牌认知线共享任何数据或客户端能力 |
 
-当前没有测试。实施第一阶段必须先建立：
+远期设计详见[部署拓扑评估](deployment-topology-evaluation.md)，但任何远期方案都必须经过 `review-after-hongri-pilot` 重新批准。
 
-- Pytest 领域、权限、并发、幂等和适配器契约测试；
-- PostgreSQL 迁移、事务、行锁、Outbox、备份和 PITR 恢复测试；
-- S3 哈希、版本、孤立对象清理和跨项目隔离测试；
-- V5 金标导入和回源测试；
-- Vitest 前端组件测试；
-- Playwright 团队登录、审批冲突、检索回源和降级旅程；
-- 索引重建、第三方组件停用、断网、进程退出和服务器恢复演练。
+## 项目治理
 
-## 项目治理基线
-
-- `AGENTS.md`：共享行为规则；正式事实不得进入指令文件。
-- `CLAUDE.md`：Claude 适配规则。
-- `docs/progress/MASTER.md`：`LOCAL_ONLY` 规划进度入口。
-- 仓库内 Memory：未获批准，不创建。
-- 稳定架构决策：记录在 `docs/adr/`；当前服务器权威决策见 ADR-0001，不把模型对话当决策凭据。
-
-## 外部集成
-
-| 集成 | 角色 | 数据方向 | 权限边界 |
-|:---|:---|:---|:---|
-| Zvec | 可重建检索索引 | Outbox 到索引；结果按稳定 ID 回源 | 不保存权威原件、审批事件或正式状态 |
-| Open Notebook | 研究和内容处理工作台 | 原始源副本进入；笔记、引用和摘要以候选返回 | 不得批准或覆盖项目状态；MCP 写工具需允许列表包装 |
-| Nubase | Memory、模型网关和身份联邦的隔离 POC | 经版本化端口交换派生数据或外部身份映射 | early-stage 且缺 PITR/HA；不得替换标准 PostgreSQL、S3 或正式成员权限 |
-| Dify | AI 工作流、Prompt、模型路由和运行观测 | 应用发起受限任务；结果只形成 Proposal | 不负责任工审批，不直写权威表；多租户和前端品牌受衍生许可限制 |
-| FlowLong | 复杂人工审批协调 | 应用发起流程；回调经核心复核后落账 | 不保存正式决定正文；禁用 AI 审批和自动通过；先过许可门 |
+- 根目录需求源是本轮产品范围依据；
+- `AGENTS.md` 只管理软件开发约束，不能替代运行时品牌 Agent 宪法；
+- 品牌 Agent 宪法、工作模式协议、鸿日项目规则和 Task Packet 必须分层；
+- 业务事实不进入开发 AGENTS、Skills 或模型对话记忆；
+- 本轮已完成 plan/progress rescope；原服务器优先任务只保留追踪映射，不再作为 CURRENT 产品批准或活动任务。

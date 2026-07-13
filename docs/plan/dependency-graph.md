@@ -2,238 +2,259 @@
 
 ## 读取说明
 
-- 节点与[任务分解](task-breakdown.md)中的 42 个任务一一对应；箭头表示“前置任务完成后才可开始”。
-- Lane 表示可独立派发的工作流，不代表同一 Lane 内任务可忽略显式依赖。
-- `G_FLOW_LICENSE` 是外部书面许可门，不计入 42 个实施任务。
-- Phase 1-4 共 29 项，形成“团队服务器试运行版”；Phase 5-6 在试运行版通过后执行。
+- 实线表示必须完成的依赖；标有“仅 Go”的边表示必须先通过人工价值门。
+- Phase 0-2 是当前批准的产品验证主线；Phase 3 只有 F2.8=Go 才启动。
+- Phase 3 的 PostgreSQL、S3、OIDC、HA、OpenWork 深度团队化和五组件均是决策候选，不表示已批准实施。
+- Lane 只表示可并行的所有权面；实际启动仍以每个任务的依赖为准。
+- 旧 42 项的逐项去向见[任务分解](task-breakdown.md#旧-42-项追踪表)。
 
 ## 全量依赖与并行 Lane
 
 ```mermaid
-flowchart TD
-    subgraph P1["Phase 1：契约、身份与安全基线"]
-        subgraph P1A["Lane A"]
-            F1_1["F1.1 V5 黄金样本"]
-            F1_3["F1.3 领域 Schema、事件、状态机与端口"]
+flowchart TB
+    subgraph P0["Phase 0：边界、协议与黄金测试"]
+        subgraph P0A["Lane A：范围与就绪门"]
+            F0_1["F0.1 两条需求线与本地 MVP 边界"]
+            F0_7["F0.7 本地纵切、Schema/Port 与就绪门"]
         end
-        subgraph P1B["Lane B"]
-            F1_2["F1.2 服务器权威与拓扑 SLO ADR"]
-            F1_4["F1.4 租户、角色、保密与威胁模型"]
+        subgraph P0B["Lane B：资料与黄金集"]
+            F0_2["F0.2 鸿日资料与 V5 样本清单"]
+            F0_5["F0.5 10-20 黄金用例与一票否决"]
         end
-        subgraph P1C["Lane C"]
-            F1_5["F1.5 OIDC、RLS、幂等与接口契约"]
-            F1_6["F1.6 工程、测试、密钥与许可基线"]
+        subgraph P0C["Lane C：分类与运行协议"]
+            F0_3["F0.3 会议/信息/时间分类标准"]
+            F0_4["F0.4 品牌 Agent 宪法与模式协议"]
         end
+        subgraph P0D["Lane D：品牌质量"]
+            F0_6["F0.6 BrandBench 匿名评审基线"]
+        end
+
+        F0_1 --> F0_2
+        F0_1 --> F0_3
+        F0_3 --> F0_4
+        F0_2 --> F0_5
+        F0_3 --> F0_5
+        F0_4 --> F0_5
+        F0_4 --> F0_6
+        F0_5 --> F0_6
+        F0_1 --> F0_7
+        F0_2 --> F0_7
+        F0_3 --> F0_7
+        F0_4 --> F0_7
+        F0_5 --> F0_7
+        F0_6 --> F0_7
     end
 
-    F1_1 --> F1_3
-    F1_2 --> F1_3
-    F1_2 --> F1_4
-    F1_3 --> F1_5
-    F1_4 --> F1_5
-    F1_2 --> F1_6
+    subgraph P1["Phase 1：鸿日本地单用户原型"]
+        subgraph P1A["Lane A：本地数据脊柱"]
+            F1_1["F1.1 工作空间、只读原件与测试骨架"]
+            F1_2["F1.2 SQLite、事件、投影与备份"]
+            F1_3["F1.3 鸿日 V5 幂等导入与对账"]
+        end
+        subgraph P1B["Lane B：会议与状态"]
+            F1_4["F1.4 会议增量解释与冲突候选"]
+            F1_5["F1.5 当前状态、Proposal 与人工确认"]
+        end
+        subgraph P1C["Lane C：证据与 AI 入口"]
+            F1_6["F1.6 关系查询、有效期与稳定回源"]
+            F1_7["F1.7 Task Packet、角色/模式与运行留痕"]
+            F1_8["F1.8 本地 CLI/MCP 与多模型适配"]
+        end
+        subgraph P1D["Lane D：人类界面"]
+            F1_9["F1.9 本地查看与确认界面"]
+        end
+        subgraph P1E["Lane E：原型发布门"]
+            F1_10["F1.10 黄金集与本地 E2E 验收"]
+        end
 
-    subgraph P2["Phase 2：权威数据与可靠性脊柱"]
-        subgraph P2A["Lane A"]
-            F2_1["F2.1 PostgreSQL、Alembic 与强制 RLS"]
-            F2_2["F2.2 事务、事件、投影、并发与 Outbox"]
-        end
-        subgraph P2B["Lane B"]
-            F2_3["F2.3 S3 准入、内容寻址与谱系"]
-            F2_4["F2.4 V5 幂等导入与数量对账"]
-        end
-        subgraph P2C["Lane C"]
-            F2_5["F2.5 PostgreSQL 检索与稳定回源"]
-            F2_6["F2.6 Outbox Worker、Inbox 与索引世代"]
-        end
-        subgraph P2D["Lane D"]
-            F2_7["F2.7 PITR、对象恢复与诊断"]
-        end
+        F1_1 --> F1_2
+        F0_3 --> F1_2
+        F1_2 --> F1_3
+        F0_2 --> F1_3
+        F1_3 --> F1_4
+        F0_3 --> F1_4
+        F1_2 --> F1_5
+        F1_4 --> F1_5
+        F1_3 --> F1_6
+        F1_5 --> F1_6
+        F1_5 --> F1_7
+        F1_6 --> F1_7
+        F0_4 --> F1_7
+        F1_7 --> F1_8
+        F1_5 --> F1_9
+        F1_6 --> F1_9
+        F1_8 --> F1_9
+        F1_1 --> F1_10
+        F1_2 --> F1_10
+        F1_3 --> F1_10
+        F1_4 --> F1_10
+        F1_5 --> F1_10
+        F1_6 --> F1_10
+        F1_7 --> F1_10
+        F1_8 --> F1_10
+        F1_9 --> F1_10
     end
 
-    F1_3 --> F2_1
-    F1_4 --> F2_1
-    F2_1 --> F2_2
-    F1_5 --> F2_2
-    F1_3 --> F2_3
-    F1_4 --> F2_3
-    F2_2 --> F2_4
-    F2_3 --> F2_4
-    F2_4 --> F2_5
-    F2_2 --> F2_6
-    F2_5 --> F2_6
-    F2_3 --> F2_7
-    F2_6 --> F2_7
+    subgraph P2["Phase 2：鸿日真实工作连续验证"]
+        subgraph P2A["Lane A：真实增量与观测"]
+            F2_1["F2.1 价值指标与观察基线"]
+            F2_2["F2.2 连续新会议/资料增量"]
+        end
+        subgraph P2B["Lane B：理解与证据"]
+            F2_3["F2.3 冷启动、状态与证据回归"]
+        end
+        subgraph P2C["Lane C：品牌工作闭环"]
+            F2_4["F2.4 策略探索与选择代价"]
+            H_SELECT{{"Fox 显式选择"}}
+            F2_5["F2.5 已批准方向执行落地"]
+        end
+        subgraph P2D["Lane D：模型与品牌质量"]
+            F2_6["F2.6 多模型一致性/成本/质量"]
+            F2_7["F2.7 匿名评审与 BrandBench 更新"]
+        end
+        subgraph P2E["Lane E：价值门"]
+            F2_8["F2.8 错误修订闭环与 Go/No-Go"]
+        end
 
-    subgraph P3["Phase 3：团队治理与 AI 统一访问"]
-        subgraph P3A["Lane A"]
-            F3_1["F3.1 OIDC、MFA、会话与服务账号"]
-            F3_2["F3.2 RBAC、Scope、保密与 RLS 上下文"]
-        end
-        subgraph P3B["Lane B"]
-            F3_3["F3.3 Proposal 与正式状态迁移"]
-            F3_4["F3.4 人工审批与并发控制"]
-            F3_5["F3.5 当前状态、证据与 Task Packet"]
-        end
-        subgraph P3C["Lane C"]
-            F3_6["F3.6 HTTP/OpenAPI、审计与错误模型"]
-            F3_7["F3.7 远程 MCP 与 stdio 代理"]
-        end
-        subgraph P3D["Lane D"]
-            F3_8["F3.8 CLI、钥匙串与 Skills"]
-        end
+        F2_1 --> F2_2
+        F2_1 --> F2_4
+        F1_7 --> F2_4
+        F2_4 --> H_SELECT
+        H_SELECT --> F2_5
+        F2_1 --> F2_6
+        F1_8 --> F2_6
+        F2_1 --> F2_3
+        F2_2 --> F2_3
+        F2_4 --> F2_7
+        F2_5 --> F2_7
+        F2_6 --> F2_7
+        F2_2 --> F2_8
+        F2_3 --> F2_8
+        F2_4 --> F2_8
+        F2_5 --> F2_8
+        F2_6 --> F2_8
+        F2_7 --> F2_8
     end
 
-    F1_4 --> F3_1
-    F2_1 --> F3_1
-    F3_1 --> F3_2
-    F2_1 --> F3_2
-    F2_2 --> F3_3
-    F3_2 --> F3_3
-    F3_3 --> F3_4
-    F2_5 --> F3_5
-    F3_3 --> F3_5
-    F3_2 --> F3_6
-    F3_4 --> F3_6
-    F3_5 --> F3_6
-    F3_6 --> F3_7
-    F3_6 --> F3_8
+    subgraph P3["Phase 3：团队服务器化决策门"]
+        F3_1{{"F3.1 团队需求与 FoxWork 合线门"}}
+        subgraph P3A["Lane A：数据与存储候选"]
+            F3_2["F3.2 SQLite/PostgreSQL/S3/同步候选"]
+        end
+        subgraph P3B["Lane B：身份与可靠性候选"]
+            F3_3["F3.3 OIDC/RBAC/RLS/并发/HA 候选"]
+        end
+        subgraph P3C["Lane C：客户端与 Agent 候选"]
+            F3_4["F3.4 OpenWork 深度团队化候选"]
+        end
+        subgraph P3D["Lane D：外部组件候选"]
+            F3_5["F3.5 Zvec/Notebook/Nubase/FlowLong/Dify"]
+        end
+        subgraph P3E["Lane E：部署档位与结论"]
+            F3_6["F3.6 成本、SLO、运维与迁移候选"]
+            F3_7{{"F3.7 服务器化 Go/No-Go ADR + 新 SPEC"}}
+        end
 
-    subgraph P4["Phase 4：Web/PWA 与团队服务器试运行版"]
-        subgraph P4A["Lane A"]
-            F4_1["F4.1 会议候选与直接 Worker"]
-        end
-        subgraph P4B["Lane B"]
-            F4_2["F4.2 Web/PWA 壳与无障碍"]
-            F4_3["F4.3 今日、工作、知识与证据"]
-            F4_4["F4.4 待确认与审批冲突"]
-        end
-        subgraph P4C["Lane C"]
-            F4_5["F4.5 团队、审计、健康与 AI 连接"]
-            F4_6["F4.6 离线只读、草稿与冲突"]
-        end
-        subgraph P4D["Lane D"]
-            F4_7["F4.7 TLS、监控、告警与回滚"]
-            F4_8["F4.8 租户、并发、恢复与金标验收"]
-        end
+        F2_8 -->|"仅 Go"| F3_1
+        F3_1 -->|"允许评估"| F3_2
+        F3_1 -->|"允许评估"| F3_3
+        F3_1 -->|"允许评估"| F3_4
+        F3_1 -->|"允许评估"| F3_5
+        F3_2 --> F3_6
+        F3_3 --> F3_6
+        F3_4 --> F3_6
+        F3_5 --> F3_6
+        F3_1 --> F3_7
+        F3_2 --> F3_7
+        F3_3 --> F3_7
+        F3_4 --> F3_7
+        F3_5 --> F3_7
+        F3_6 --> F3_7
     end
 
-    F2_3 --> F4_1
-    F2_6 --> F4_1
-    F3_3 --> F4_1
-    F3_6 --> F4_2
-    F4_2 --> F4_3
-    F3_5 --> F4_3
-    F2_5 --> F4_3
-    F4_1 --> F4_4
-    F4_3 --> F4_4
-    F3_4 --> F4_4
-    F3_2 --> F4_5
-    F4_2 --> F4_5
-    F4_3 --> F4_6
-    F4_4 --> F4_6
-    F2_7 --> F4_7
-    F3_6 --> F4_7
-    F4_4 --> F4_8
-    F4_5 --> F4_8
-    F4_6 --> F4_8
-    F4_7 --> F4_8
-
-    subgraph P5["Phase 5：五个外部组件隔离 POC"]
-        subgraph P5A["Lane A"]
-            F5_1["F5.1 统一契约、基准与故障评分"]
-            F5_7["F5.7 五组件采用 ADR"]
-        end
-        subgraph P5B["Lane B"]
-            F5_2["F5.2 Zvec POC"]
-        end
-        subgraph P5C["Lane C"]
-            F5_3["F5.3 Open Notebook/content-core POC"]
-        end
-        subgraph P5D["Lane D"]
-            F5_4["F5.4 Nubase 单项能力 POC"]
-        end
-        subgraph P5E["Lane E"]
-            F5_5["F5.5 FlowLong 许可与审批 POC"]
-        end
-        subgraph P5F["Lane F"]
-            F5_6["F5.6 Dify 与直接 Worker A/B"]
-        end
-    end
-
-    G_FLOW_LICENSE{"FlowLong 书面许可通过？"}
-    F4_8 --> F5_1
-    F5_1 --> F5_2
-    F2_6 --> F5_2
-    F5_1 --> F5_3
-    F2_3 --> F5_3
-    F5_1 --> F5_4
-    F2_7 --> F5_4
-    F3_2 --> F5_4
-    F5_1 --> F5_5
-    G_FLOW_LICENSE -- "是" --> F5_5
-    F5_1 --> F5_6
-    F4_1 --> F5_6
-    F3_5 --> F5_6
-    F5_2 --> F5_7
-    F5_3 --> F5_7
-    F5_4 --> F5_7
-    F5_5 --> F5_7
-    F5_6 --> F5_7
-
-    subgraph P6["Phase 6：选择性集成与生产验证"]
-        subgraph P6A["Lane A"]
-            F6_1["F6.1 适配器、NoOp 与降级开关"]
-        end
-        subgraph P6B["Lane B"]
-            F6_2["F6.2 ModelGateway、AIWorkflow 与留痕"]
-            F6_3["F6.3 BrandBench 与攻击回归"]
-        end
-        subgraph P6C["Lane C"]
-            F6_4["F6.4 负载、故障、PITR 与安全发布"]
-        end
-        subgraph P6D["Lane D"]
-            F6_5["F6.5 鸿日团队试运行"]
-            F6_6["F6.6 第二项目与生产准入"]
-        end
-    end
-
-    F5_7 --> F6_1
-    F5_7 --> F6_2
-    F3_5 --> F6_2
-    F6_1 --> F6_3
-    F6_2 --> F6_3
-    F6_1 --> F6_4
-    F6_3 --> F6_4
-    F6_4 --> F6_5
-    F6_5 --> F6_6
+    F0_7 ==> F1_1
+    F1_10 ==> F2_1
+    F2_8 -. "No-Go / 延长：保持本地并返回 Phase 0-2" .-> F0_5
 ```
 
-## 权威数据流与派生边界
+## 当前本地数据流
 
 ```mermaid
 flowchart LR
-    D_CLIENTS["Web/PWA、CLI、MCP、Skills"] --> D_API["统一应用服务"]
-    D_API --> D_CORE["领域核心"]
-    D_CORE --> D_PG[("PostgreSQL 权威库")]
-    D_API --> D_S3[("S3 不可变原件")]
-    D_PG --> D_OUTBOX["Outbox Worker"]
-    D_OUTBOX --> D_SEARCH["PostgreSQL 检索 / Zvec"]
-    D_OUTBOX --> D_NOTEBOOK["Open Notebook"]
-    D_OUTBOX --> D_DIFY["直接 Worker / Dify"]
-    D_OUTBOX --> D_FLOW["核心审批 / FlowLong"]
-    D_SEARCH -. "稳定 ID 回源" .-> D_API
-    D_NOTEBOOK -. "派生候选" .-> D_API
-    D_DIFY -. "结构化 Proposal" .-> D_API
-    D_FLOW -. "人工动作待复核" .-> D_API
+    RAW["鸿日只读原件 + Manifest/哈希"]
+    INGEST["增量导入/分段"]
+    CANDIDATE["事实、观点、假设、选项、倾向、行动候选"]
+    REVIEW{{"Fox 确认/修改/驳回"}}
+    EVENT["本地确认事件"]
+    STATE["当前状态与关系"]
+    PACKET["最小 Task Packet"]
+    MODEL["Codex / Claude / 其他模型"]
+    OUTPUT["Artifact / Proposal"]
+
+    RAW --> INGEST --> CANDIDATE --> REVIEW
+    REVIEW -->|"确认"| EVENT --> STATE --> PACKET --> MODEL --> OUTPUT
+    OUTPUT --> REVIEW
+    REVIEW -->|"驳回"| HISTORY["保留历史，不改当前状态"]
+    STATE -. "稳定 ID 回源" .-> RAW
 ```
 
-只有 `D_PG` 接受正式业务状态写入；`D_S3` 只保存不可变内容原件。所有搜索、研究、AI 和流程数据均为可重建派生数据或协调状态。
+SQLite 保存单用户确认事件、当前投影和关系；FTS、摘要、模型输出和界面缓存是派生数据。Phase 1 不存在 PostgreSQL、S3、OIDC、Outbox、Dify 或其他服务器依赖。
 
-## 关键路径
+## Phase 3 候选边界
 
-主关键路径是：`F1.2 -> F1.4 -> F2.1 -> F2.2 -> F2.4 -> F2.5 -> F3.5 -> F3.6 -> F4.2 -> F4.3 -> F4.4 -> F4.8 -> F5.1 -> F5.6 -> F5.7 -> F6.2 -> F6.3 -> F6.4 -> F6.5 -> F6.6`。
+```mermaid
+flowchart LR
+    VALUE{{"F2.8 本地价值 Go"}}
+    TEAM{{"F3.1 真实团队需求成立"}}
+    DATA["PostgreSQL / S3 / 同步"]
+    AUTH["OIDC / RBAC / RLS / 审计"]
+    OPS["并发 / HA / 灾备 / SLO"]
+    CLIENT["OpenWork 深度团队化 / 远程 Agent"]
+    EXT["Zvec / Open Notebook / Nubase / FlowLong / Dify"]
+    ADR{{"F3.7 Go/No-Go + 独立实施 SPEC"}}
 
-恢复能力的独立关键路径是：`F1.3/F1.4 -> F2.3 -> F2.7 -> F4.7 -> F4.8`。F2.7 未通过时，不允许以“功能可用”替代团队服务器发布门。
+    VALUE -->|"Go"| TEAM
+    TEAM --> DATA
+    TEAM --> AUTH
+    TEAM --> OPS
+    TEAM --> CLIENT
+    TEAM --> EXT
+    DATA --> ADR
+    AUTH --> ADR
+    OPS --> ADR
+    CLIENT --> ADR
+    EXT --> ADR
+```
 
-外部组件依赖、故障和退出细节见[团队服务器架构](team-server-architecture.md)、[数据一致性与可靠性计划](data-consistency-and-reliability.md)和[前端与 AI 访问规划](frontend-and-ai-access.md)。
+从候选节点到 ADR 的连线表示“提供决策证据”，不是“自动采用”。F3.7=Go 后仍需新建实施 SPEC，旧 42 项不得直接恢复执行。
+
+## 关键路径与并行窗口
+
+主价值关键路径：
+
+```text
+F0.1 -> F0.3 -> F0.4 -> F0.5 -> F0.6 -> F0.7
+-> F1.1 -> F1.2 -> F1.3 -> F1.4 -> F1.5 -> F1.6 -> F1.7 -> F1.8 -> F1.9 -> F1.10
+-> F2.1 -> F2.2 -> F2.3 -> F2.8
+```
+
+品牌质量关键路径：`F0.4 -> F0.5 -> F0.6 -> F1.7 -> F1.10 -> F2.4 -> Fox 显式选择 -> F2.5 -> F2.7 -> F2.8`。
+
+并行窗口：
+
+- Phase 0：F0.2 与 F0.3/F0.4 并行；评分基线在黄金输入稳定后建立。
+- Phase 1：F1.3 后可并行推进会议增量与只读证据关系；Task Packet 等状态/证据契约合并后推进。
+- Phase 2：在同一确认状态版本上并行做冷启动/回查、策略探索和模型切换；执行任务必须等 Fox 选择。
+- Phase 3：F3.1 放行后，数据、身份、客户端和外部组件四个候选面并行；F3.6 汇总，F3.7 决策。
+
+## 阶段门与停止传播
+
+| 门 | 通过条件 | 失败时 |
+|:---|:---|:---|
+| F0.7 实施就绪 | 边界、样本、分类、协议、黄金集和 BrandBench 均冻结 | 返回对应 Phase 0 任务，不写产品代码 |
+| F1.10 原型门 | 八旅程可复核、七项一票否决为 0、本地恢复可用、Fox 可独立使用 | 保持 Phase 1，不进入真实工作主流程 |
+| F2.8 价值门 | 连续真实工作、前后指标、匿名评审和错误修订支持 Go | 延长或 No-Go；不得用服务器建设补救价值缺口 |
+| F3.1 团队需求门 | 真实多人场景、用户、共享动作与 FoxWork 合线结论明确 | 保持本地，不评估团队架构 |
+| F3.7 服务器化门 | Fox 批准 ADR，收益、成本、风险、退出和迁移证据完整 | No-Go 或局部共享；不启动服务器实施 |
+
+任一一票否决会使当前用例和阶段门失败，并阻断所有下游任务，直到完成 Fixture、修复和全量回归。

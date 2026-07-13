@@ -1,168 +1,173 @@
-# 五个外部开源组件评估
+# 开源组件评估
 
-核验日期：2026-07-13。Zvec、Nubase、Open Notebook 和 FlowLong 的数据来自前轮 GitHub 仓库 README、项目结构、发行版和许可文件现场读取；Dify 追加核验了主仓库 README、最新发行版和 LICENSE。
+核验日期：2026-07-13。本文保留此前对 OpenWork、Zvec、Nubase、Open Notebook、FlowLong 和 Dify 的技术/许可研究，但依据最新产品范围重新排序。
 
-## 总体结论
+## 当前决策
 
-五个项目都可以进入架构，但都不能成为领域核心或第二真相源：
+| 项目 | CURRENT 定位 | 当前状态 |
+|:---|:---|:---|
+| OpenWork | 本地桌面客户端候选；OpenCode 可作 Agent 运行辅助 | 可做最小适配验证，不是 MVP 前置条件 |
+| Zvec | 未来 `SearchIndexPort` | `future-candidate` |
+| Open Notebook | 未来 `ContentProcessingPort` / `ResearchWorkspacePort` | `future-candidate` |
+| Nubase | 未来单项 `MemoryPort` / `ModelGatewayPort` 候选 | `future-candidate` |
+| Dify | 未来 `AIWorkflowPort` | `future-candidate` |
+| FlowLong | 未来 `ApprovalWorkflowPort` | `future-candidate` |
 
-- [Zvec](https://github.com/alibaba/zvec)：作为可重建检索适配器 POC；生产基线先使用 PostgreSQL FTS，可选 pgvector。
-- [Nubase](https://github.com/OtterMind/Nubase)：团队和远程需求已经成立，可提前验证 Auth、Storage、Gateway 等单项能力，但当前不承担生产权威库。
-- [Open Notebook](https://github.com/lfnovo/open-notebook)：选择性复用 `content-core`、研究交互和 REST/MCP 设计，避免整仓 fork。
-- [Dify](https://github.com/langgenius/dify)：作为可视化 AI 工作流、Prompt、模型路由和运行观测适配器；输出只形成候选。
-- [FlowLong](https://github.com/aizuda/flowlong)：作为复杂人工审批协调适配器；许可和真实需求门通过前不集成。
+除 OpenWork 的本地界面候选外，五个项目全部是：
 
-推荐顺序不是“五套同时部署”，而是 PostgreSQL/S3 权威基线 -> Open Notebook 内容处理 POC -> PostgreSQL FTS/pgvector 与 Zvec A/B -> Dify AI 流程 POC -> Nubase 单能力 POC -> FlowLong 复杂审批 POC。
+- `not-approved-for-current-mvp`
+- `review-after-hongri-pilot`
 
-## 对比
+CURRENT MVP 使用本地直接基线：轻量结构化存储、本地全文/关系查询、直接解析、直接模型调用、Fox 本地确认队列。不得以“以后可能需要”为由提前部署任何外部平台。
 
-| 项目 | 现场版本/活跃度 | 许可 | 适合解决 | 不能解决 | 决策 |
-|:---|:---|:---|:---|:---|:---|
-| Zvec | v0.5.1；约 1.48 万星；2026-07-13 仍有提交 | Apache-2.0 | CJK 全文、向量、混合检索、过滤和本地嵌入 | 权威事实、审批、版本谱系、跨实例写协调 | 条件采用 |
-| Nubase | v0.1.4；2026-06 首次公开；约 486 星 | Apache-2.0 | PostgreSQL 平台、Auth、Storage、Memory、Gateway、MCP | 当前可靠 PITR/HA；受控业务状态语义 | 单能力 POC，权威库禁用 |
-| Open Notebook | v1.12.0；约 3.55 万星；40 个发行版 | MIT | 多模态摄入、多模型、引用、研究聊天、REST/MCP | 决定审批、状态升级门、权威版本谱系 | 选择性复用 |
-| Dify | v1.15.0，发布于 2026-06-25；主仓活跃 | 修改版 Apache-2.0，附加多租户与前端品牌条件 | AI Workflow、Agent、Prompt、模型管理、RAG、LLMOps、API | 正式人工审批、证据权威性、项目状态真相 | 条件采用，先过许可与数据出口门 |
-| FlowLong | v1.2.5；41 个发行版；审批能力完整 | 双许可加附加限制 | 会签、或签、驳回、转办、提醒、复杂组织分支 | AI 计算编排、单人审批低维护实现、权威领域状态 | 首版不引入 |
+## 评估原则
+
+1. 组件必须解决鸿日试点中已经观测到的问题，而不是只展示能力丰富。
+2. 每个组件只实现一个版本化端口，不把内部对象泄漏进核心。
+3. 关闭或删除组件后，原件、当前状态、Task Packet、Proposal 和 Fox 确认记录仍完整。
+4. 模型、索引、Notebook、Memory 和工作流输出都只能成为候选，不能自动改变状态。
+5. 采用必须同时通过质量、隐私、许可、稳定性、成本和退出对比。
+6. BrandBench 和鸿日黄金用例优先于星数、演示效果和功能列表。
+
+## OpenWork
+
+### 现场事实
+
+- 最新稳定发布：`v0.17.20`，2026-07-10；源码分析快照：`dev@316b996`，2026-07-12。两者不能混称为同一生产基线。
+- `ee/` 外代码为 MIT；`ee/` 使用 FSL-1.1-MIT。证据见 [根 LICENSE](https://github.com/different-ai/openwork/blob/316b996ca45de0bc03f2c4880417f195eb71be7d/LICENSE) 和 [`ee/LICENSE`](https://github.com/different-ai/openwork/blob/316b996ca45de0bc03f2c4880417f195eb71be7d/ee/LICENSE)。
+- 客户端是 React 19 + Vite + Electron 35，并深度依赖 `@opencode-ai/sdk`。
+- OpenWork Server 的 Token、SQLite、Session、内存/JSONL 状态适合 Agent 运行控制，不是品牌业务状态库。
+
+### CURRENT 可以验证
+
+- 复用 React/Electron 壳显示当前状态、待确认、证据、工作模式和 AI 任务；
+- 复用 Session、Skills/MCP、终端、文件和模型选择体验；
+- 让 Codex、Claude 或 OpenCode 通过同一 Task Packet 工作；
+- 证明 OpenCode Tool Permission 与 Fox 的业务确认完全分开；
+- 证明停用 OpenWork 后本地核心数据和 AI 入口仍然可用。
+
+### CURRENT 不做
+
+- 不部署远程 OpenWork Server、Den/`ee/` 和团队控制面；
+- 不实施 OIDC、多用户 RBAC、公司自动更新链和企业策略；
+- 不把 OpenWork SQLite、Session 或 Permission 作为项目真相；
+- 不先进行大规模品牌重构和三平台生产分发；
+- 不承诺 OpenWork 替代所有 Agent 引擎，底层当前仍是 OpenCode。
+
+详细结论见[OpenWork 本地客户端候选评估](openwork-client-evaluation.md)。
 
 ## Zvec
 
-### 适合融入的原因
+### 未来价值
 
-- 进程内运行，无需独立数据库服务。
-- 支持 BM25、Jieba CJK 分词、稠密/稀疏向量、结构过滤和混合检索。
-- 支持 WAL，适合作为中文证据检索实验层。
-- 索引天然可从 PostgreSQL 正式数据和对象原件重建，符合可替换原则。
+- 中文 BM25/Jieba、稠密/稀疏向量、过滤和混合检索；
+- 适合作为可重建索引，对比本地全文和结构化关系查询。
 
-### 团队服务器下的限制
+### 当前后置原因
 
-- 进程内单写设计不适合每个 API 实例各自写索引。
-- 多实例读取时必须明确索引文件共享、发布和切换方式；不能把网络文件系统当作未经验证的共享数据库。
-- 首版由独立索引 Worker 串行写入，API 只读取已发布索引；若部署复杂度或 Linux POC 不通过，继续使用 PostgreSQL FTS/pgvector。
+- 鸿日首要问题是内容有效性、证据和替代关系，不是单纯召回不足；
+- CURRENT 单用户可以先用 SQLite/本地全文建立可解释基线；
+- 进程内单写和部署差异只在服务器/多 Worker 阶段成为实际问题。
 
-### 必须保持的边界
+### 未来采用门
 
-- 只保存可重建文本、向量、过滤字段、事件水位和稳定回源 ID。
-- 不保存原始文件、批准事件、权限和当前正式状态。
-- 查询结果回到 PostgreSQL 和对象原件复核后，才能进入回答和 Task Packet。
-- 先用鸿日 V5 中文金标与 PostgreSQL FTS/pgvector A/B 测试，通过后才能设为默认。
-
-## Nubase
-
-### 团队场景带来的价值
-
-- 团队协作、远程访问、项目隔离、Auth、对象存储和模型网关需求已经真实出现，不再需要等待“第二位用户”才研究。
-- 可以按端口分别评估 `IdentityFederationPort`、`ModelGatewayPort` 和受限 `MemoryPort`，并研究其 Storage 行为，不一次采用整个平台；标准 PostgreSQL、S3 和正式成员权限仍由 Brand OS 自身掌握。
-
-### 当前不能承担生产权威库的原因
-
-- 项目仍处于 early-stage，现场版本为 v0.1.4。
-- README 明确缺少 Realtime、备份/PITR 和 HA；这与团队生产 `RPO <= 5 分钟`、`RTO <= 1 小时` 的目标不匹配。
-- 一次引入 Java、PostgreSQL、Redis、Node 和 Docker，会扩大故障面和升级责任。
-- Mem0 式 Memory 会自动 ADD/UPDATE/DELETE，不能直接操作项目事实。
-- 若同时采用数据库、Auth、Storage、Functions、Memory 和 Gateway，替换成本将从单端口迁移升级为整个平台迁移。
-
-### 推荐接法
-
-生产权威库直接使用标准 PostgreSQL，并建立自身 Alembic 迁移、PITR 和恢复演练。Nubase 只在隔离环境逐端口 POC；通过项目隔离、服务密钥、数据导出、组件禁用和退出演练后，才允许替换对应适配器。Nubase 自身能力不得被当作 PostgreSQL 备份和高可用方案的替代品。
+在相同鸿日金标和 Task Packet 下，显著提升召回且不降低当前有效性判断、证据回源率和可重建性。否则保留本地全文基线。
 
 ## Open Notebook
 
-### 最值得复用的能力
+### 未来价值
 
-- `content-core`：PDF、Office、网页、音视频和 Docling OCR 内容处理。
-- `Esperanto`：18+ 模型提供商和 OpenAI-compatible 接口。
-- FastAPI、Next.js/React、REST API 和 MCP 接入模式。
-- 来源选择、上下文控制、搜索、笔记和引用交互。
+- `content-core` 的 PDF、Office、网页、音视频和 OCR 处理；
+- 来源、笔记、引用和研究式交互可作为参考。
 
-### 推荐接法
+### 当前后置原因
 
-首选直接使用 `content-core` 实现 `ContentProcessingPort`，避免运行完整 SurrealDB 应用。若确需 NotebookLM 式研究工作台，再以独立 sidecar 部署，通过 Outbox 和 REST 单向同步：
+- CURRENT 先验证鸿日真实资料的最小直接解析和回源；
+- 完整应用会引入独立数据库、模型配置和研究状态；
+- Notebook 的摘要、笔记和 Transformation 不能成为当前状态。
 
-```text
-S3 原始文件 -> Brand OS 登记哈希与版本 -> Open Notebook 研究处理
-                                              |
-                                              v
-                         解析文本、引用、笔记和摘要候选
-                                              |
-                                              v
-                    Brand OS Proposal -> 稳定 ID 回源 -> 人工审批
-```
+### 未来采用门
 
-Open Notebook 的 MCP 默认包含创建、更新和删除能力，不应直接完整暴露给主控 AI。主项目只提供允许列表包装器；删除研究对象也不得影响 S3 原件或 PostgreSQL 正式状态。
+优先按 `ContentProcessingPort` 评估单项解析能力；完整 sidecar 只有在真实研究工作证明需要时才评估。任何 MCP 创建/更新/删除能力都需允许列表包装。
+
+## Nubase
+
+### 未来价值
+
+- Auth、Storage、Memory、Gateway 等平台能力可按端口分别研究。
+
+### 当前后置原因
+
+- CURRENT 不需要团队 Auth、远程 Storage 或平台网关；
+- early-stage 和 PITR/HA 缺口与本地价值验证无关；
+- 自动 Memory ADD/UPDATE/DELETE 与 Fox 人工状态确认冲突。
+
+### 未来采用门
+
+只做单能力 POC，不整体替换平台；必须证明项目隔离、数据导出、禁用和退出，Memory 永远无权改变正式状态。
 
 ## Dify
 
-### 适合融入的能力
+### 未来价值
 
-- 可视化 Workflow 适合把“摄入上下文 -> 调用模型/工具 -> 结构化输出 -> 质量检查”做成可审阅流程。
-- 支持多模型提供商、Agent、RAG、Prompt 调试、API 和运行日志，可降低 AI 流程试验门槛。
-- 可以承载会议摘要候选、任务包草案、内容分类、BrandBench 批量评估和低风险通知等异步工作。
+- 可视化 Prompt、模型路由、Workflow、运行日志和结构化生成；
+- 可用于会议候选、Task Packet 草案、内容分类和 BrandBench 批处理。
 
-### 必须保持的边界
+### 当前后置原因
 
-- Dify 只实现 `AIWorkflowPort` 或 `ModelGatewayPort`，不实现 `ApprovalWorkflowPort` 和 `CanonicalStorePort`。
-- Dify API Key 只能调用受限应用 API，不持有 PostgreSQL、对象存储管理员密钥或批准能力。
-- 输入携带项目、数据分级、任务范围、Schema 版本和请求 ID；输出必须通过 Schema 校验，只能生成 Proposal。
-- Dify Workflow DSL、Prompt、模型版本和运行 ID 要留痕；Dify 不可用时，权威状态读取和人工审批仍可工作。
-- 自建 Dify 会引入其自身 PostgreSQL、Redis、Worker、插件和 Sandbox 等运行面，应与 Brand OS 网络、凭据、数据库和备份明确隔离。
+- CURRENT 可以用直接模型调用更快验证协议和品牌质量；
+- Dify 自托管会带来自己的数据库、Redis、Worker、插件和 Sandbox；
+- 平台能力可能掩盖 Task Packet、工作模式和状态闸门本身的问题。
 
-### 许可边界
+### 许可与采用门
 
-Dify [LICENSE](https://github.com/langgenius/dify/blob/main/LICENSE) 是基于 Apache-2.0 修改的衍生许可证，并非无附加条件的 Apache-2.0：
-
-1. 商业使用通常允许，但未经 Dify 书面授权，不得使用其源码运营多租户环境；许可证把一个 workspace 定义为一个 tenant。
-2. 使用 Dify 前端时，不得移除或修改 Dify 控制台或应用中的 Logo 和版权信息；不使用其 `web/` 或 `web` 镜像前端时，该条不适用。
-3. 团队内部单 workspace 自托管与对外多客户 workspace 服务不是同一许可风险；产品化前必须获得书面法律结论，不能凭技术隔离推定合规。
-
-因此首选把 Dify 作为内部独立服务，通过后端 API 适配，不 fork 或白标其前端。需要多租户或自有品牌 Dify 前端时，先取得书面商业授权。
+Dify 使用带附加条件的修改版 Apache-2.0；源码多租户和前端品牌存在许可边界。未来只通过 `AIWorkflowPort` 对比直接 Worker，输入最小 Task Packet，输出经 Schema 校验后只形成 Proposal。未经书面授权不做源码多租户或白标前端。
 
 ## FlowLong
 
-### 适合融入的条件
+### 未来价值
 
-- 多审批人、会签或签、转办委派、复杂分支、超时提醒和组织权限成为真实需求。
+- 多人会签、或签、转办、委派和复杂组织路由。
 
-### 当前不采用的原因
+### 当前后置原因
 
-- 核心有限状态机已能覆盖单级或少量审批人；不应为潜在需求提前引入第二套复杂审批平台。
-- Java 17、Spring/Solon、MyBatis Plus 和 MySQL 形成第二技术栈和额外恢复链路。
-- “AI 审批”和“超时自动通过”与人工闸门原则冲突，必须禁用。
-- README 包含署名、禁止部分 SaaS/源码扩散/竞争性二开等附加条件；违反后切换 AGPL-3.0，不能按普通 Apache 项目处理。
+- CURRENT 只有 Fox 一个确认人，本地状态机已经足够；
+- Java/MySQL/设计器增加完全无关的运行面；
+- AI 审批和超时自动通过与产品人工判断原则冲突；
+- 附加许可需要独立书面结论。
 
-### 后期接法
+### 未来采用门
 
-通过 `ApprovalWorkflowPort` 和独立包装服务接入。FlowLong 只协调人工任务，核心系统收到回调后重新验证身份、幂等键、流程版本和目标版本，再写入 PostgreSQL 权威审批事件。FlowLong 数据库丢失时，可以从权威状态重新发起或人工对账，但不能反向覆盖正式事件。
+只有真实团队复杂审批成立且许可通过后，才以 `ApprovalWorkflowPort` 隔离 POC。FlowLong 只路由人的任务，最终状态仍由核心根据具名人工结果写入。
 
-## Dify 与 FlowLong 的明确分工
+## Dify、FlowLong 与 OpenWork 的分工
 
-| 场景 | Dify | FlowLong | Brand OS 核心 |
-|:---|:---|:---|:---|
-| 模型调用、Prompt、RAG、Agent 和结构化生成 | 主责 | 不参与 | 提供受限上下文和 Schema，验收候选输出 |
-| 会议摘要、分类、任务草案、内容建议 | 生成 Proposal | 不参与 | 保存来源、版本和候选状态 |
-| 多人会签、或签、转办、催办和组织路由 | 不负责 | 主责 | 发起流程并保存关联 ID |
-| 批准决定、约束、负责人、截止时间和提交版本 | 无权 | 只返回人工任务结果，无最终写权 | 重新鉴权、并发校验并写权威事件 |
-| 当前正式状态查询 | 可按任务获得只读最小上下文 | 可获得流程所需最小上下文 | 唯一权威来源 |
-| 故障降级 | 停止 AI 自动化，保留人工流程 | 回退核心审批队列 | 必须持续提供权威读取和人工批准 |
-
-一句话边界：**Dify 编排 AI 如何计算，FlowLong 编排人如何流转，Brand OS 决定什么正式生效。**
-
-## 决策门
-
-| 门 | 通过条件 | 未通过 |
+| 问题 | 未来组件 | 永久边界 |
 |:---|:---|:---|
-| G0 真相门 | PostgreSQL 单一权威写入、对象谱系和单向数据流确认 | 不开始实现 |
-| G1 许可门 | 形成 SBOM；Dify 使用形态和 FlowLong 许可获得书面结论 | 对应组件仅限隔离研究或排除 |
-| G2 隐私门 | 分级、出口白名单、凭据、提供商登记和审计完成 | 只允许不含真实数据的离线 POC |
-| G3 权威服务门 | PostgreSQL 迁移、事务、PITR、恢复和 S3 对账通过 | 不接入任何会写回的外部组件 |
-| G4 Zvec 门 | 中文召回显著优于 PostgreSQL 基线、回源 100%、可重建、服务器 POC 通过 | 保留 PostgreSQL FTS/pgvector |
-| G5 Open Notebook 门 | 单向同步、引用映射、无越权和无未授权外发 | 仅使用 `content-core` 或自有解析器 |
-| G6 Nubase 门 | 单项能力确有收益，项目隔离、导出、禁用和退出演练通过 | 使用标准 PostgreSQL/S3/独立身份方案 |
-| G7 Dify 门 | AI 流程收益可测、Proposal 边界、数据出口和许可证通过 | 使用核心 Worker 与直接模型适配器 |
-| G8 FlowLong 门 | 复杂人工审批需求成立，许可、回调幂等和对账通过 | 使用核心有限状态机 |
+| Agent 会话、工具、文件和终端运行 | OpenWork/OpenCode | Tool Permission 只批准工具执行，不批准业务状态 |
+| 模型/Prompt/AI 计算编排 | Dify | 输出只形成 Proposal |
+| 多人任务路由 | FlowLong | 流程结果需回到核心复核 |
+| 当前状态、证据、模式切换和最终确认 | Brand OS 核心 + Fox | 任何外部组件都不能替代 |
 
-## 最终采用判断
+CURRENT 只需要最后一行，以及可选的本地 OpenWork 界面辅助。
 
-- **首版必需**：标准 PostgreSQL、S3 兼容对象存储、统一应用服务、Web/PWA、远程 MCP、CLI、Skills、Outbox Worker。
-- **首批 POC**：Open Notebook 内容处理、PostgreSQL FTS/pgvector 与 Zvec 检索对比、Dify AI 流程。
-- **条件 POC**：Nubase 的单项平台能力、FlowLong 的复杂人工审批。
-- **明确禁止**：让任何候选组件保存正式状态、让 AI 自动批准、让多个数据库并行接受业务写入、未经许可运营 Dify 源码多租户或白标前端、未经许可嵌入分发 FlowLong。
+## 鸿日试点后的统一决策门
+
+| 门 | 通过条件 | 未通过时 |
+|:---|:---|:---|
+| 真实需求门 | 鸿日使用记录证明直接基线存在明确瓶颈 | 不做 POC |
+| 质量门 | 相同金标、Task Packet 和数据下显著优于基线 | 保留直接实现 |
+| 真相门 | 组件关闭后当前状态、证据和确认历史完整 | 拒绝采用 |
+| 隐私门 | 数据范围、外发、凭据和日志可审计 | 只用脱敏样本或拒绝 |
+| 许可门 | 内部使用、修改、分发和未来产品形态有书面结论 | 不集成/不分发 |
+| 稳定门 | 故障、升级、导出、重建和取消可验证 | 继续隔离 POC |
+| 退出门 | 能在限定时间内切回直接基线且无业务数据迁移 | 拒绝采用 |
+
+## 最终排序
+
+1. CURRENT：鸿日黄金用例、只读原件、轻量状态、增量会议、探索/执行协议、同一 Task Packet、Codex/Claude 和 Fox 本地确认。
+2. CURRENT 候选：OpenWork MIT 社区壳的最小本地界面适配。
+3. `review-after-hongri-pilot`：判断是否需要 Zvec、Open Notebook 或 Dify 单项 POC。
+4. 只有团队需求成立后：判断 Nubase 平台能力、FlowLong 和服务器运行面。
+
+明确禁止把安装六个项目当作 MVP 进度，或让任何组件保存/批准鸿日当前状态。

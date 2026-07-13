@@ -1,87 +1,110 @@
-# Brand Project OS 团队服务器实施规划 - 总进度
+# Brand Project OS 鸿日本地价值验证 - 总进度
 
-> 任务：建设团队控制、自托管优先的工作操作系统，以服务器权威状态统一支撑 Web/PWA、远程 MCP、CLI、Skills 和可替换 AI 工作流。
+> 任务：先以 Fox 单用户和鸿日真实项目证明 AI 能正确理解会议、当前状态、证据、策略探索与执行，并让 Codex/Claude 共享同一项目认知；通过真实工作价值门后再决定是否团队服务器化。
 > 开始日期：2026-07-13
 > 最后更新：2026-07-13
-> 模式：`LOCAL_ONLY`（仅表示 SPEC 任务在本地文档追踪，不表示产品只在本机部署）
-> 部署目标：团队服务器为唯一正式写入入口；PostgreSQL、S3/MinIO、API、Worker 与 Web/PWA 组成首发运行面。
+> 模式：`LOCAL_ONLY`（表示 SPEC 任务在本地 Markdown 追踪；当前产品也选择本地优先，但两者概念不同）
+> 第一用户：Fox
+> 第一验证项目：鸿日
+> 需求基线：`20260713_品牌AI长期项目协作系统_场景化需求澄清与产品反馈_v0.1(1).md`
 
 ## 当前结论
 
-- SPEC 范围重规划已完成，等待用户确认后进入实现。
-- Phase 1-4 共 29 项，构成团队服务器试运行版；建议三条执行 Lane 并行，预计 5-7 周。
-- 单人顺序执行 Phase 1-4 预计 12-16 周，不包含外部组件 POC 和 10-30 天团队试运行。
-- Phase 5 对 Zvec、Open Notebook、Nubase、FlowLong、Dify 做隔离 POC；Phase 6 只集成 ADR 批准的组件。
-- SQLite 仅用于开发、测试或单机演示，不承担团队生产权威状态。
+- 原 6 阶段 42 项“团队服务器先行”方案全部未开始，现已被 rescope，不再作为活动任务体系。
+- 新方案为 4 阶段 32 项：Phase 0 先定义边界/分类/运行协议/黄金用例；Phase 1 交付鸿日本地单用户原型；Phase 2 用真实工作连续验证；Phase 3 仅在价值 Go 后作团队服务器化决策。
+- 当前主线不是通用项目管理、企业知识库或完整 RAG，而是长期品牌项目的状态与品牌认知协作层。
+- 本地原型采用只读原件、轻量 SQLite/FTS、增量会议解释、当前状态/Proposal、Task Packet、本地 CLI/MCP 和简单查看/确认界面。
+- PostgreSQL、S3、OIDC、RLS、并发、HA/灾备、完整 PWA、OpenWork 深度团队化、Zvec、Open Notebook、Nubase、FlowLong、Dify 都是 Phase 3 候选，不是 Phase 1 前置。
+- OpenWork MIT 社区核心仍可作为本地界面壳候选，但本地价值验证不以深度 fork、团队身份或签名分发为成功条件。
+- 七项一票否决适用于所有模型/协议/版本；任何一项出现即阻断阶段门。
 
 ## 参考文档
+
+### 当前活动 SPEC
+
+- [任务分解](../plan/task-breakdown.md)
+- [依赖图](../plan/dependency-graph.md)
+- [里程碑](../plan/milestones.md)
+- [Phase 0：边界、协议与黄金测试](phase-0-boundary-and-bench.md)
+- [Phase 1：鸿日本地单用户原型](phase-1-hongri-local-prototype.md)
+- [Phase 2：真实工作连续验证](phase-2-real-work-validation.md)
+- [Phase 3：团队服务器化决策门](phase-3-team-server-decision.md)
+
+### 分析与候选架构背景
 
 - [项目概览](../analysis/project-overview.md)
 - [目标模块清单](../analysis/module-inventory.md)
 - [风险评估](../analysis/risk-assessment.md)
 - [部署拓扑评估](../analysis/deployment-topology-evaluation.md)
 - [开源项目评估](../analysis/open-source-evaluation.md)
-- [任务分解](../plan/task-breakdown.md)
-- [依赖图](../plan/dependency-graph.md)
-- [里程碑](../plan/milestones.md)
-- [团队服务器架构](../plan/team-server-architecture.md)
-- [数据一致性与可靠性](../plan/data-consistency-and-reliability.md)
-- [前端与 AI 访问](../plan/frontend-and-ai-access.md)
-- [架构与接口契约](../plan/architecture-and-contracts.md)
-- [安全与验收](../plan/security-and-verification.md)
-- [团队服务器权威 ADR](../adr/0001-team-server-authority.md)
+- [OpenWork 本地客户端候选评估](../analysis/openwork-client-evaluation.md)
+- [OpenWork 深度集成计划](../plan/openwork-deep-integration.md)
+
+服务器架构、数据一致性、完整安全和 OpenWork 深度集成文档在本轮 rescope 后只作为 `future-candidate` 背景；若与当前三份活动计划冲突，以新需求源和本节“当前活动 SPEC”为准，待 Phase 3 决策后重新建立实施 SPEC。
 
 ## 阶段汇总
 
 | 阶段 | 名称 | 任务 | 完成 | 进度 | 交付边界 |
 |:---|:---|---:|---:|:---|:---|
-| 1 | 契约、身份与安全基线 | 6 | 0 | 0% | 冻结服务器权威、租户、身份和接口契约 |
-| 2 | 权威数据与可靠性脊柱 | 7 | 0 | 0% | PostgreSQL、对象存储、Outbox、检索与 PITR |
-| 3 | 团队治理与 AI 统一访问 | 8 | 0 | 0% | OIDC、RBAC、审批、HTTP、MCP、CLI 与 Skills |
-| 4 | Web/PWA 与团队服务器试运行版 | 8 | 0 | 0% | 团队前端、离线边界、部署运维和金标旅程 |
-| 5 | 五个外部组件隔离 POC | 7 | 0 | 0% | Zvec、Open Notebook、Nubase、FlowLong、Dify 决策 |
-| 6 | 选择性集成与生产验证 | 6 | 0 | 0% | 降级、模型治理、演练、团队试运行和生产准入 |
-| **合计** |  | **42** | **0** | **0%** | Phase 1-4 为 29 项团队服务器试运行版 |
+| 0 | 边界、协议与黄金测试先行 | 7 | 0 | 0% | 一页边界、鸿日样本、分类标准、品牌 Agent 协议、10-20 黄金用例与 BrandBench |
+| 1 | 鸿日本地单用户原型 | 10 | 0 | 0% | 本地资料、SQLite 状态、会议增量、证据、Task Packet、多模型与简单界面闭环 |
+| 2 | 鸿日真实工作连续验证 | 8 | 0 | 0% | 真实增量、策略/执行、多模型、匿名评审、错误修订和价值 Go/No-Go |
+| 3 | 团队服务器化决策门 | 7 | 0 | 0% | 团队需求、候选架构/组件证据和独立后续 SPEC 决策 |
+| **合计** |  | **32** | **0** | **0%** | Phase 0-2 是当前价值验证；Phase 3 条件启动 |
 
 ## 阶段清单
 
-- [ ] Phase 1：契约、身份与安全基线（0/6）- [详情](phase-1-foundation.md)
-- [ ] Phase 2：权威数据与可靠性脊柱（0/7）- [详情](phase-2-evidence-core.md)
-- [ ] Phase 3：团队治理与 AI 统一访问（0/8）- [详情](phase-3-governed-ai.md)
-- [ ] Phase 4：Web/PWA 与团队服务器试运行版（0/8）- [详情](phase-4-mvp.md)
-- [ ] Phase 5：五个外部组件隔离 POC（0/7）- [详情](phase-5-open-source-poc.md)
-- [ ] Phase 6：选择性集成与生产验证（0/6）- [详情](phase-6-pilot.md)
+- [ ] Phase 0：边界、协议与黄金测试先行（0/7）- [详情](phase-0-boundary-and-bench.md)
+- [ ] Phase 1：鸿日本地单用户原型（0/10）- [详情](phase-1-hongri-local-prototype.md)
+- [ ] Phase 2：鸿日真实工作连续验证（0/8）- [详情](phase-2-real-work-validation.md)
+- [ ] Phase 3：团队服务器化决策门（0/7）- [详情](phase-3-team-server-decision.md)
 
 ## 当前状态
 
-**活动阶段**：无，SPEC 范围重规划完成，等待用户确认执行  
-**活动任务**：无；确认后从可并行的 F1.1 与 F1.2 开始  
-**阻塞项**：当前工作区缺少鸿日 V5 数据副本，F1.1 无法建立真实黄金样本  
-**后置门禁**：F5.5 在取得 FlowLong 书面许可结论前不得执行源码集成  
-**规划检查点**：SPEC Phase 5a，尚未进入实现
+**活动阶段**：无，SPEC rescope 已完成，等待用户确认后进入 Phase 0
+**活动任务**：无；确认后先执行 F0.1，再并行 F0.2 与 F0.3
+**阻塞项**：仓库中未发现完整鸿日原件副本；F0.2/F0.5 需要确认获授权的可读位置
+**条件阶段**：Phase 3 只有 F2.8=Go 且 F3.1 团队需求门通过才启动
+**规划检查点**：Spec-Driven 工作流 Phase 5a，32 项均未开始
 
 ## 治理状态
 
-**共享指令面**：`AGENTS.md`  
-**Claude 指令面**：`CLAUDE.md`  
-**其他平台规则**：无  
-**架构决策面**：`docs/adr/`  
-**Memory 面**：不可用，不写入  
-**仓库 Memory 回退路径**：无，未获用户批准  
-**正式事实来源**：服务器 PostgreSQL 中的权威事件与人工审批记录；对象存储原件按 SHA-256 和版本证明内容  
-**派生系统边界**：检索索引、模型摘要、Open Notebook、Nubase Memory、FlowLong 与 Dify 均不得覆盖正式状态
+**共享指令面**：`AGENTS.md`
+**Claude 指令面**：`CLAUDE.md`
+**其他平台规则**：无
+**架构决策面**：`docs/adr/`；现有服务器/OpenWork ADR 视为远期候选，当前 MVP 不能据此跳过 Phase 0-2 价值门
+**Memory 面**：不可用，不写入
+**仓库 Memory 回退路径**：无，未获用户批准
+**需求范围权威**：新需求源文件 + 当前三份活动计划 + 本 MASTER
+**本地原件权威**：获授权的鸿日原始文件、版本与 SHA-256，只读
+**本地状态权威**：Fox 人工确认事件及可重建当前投影；模型输出、摘要、索引和聊天记忆不是事实
+**未来生产规则**：团队服务器 ADR 与候选计划中的 PostgreSQL/S3 等约束只在 Phase 3=Go 并形成新实施 SPEC 后适用，不得反向成为 Phase 1 前置
+
+## 一票否决状态
+
+| 一票否决 | 当前发生数 | 门 |
+|:---|---:|:---|
+| 虚构产品事实 | 0 | 必须保持 0 |
+| 把讨论升级成决定 | 0 | 必须保持 0 |
+| 把暂定日期写成死线 | 0 | 必须保持 0 |
+| 把过期方案当成当前方向 | 0 | 必须保持 0 |
+| 重要结论不能回到证据 | 0 | 必须保持 0 |
+| 未经人确认自动改变项目状态 | 0 | 必须保持 0 |
+| 在探索模式下强行制造唯一答案 | 0 | 必须保持 0 |
+
+任一发生即阻断当前阶段；先保存复现证据、增加 Fixture、修复并完成全量回归，不能用平均分抵消。
 
 ## 自适应控制状态
 
 | 字段 | 当前值 |
 |:---|:---|
-| 活动阶段 | 待确认，下一阶段为 Phase 1 |
+| 活动阶段 | 待确认，下一阶段为 Phase 0 |
 | drift_score | 0 |
-| strategy | 团队服务器权威、自底向上契约优先、外部组件隔离 POC |
+| strategy | 价值验证先行、黄金测试先行、本地单用户纵切、真实工作闭环、团队服务器条件决策 |
 | threshold_annotate | 2 |
 | threshold_replan | 3 |
-| threshold_rescope | 4 |
-| total_tasks | 6 |
+| threshold_rescope | 5 |
+| total_tasks | 7 |
 | completed_tasks | 0 |
 | last_updated | 2026-07-13 |
 
@@ -89,33 +112,45 @@
 
 | 阶段 | 任务数 | 标注 | 重计划 | 重定范围 |
 |:---|---:|---:|---:|---:|
-| 1 | 6 | 2 | 3 | 4 |
-| 2 | 7 | 2 | 3 | 5 |
-| 3 | 8 | 2 | 4 | 5 |
-| 4 | 8 | 2 | 4 | 5 |
-| 5 | 7 | 2 | 3 | 5 |
-| 6 | 6 | 2 | 3 | 4 |
+| 0 | 7 | 2 | 3 | 5 |
+| 1 | 10 | 2 | 4 | 6 |
+| 2 | 8 | 2 | 4 | 5 |
+| 3 | 7 | 2 | 3 | 5 |
+
+阈值按阶段任务数的 20%/40%/60% 向上取整。切换阶段时将活动状态切换为对应行，`drift_score` 从该阶段 0 开始累计。
 
 ### 任务遥测日志
 
-每项任务完成后，先写入本表，再更新对应阶段文件和阶段计数。
+每项任务完成后，先写入本表，再更新阶段文件和阶段计数。
 
 | 任务 | 估算 | 实际 | 工期差 | SUPER 分数 | SUPER 变化 | 未计划依赖 | 任务漂移 |
 |:---|:---|:---|---:|---:|---:|---:|---:|
 | - | - | - | - | - | - | - | - |
 
+## Rescope 追踪
+
+| 版本 | 阶段/任务 | 状态 | 主线 | 处置 |
+|:---|:---|:---|:---|:---|
+| 初始本地草案 | 个人本地 29 项 | 未开始 | 本地知识与 AI 接入 | 被团队服务器方案替代 |
+| 团队服务器方案 | 6 阶段 / 42 项 | 0/42，未开始 | OpenWork Electron + PostgreSQL/S3 团队服务器先行 | 被本次 rescope 替代；逐项映射保留在任务分解 |
+| 当前价值验证方案 | 4 阶段 / 32 项 | 0/32，待确认 | Fox/鸿日、本地单用户、黄金测试与真实工作先行 | 当前活动方案 |
+
+旧 42 项没有已完成代码或遥测需要继承。服务器、外部组件、团队身份和高可用内容被后移为 F3.2-F3.6 的候选，只有 F3.7=Go 才重新生成实施任务。
+
 ## 下一步
 
-1. 由用户确认 42 项团队服务器方案及 Phase 1-4 的试运行版边界。
-2. 提供鸿日 `_system`、V5 索引和少量脱敏原始文件的可读副本，解除 F1.1 阻塞。
-3. 确认后并行启动 F1.1 与 F1.2；在服务器权威 ADR 固定前不实现正式写入。
-4. 依次完成 Phase 1-4 的 29 项任务并通过团队金标旅程，再启动五组件隔离 POC。
-5. Dify 仅通过 `AIWorkflowPort` 参与可替换工作流，并与直接 Worker 做 A/B 验证。
+1. 由用户确认 4 阶段 32 项范围，以及 Phase 0-2 为当前主线、Phase 3 条件启动。
+2. 执行 F0.1，提交《两条需求线拆分说明》和《鸿日本地 MVP 一页边界》。
+3. 确认鸿日原件/V5 数据的获授权可读位置，解除 F0.2/F0.5 数据阻塞。
+4. 并行执行 F0.2 与 F0.3，再完成 F0.4-F0.6；F0.7 通过前不写 Phase 1 产品代码。
+5. 任何一票否决先进入 Fixture、修复和全量回归，不向下游阶段传播错误状态。
 
 ## 会话日志
 
 | 日期 | 会话 | 摘要 |
 |:---|:---|:---|
-| 2026-07-13 | 初始规划 | 读取完整需求并核验 Zvec、Nubase、Open Notebook、FlowLong，形成个人本地版 29 项初稿。 |
-| 2026-07-13 | 团队服务器范围变更 | 将目标改为团队控制、自托管优先；服务器成为唯一正式写入入口，采用 PostgreSQL、S3/MinIO、Web/PWA、远程 MCP/API、CLI 与 Skills。 |
-| 2026-07-13 | Dify 范围变更 | 将 Dify 纳入第五个隔离 POC，以 `AIWorkflowPort` 对接并与直接 Worker A/B；规划重构为 6 阶段、42 项，等待用户确认执行。 |
+| 2026-07-13 | 初始规划 | 核验 Zvec、Nubase、Open Notebook、FlowLong，形成个人本地方案初稿。 |
+| 2026-07-13 | 团队服务器范围变更 | 将目标改为 PostgreSQL/S3 团队服务器、远程 API/MCP、Web/PWA 和可靠性体系。 |
+| 2026-07-13 | Dify 范围变更 | 将 Dify 纳入外部组件 POC，形成 6 阶段 42 项未开始方案。 |
+| 2026-07-13 | OpenWork 客户端范围变更 | 核验 OpenWork，规划公司 Electron 主客户端、OpenCode Runtime 和轻量 Web 后备，42 项仍未开始。 |
+| 2026-07-13 | 场景化需求 rescope | 读取品牌工作场景反馈，确认验证顺序错误；将活动 SPEC 重排为 4 阶段 32 项，BrandBench/黄金集提前到 Phase 0，服务器与所有深度团队能力后移到条件 Phase 3。 |
