@@ -1,0 +1,22 @@
+{
+  "schema_version": "port-catalog.v1",
+  "architecture": "local_first_single_user",
+  "authority": "human_confirmed_events",
+  "ports": [
+    {"name":"SourceCatalogPort","required":true,"replaceable":true,"agent_access":"read_only","operations":["list","get","verify_hash","reconcile"]},
+    {"name":"EvidencePort","required":true,"replaceable":true,"agent_access":"read_only","operations":["search","get","open","locate","verify"]},
+    {"name":"CanonicalStatePort","required":true,"replaceable":true,"agent_access":"read_only","operations":["get_current","get_version","list_decisions","list_open_questions","rebuild_projection"]},
+    {"name":"MeetingInterpretationPort","required":true,"replaceable":true,"agent_access":"proposal_only","operations":["ingest","classify_modes","extract_statements","compare_with_state","build_incremental_proposals"]},
+    {"name":"ProposalPort","required":true,"replaceable":true,"agent_access":"proposal_only","operations":["create","list","get","compare"]},
+    {"name":"HumanReviewPort","required":true,"replaceable":true,"agent_access":"none","operations":["approve","modify_and_approve","reject","defer","switch_work_mode"]},
+    {"name":"TaskPacketPort","required":true,"replaceable":true,"agent_access":"read_only","operations":["build","get","get_layer","resolve_evidence","validate","record_consumption"]},
+    {"name":"AgentRuntimePort","required":true,"replaceable":true,"agent_access":"runtime_control","operations":["list_runtimes","create_run","get_run","stream_events","respond_tool_permission","cancel_run","list_artifacts","publish_artifact","health"]},
+    {"name":"SearchIndexPort","required":false,"replaceable":true,"agent_access":"read_only","operations":["apply","delete","search","rebuild","watermark"]},
+    {"name":"ExternalWorkflowPort","required":false,"replaceable":true,"agent_access":"proposal_only","operations":["invoke","get_run","cancel","collect_artifacts"]}
+  ],
+  "forbidden_agent_operations": ["approve","modify_and_approve","reject","switch_work_mode","direct_sql","hard_delete_evidence"],
+  "optional_components": ["OpenWork","OpenCode","Zvec","Nubase","Open Notebook","FlowLong","Dify"],
+  "required_server_components": [],
+  "network_default": "deny",
+  "storage_baseline": ["SQLite", "FTS5", "local_content_addressed_evidence"]
+}

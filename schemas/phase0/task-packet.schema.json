@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://brand-os.local/schema/task-packet.v1.json",
+  "title": "本地品牌任务包",
+  "type": "object",
+  "required": ["schema_version","packet_id","packet_version","project_id","base_state_version","task","runtime_policy","approved_state","working_state","relevant_evidence","known_gaps","output_contract","vetoes"],
+  "properties": {
+    "schema_version":{"const":"task-packet.v1"},
+    "packet_id":{"type":"string","minLength":1},
+    "packet_version":{"type":"string","minLength":1},
+    "project_id":{"type":"string","minLength":1},
+    "base_state_version":{"type":"string","minLength":1},
+    "task":{"type":"object","required":["task_id","goal","role","work_mode","non_goals"],"properties":{"task_id":{"type":"string","minLength":1},"goal":{"type":"string","minLength":1},"role":{"type":"string","minLength":1},"work_mode":{"enum":["EXPLORATION","EVALUATION","DECISION","EXECUTION"]},"non_goals":{"type":"array","items":{"type":"string"}}},"additionalProperties":false},
+    "runtime_policy":{"type":"object","required":["network","allowed_tools","mode_switch_authority"],"properties":{"network":{"enum":["deny","local_only","approved_external"]},"allowed_tools":{"type":"array","items":{"type":"string"},"uniqueItems":true},"mode_switch_authority":{"const":"Fox"}},"additionalProperties":false},
+    "approved_state":{"type":"object","required":["facts","decisions","constraints","actions"],"properties":{"facts":{"type":"array"},"decisions":{"type":"array"},"constraints":{"type":"array"},"actions":{"type":"array"}},"additionalProperties":false},
+    "working_state":{"type":"object","required":["views","preferences","hypotheses","options","tendencies","target_dates","open_questions","proposals"],"properties":{"views":{"type":"array"},"preferences":{"type":"array"},"hypotheses":{"type":"array"},"options":{"type":"array"},"tendencies":{"type":"array"},"target_dates":{"type":"array"},"open_questions":{"type":"array"},"proposals":{"type":"array"}},"additionalProperties":false},
+    "relevant_evidence":{"type":"array","items":{"type":"object","required":["evidence_ref","confidentiality","locator","purpose"],"properties":{"evidence_ref":{"type":"string","minLength":1},"confidentiality":{"enum":["P0","P1","P2","P3"]},"locator":{"type":"string","minLength":1},"purpose":{"enum":["support","oppose","source","conflict","context"]}},"additionalProperties":false}},
+    "known_gaps":{"type":"array","items":{"type":"string"}},
+    "output_contract":{"type":"object","required":["schema_ref","proposal_only"],"properties":{"schema_ref":{"type":"string","minLength":1},"proposal_only":{"const":true}},"additionalProperties":false},
+    "vetoes":{"type":"array","minItems":7,"uniqueItems":true,"items":{"type":"string"}}
+  },
+  "additionalProperties":false
+}

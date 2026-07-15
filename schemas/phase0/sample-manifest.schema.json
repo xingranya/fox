@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://brand-os.local/schema/sample-manifest.v1.json",
+  "title": "Phase 0 本地样本 Manifest",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "generated_at",
+    "scope",
+    "authority",
+    "record_count",
+    "known_source_gap",
+    "records"
+  ],
+  "properties": {
+    "schema_version": {"const": "sample-manifest.v1"},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "source_root": {"type": "string", "minLength": 1},
+    "scope": {"const": "example_only"},
+    "authority": {"const": "local_read_only_user_provided"},
+    "record_count": {"type": "integer", "minimum": 0},
+    "known_source_gap": {"const": true},
+    "records": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "source_id",
+          "filename",
+          "suffix",
+          "media_type",
+          "size_bytes",
+          "sha256",
+          "source_role",
+          "confidentiality",
+          "current_validity",
+          "extraction_status",
+          "notes"
+        ],
+        "properties": {
+          "source_id": {"type": "string", "pattern": "^EX-[A-F0-9]{12}$"},
+          "filename": {"type": "string", "minLength": 1},
+          "suffix": {"enum": [".pdf", ".doc", ".docx", ".pptx", ".mp3"]},
+          "media_type": {"type": "string", "minLength": 1},
+          "size_bytes": {"type": "integer", "minimum": 1},
+          "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+          "source_role": {"type": "string", "minLength": 1},
+          "confidentiality": {"enum": ["P0", "P1", "P2", "P3"]},
+          "current_validity": {"enum": ["current", "superseded", "archived", "unknown"]},
+          "extraction_status": {"enum": ["extracted", "metadata_only", "failed"]},
+          "extracted_markdown": {"type": ["string", "null"]},
+          "transcript_markdown": {"type": ["string", "null"]},
+          "notes": {"type": "array", "items": {"type": "string"}}
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

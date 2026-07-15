@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://brand-os.local/schema/brandbench-review.v1.json",
+  "title": "BrandBench 匿名评审",
+  "type": "object",
+  "required": ["schema_version", "review_id", "review_status", "fixture_id", "candidate_order", "dimensions", "scores", "reviewer_confirmation"],
+  "properties": {
+    "schema_version": {"const": "brandbench-review.v1"},
+    "review_id": {"type": "string", "minLength": 1},
+    "review_status": {"enum": ["pending", "completed"]},
+    "fixture_id": {"const": "G-16"},
+    "candidate_order": {"type": "array", "minItems": 2, "uniqueItems": true, "items": {"type": "string", "pattern": "^[A-Z]$"}},
+    "dimensions": {
+      "const": ["战略锋利度", "自然中文", "消费者真实", "记忆性", "产品咬合度", "证据纪律"]
+    },
+    "scores": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["candidate", "dimension", "score", "comment"],
+        "properties": {
+          "candidate": {"type": "string", "pattern": "^[A-Z]$"},
+          "dimension": {"enum": ["战略锋利度", "自然中文", "消费者真实", "记忆性", "产品咬合度", "证据纪律"]},
+          "score": {"type": ["integer", "null"], "minimum": 1, "maximum": 5},
+          "comment": {"type": "string"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "reviewer_confirmation": {
+      "type": "object",
+      "required": ["reviewed_by", "model_identity_hidden", "order_randomized", "confirmed_at"],
+      "properties": {
+        "reviewed_by": {"type": ["string", "null"]},
+        "model_identity_hidden": {"type": "boolean"},
+        "order_randomized": {"type": "boolean"},
+        "confirmed_at": {"type": ["string", "null"], "format": "date-time"}
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

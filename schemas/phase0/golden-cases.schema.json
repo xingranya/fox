@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://brand-os.local/schema/golden-cases.v1.json",
+  "title": "Phase 0 黄金用例集合",
+  "type": "object",
+  "required": ["schema_version", "fixture_version", "data_boundary", "cases"],
+  "properties": {
+    "schema_version": {"const": "golden-cases.v1"},
+    "fixture_version": {"type": "string", "minLength": 1},
+    "data_boundary": {"const": "sanitized_example_only"},
+    "cases": {
+      "type": "array",
+      "minItems": 10,
+      "maxItems": 20,
+      "items": {"$ref": "#/$defs/case"}
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "case": {
+      "type": "object",
+      "required": ["case_id", "journey", "title", "input", "expected_assertions", "forbidden_outcomes", "vetoes", "evidence_policy"],
+      "properties": {
+        "case_id": {"type": "string", "pattern": "^G-(0[1-9]|1[0-6])$"},
+        "journey": {"enum": ["COLD_START", "MEETING_INTERPRETATION", "EVIDENCE_TRACE", "INCREMENTAL_UPDATE", "STRATEGY_EXPLORATION", "EXECUTION_DELIVERY", "MODEL_HANDOFF", "BRAND_REVIEW"]},
+        "title": {"type": "string", "minLength": 1},
+        "input": {"type": "object"},
+        "expected_assertions": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+        "forbidden_outcomes": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+        "vetoes": {"type": "array", "items": {"$ref": "#/$defs/veto"}, "uniqueItems": true},
+        "evidence_policy": {"enum": ["REQUIRED", "REQUIRED_IF_CONFIRMED", "SANITIZED_FIXTURE", "HUMAN_REVIEW"]}
+      },
+      "additionalProperties": false
+    },
+    "veto": {
+      "enum": ["FABRICATED_FACT", "DISCUSSION_TO_DECISION", "TENTATIVE_TO_DEADLINE", "SUPERSEDED_AS_CURRENT", "UNTRACEABLE_CONCLUSION", "UNCONFIRMED_STATE_CHANGE", "FORCED_SINGLE_ANSWER_IN_EXPLORATION"]
+    }
+  }
+}

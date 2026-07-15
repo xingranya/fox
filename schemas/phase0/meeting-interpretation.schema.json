@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://brand-os.local/schema/meeting-interpretation.v1.json",
+  "title": "会议增量解释候选",
+  "type": "object",
+  "required": ["schema_version", "meeting_id", "base_state_version", "meeting_mode", "items"],
+  "properties": {
+    "schema_version": {"const": "meeting-interpretation.v1"},
+    "meeting_id": {"type": "string", "minLength": 1},
+    "base_state_version": {"type": "string", "minLength": 1},
+    "meeting_mode": {"$ref": "#/$defs/meetingMode"},
+    "items": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/interpretationItem"}
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "meetingMode": {
+      "enum": ["EXPLORATION", "EVALUATION", "DECISION", "SYNC", "MIXED", "UNKNOWN"]
+    },
+    "informationType": {
+      "enum": [
+        "FACT", "VIEW", "PREFERENCE", "HYPOTHESIS", "OPTION", "TENDENCY",
+        "TARGET_DATE", "DECISION_CANDIDATE", "CONSTRAINT_CANDIDATE",
+        "ACTION_CANDIDATE", "OPEN"
+      ]
+    },
+    "dateKind": {
+      "enum": ["EXTERNAL_DEADLINE", "INTERNAL_TARGET", "REVIEW_CHECKPOINT", "TENTATIVE_DATE", "UNKNOWN"]
+    },
+    "evidence": {
+      "type": "object",
+      "required": ["source_id", "locator", "quote"],
+      "properties": {
+        "source_id": {"type": "string", "minLength": 1},
+        "locator": {"type": "string", "minLength": 1},
+        "quote": {"type": "string", "minLength": 1},
+        "speaker": {"type": ["string", "null"]},
+        "context": {"type": ["string", "null"]}
+      },
+      "additionalProperties": false
+    },
+    "interpretationItem": {
+      "type": "object",
+      "required": ["item_id", "type", "status", "summary", "scope", "evidence", "confidence", "reason", "requires_human_confirmation"],
+      "properties": {
+        "item_id": {"type": "string", "minLength": 1},
+        "type": {"$ref": "#/$defs/informationType"},
+        "status": {"enum": ["working", "preferred", "tentative", "proposed", "verified"]},
+        "summary": {"type": "string", "minLength": 1},
+        "scope": {"type": "string", "minLength": 1},
+        "date_kind": {"$ref": "#/$defs/dateKind"},
+        "decision_actor": {"type": ["string", "null"]},
+        "decision_verb": {"type": ["string", "null"]},
+        "evidence": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/evidence"}},
+        "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+        "reason": {"type": "string", "minLength": 1},
+        "requires_human_confirmation": {"const": true}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"type": {"const": "TARGET_DATE"}}, "required": ["type"]},
+          "then": {"required": ["date_kind"]}
+        },
+        {
+          "if": {"properties": {"type": {"const": "DECISION_CANDIDATE"}}, "required": ["type"]},
+          "then": {"required": ["decision_actor", "decision_verb"]}
+        }
+      ],
+      "additionalProperties": false
+    }
+  }
+}

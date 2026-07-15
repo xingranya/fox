@@ -1,1 +1,6 @@
 .DS_Store
+/example/
+/.firecrawl/
+/.work/
+__pycache__/
+*.py[cod]

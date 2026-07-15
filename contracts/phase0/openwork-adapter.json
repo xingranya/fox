@@ -1,0 +1,42 @@
+{
+  "schema_version": "openwork-adapter.v1",
+  "status": "implementation_ready_after_phase0_gate",
+  "role": "replaceable_local_client_and_agent_runtime_adapter",
+  "business_authority": false,
+  "server_required": false,
+  "remote_host_required": false,
+  "transport_priority": ["stdio_mcp", "loopback_http_with_ephemeral_token", "local_cli"],
+  "allowed_tools": [
+    "project_get_state", "task_get_packet", "meeting_list", "meeting_get", "meeting_interpret",
+    "evidence_search", "evidence_get", "decision_list", "open_question_list", "action_list",
+    "proposal_create", "proposal_get", "system_doctor", "project_verify"
+  ],
+  "forbidden_tools": [
+    "proposal_approve", "proposal_modify_and_approve", "proposal_reject", "state_write_direct",
+    "mode_switch_force", "database_sql", "evidence_hard_delete"
+  ],
+  "separation_rules": {
+    "tool_permission_schema": "tool-permission.v1",
+    "business_review_schema": "human-action.v1",
+    "shared_route": false,
+    "shared_handler": false,
+    "tool_permission_can_change_business_state": false
+  },
+  "local_security": {
+    "bind_address": "127.0.0.1",
+    "ephemeral_token_required_for_http": true,
+    "renderer_has_direct_database_access": false,
+    "renderer_has_unbounded_filesystem_access": false,
+    "external_navigation_default": "deny",
+    "telemetry_default": "off",
+    "auto_update_default": "off",
+    "secrets_storage": "os_keychain_or_process_environment"
+  },
+  "data_ownership": {
+    "canonical_state_in_openwork": false,
+    "evidence_in_openwork": false,
+    "approvals_in_openwork": false,
+    "disposable_runtime_data": true
+  },
+  "exit_test": "删除 OpenWork/OpenCode 运行数据后，核心状态、证据、Proposal 和人工批准仍可由 CLI/MCP 完整读取与重建"
+}
