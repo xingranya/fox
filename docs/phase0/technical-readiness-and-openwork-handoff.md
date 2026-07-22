@@ -67,6 +67,6 @@ OpenWork 只承担三个职责：展示当前状态与证据、启动/观察 Age
 | 本地纵切 | 只读原件、人工确认事件、可重建投影、Proposal、Task Packet、CLI/MCP 和简单界面边界已冻结 |
 | 端口与 Schema | 端口目录、会议解释、模式切换、Task Packet、State Proposal 等版本化契约通过静态检查 |
 | 服务器依赖 | `required_server_components` 为空；Phase 1 不依赖 PostgreSQL、S3、OIDC、Docker 或外部组件 |
-| OpenWork 边界 | 可替换、无业务批准权、不保存正式状态；`OW-L0` 已有条件通过，先完成默认离线补丁再接真实资料 |
+| OpenWork 边界 | 可替换、无业务批准权、不保存正式状态；`OW-L0` 已有条件通过，F1.9 默认离线补丁与安全门已完成 |
 
-本交接后的 F1.1-F1.8 已完成本地工作空间、SQLite 权威事件、来源版本、会议增量、Proposal、证据回源、Task Packet 和 CLI/MCP。OpenWork `OW-L0` 于 2026-07-22 有条件通过；F1.9 先关闭上游默认外联、更换内部标识并收紧 Electron 网络权限，补丁完成前不接真实鸿日资料。
+本交接后的 F1.1-F1.9 已完成本地工作空间、SQLite 权威事件、来源版本、会议增量、Proposal、证据回源、Task Packet、CLI/MCP，以及 OpenWork 离线、安全、品牌和单安装包收口。当前进入 F1.10，只按授权清单接入真实鸿日资料并完成桌面业务旅程。

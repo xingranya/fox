@@ -79,14 +79,14 @@
   - 验收：开放状态、Task Packet、证据和 Proposal，不开放批准/任意 SQL/硬删除；Codex/Claude 使用同一 Schema；切换模型不重讲背景。
   - 备注：2026-07-22 完成。新增 `LocalAIService`、`brand-os` CLI、官方 MCP Python SDK 的低层 stdio Server，以及 `local-ai-access.v1`、`proposal-create-input.v1`、`runtime-adapter.v1`。Codex 与 Claude 指向同一项目、数据库和 Task Packet，模型必须位于 Packet 允许列表；Brand Project OS 不读取模型提供商凭据。MCP 只开放 9 个白名单工具，项目范围在启动时固定，输入拒绝额外字段；没有审批、模式切换、任意 SQL、硬删除、密钥或任意文件读取。工具默认 10 秒、最高 60 秒超时，支持取消传播。148 项全量测试、5 组旧备份 Schema 子测试、`ruff`、编译、JSON、锁文件和差异检查通过；真实鸿日 v3 数据库副本迁移到 v7 后项目版本与业务计数未变。任务漂移 0，Phase 1 累计漂移保持 2。
 
-- [ ] **F1.9：完成公司定制 OpenWork 的离线、安全、品牌和单安装包收口**
+- [x] **F1.9：完成公司定制 OpenWork 的离线、安全、品牌和单安装包收口**
   - 优先级 / 工作量 / Lane：P0 / L / D
   - 依赖：F1.5、F1.6、F1.8
   - S.U.P.E.R：S、P、E、R
   - 测试期望：App/Desktop/Server/Orchestrator 测试和类型检查、Electron IPC/导航/网络/权限测试、真实 `.app` 产物扫描和安装烟测。
   - 治理影响：固化唯一客户端、单安装包、上游出口、品牌和许可证边界。
   - 验收：员工只安装一个公司定制 OpenWork；OpenCode Runtime/Sidecar 随包；默认无上游遥测、Cloud、模型目录、更新和宽松外联；不另做第二个客户端。
-  - 备注：2026-07-22 完成前置 OW-L0。固定 `v0.17.36@ddf3e482`，社区切片的桌面、OpenCode sidecar、Server/Orchestrator 和 macOS helper 均构建通过；桌面测试 79 通过、1 跳过，App/Server 类型检查通过。`ee/**` 不是构建依赖，但上游默认仍有 PostHog、Den/Cloud、模型目录、GitHub 更新、OpenWork AppID/协议和宽松 ATS，因此仅“有条件通过”。F1.9 仍未完成，先在正式 fork 做默认离线、内部品牌和 Electron 安全补丁，再接鸿日页面。详见 [OW-L0 技术选型记录](../phase1/openwork-ow-l0-evaluation.md)。
+  - 备注：2026-07-22 完成。正式 fork 的 `brand-os/f1.9-offline-shell` 用 9 个独立提交完成默认关闭遥测、Den/Cloud、模型目录和更新，统一公司工作名、Bundle ID、深链和数据目录，收紧 Electron Sandbox、IPC、导航、外链、权限、网络与打包边界，并移除核心离线界面的外部图标 CDN。`Brand Project OS.app` 构建成功；8 帧 fraimz 全部通过，实际包无 PostHog Key、未包含鸿日资料，旧上游地址只用于迁移识别且默认配置为空、网络策略不放行。App 370 项通过；Desktop 100 项通过、1 项平台条件跳过；App、Desktop、Server、Orchestrator 类型检查通过。最终提交 `7cf9b229` 已推送。内部包尚未签名和公证，不能向员工分发；签名分发仍由 F4.8 验收。实际工作量 L，SUPER 10/10，发现外部图标 CDN 这一项未计划依赖，任务漂移 1，Phase 1 累计漂移 3。详见 [OW-L0 技术选型记录](../phase1/openwork-ow-l0-evaluation.md)。
 
 - [ ] **F1.10：接入鸿日业务纵切并通过 fraimz、黄金集和本地 E2E**
   - 优先级 / 工作量 / Lane：P0 / XL / E
@@ -95,7 +95,7 @@
   - 测试期望：fraimz 桌面流程、当前/证据/Proposal/模式/AI 工作、空错加载、10-20 黄金用例、冷启动、多模型、恢复和安装烟测。
   - 治理影响：记录迁移前版本、水位、已知限制和进入服务器阶段的门。
   - 验收：Fox 在唯一客户端完成八旅程；一票否决为 0；回源和恢复完整；形成 SQLite 到服务器的可校验迁移基线。
-  - 备注：无。
+  - 备注：自适应提醒：Phase 1 累计漂移 3，已达到标注阈值 2、未达到重计划阈值 4。F1.10 按 XL 复杂度执行，先接只读旅程，再逐步开放 Proposal 与人工确认，不扩大当前范围。
 
 ## 阶段备注
 
