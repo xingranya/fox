@@ -9,10 +9,12 @@ from .authorization import (
     ProjectPrincipal,
     ProjectRole,
 )
+from .consistency import ConflictCode, WriteConsistencyService, WriteOutcome
 from .identity import InteractiveEmployeePrincipal, OidcIdentityService
 from .oidc_provider import OidcProviderAdapter
 from .postgresql_identity import PostgreSQLIdentityRepository
 from .postgresql_authorization import PostgreSQLProjectAuthorizationRepository
+from .postgresql_consistency import PostgreSQLConflictSnapshotRepository
 from .secret_cipher import FernetSecretCipher
 from .server_baseline import (
     SERVER_BOUNDARY,
@@ -27,6 +29,7 @@ __all__ = [
     "WorkspaceLayout",
     "WorkspaceSettings",
     "ConfidentialityLevel",
+    "ConflictCode",
     "FernetSecretCipher",
     "InteractiveEmployeePrincipal",
     "OidcIdentityService",
@@ -36,11 +39,14 @@ __all__ = [
     "ProjectAuthorizationService",
     "ProjectPrincipal",
     "ProjectRole",
+    "PostgreSQLConflictSnapshotRepository",
     "PostgreSQLProjectAuthorizationRepository",
     "PostgreSQLIdentityRepository",
     "ServerEnvironment",
     "ServerSettings",
     "ServiceHealthReport",
+    "WriteConsistencyService",
+    "WriteOutcome",
     "SERVER_BOUNDARY",
     "build_liveness_report",
     "build_readiness_report",

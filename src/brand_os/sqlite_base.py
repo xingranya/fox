@@ -35,6 +35,15 @@ class ResourceConflict(CanonicalStoreError):
     """表示资源、幂等键或当前状态发生冲突。"""
 
 
+class IdempotencyKeyConflict(ResourceConflict):
+    """表示同一幂等键绑定了不同请求摘要。"""
+
+    def __init__(self, stored_request_hash: str, received_request_hash: str) -> None:
+        super().__init__("同一幂等键被用于不同请求")
+        self.stored_request_hash = stored_request_hash
+        self.received_request_hash = received_request_hash
+
+
 class VersionConflict(ResourceConflict):
     """表示调用方的预期版本已经过期。"""
 
@@ -259,7 +268,7 @@ class SQLiteStoreBase:
 
     def _replay_command(self, row: sqlite3.Row, request_hash: str) -> CommandResult:
         if row["request_hash"] != request_hash:
-            raise ResourceConflict("同一幂等键被用于不同请求")
+            raise IdempotencyKeyConflict(str(row["request_hash"]), request_hash)
         data = json.loads(row["result_json"])
         return replace(CommandResult(**data), replayed=True)
 

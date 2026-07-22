@@ -1,0 +1,49 @@
+{
+  "schema_version": "write-consistency.v1",
+  "conflict_schema_version": "write-conflict.v1",
+  "outcomes": ["COMMITTED", "REPLAYED", "CONFLICT"],
+  "conflict_codes": [
+    "VERSION_MISMATCH",
+    "IDEMPOTENCY_KEY_REUSED",
+    "RESOURCE_STATE_CHANGED"
+  ],
+  "http_status": 409,
+  "requirements": {
+    "idempotency_key_required": true,
+    "idempotency_key_binds_request_digest": true,
+    "expected_version_required": true,
+    "last_write_wins": false,
+    "authorization_decision_required": true,
+    "authorization_must_match_project_actor_and_action": true,
+    "conflict_diff_rebuilt_from_events": true,
+    "current_projection_verified_against_events": true,
+    "conflict_snapshot_is_repeatable_read": true,
+    "unknown_failures_become_conflicts": false
+  },
+  "conflict_fields": [
+    "schema_version",
+    "http_status",
+    "code",
+    "project_id",
+    "command_name",
+    "idempotency_key",
+    "expected_version",
+    "current_version",
+    "baseline",
+    "current",
+    "state_changes",
+    "events",
+    "events_truncated",
+    "next_event_version"
+  ],
+  "state_change_kinds": ["ADDED", "REMOVED", "MODIFIED"],
+  "postgresql_schema_version": 9,
+  "deferred": [
+    "http_route",
+    "openapi",
+    "outbox",
+    "inbox",
+    "mcp_command_identity"
+  ],
+  "migrates_hongri_data": false
+}

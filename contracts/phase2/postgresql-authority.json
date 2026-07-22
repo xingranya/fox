@@ -4,6 +4,7 @@
   "object_evidence_contract": "object-evidence.v1",
   "oidc_identity_contract": "oidc-identity.v1",
   "project_authorization_contract": "project-authorization.v1",
+  "write_consistency_contract": "write-consistency.v1",
   "formal_write_store": "postgresql",
   "migration_versions": [1, 2, 3, 4, 5, 6, 7, 8, 9],
   "transaction": {

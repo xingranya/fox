@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import BinaryIO, Iterator, Mapping, Protocol, Sequence
+from typing import TYPE_CHECKING, BinaryIO, Iterator, Mapping, Protocol, Sequence
 
 from .domain import (
     Actor,
@@ -39,6 +39,7 @@ from .identity import (
     VerifiedIdentity,
 )
 from .authorization import (
+    AuthorizationDecision,
     ConfidentialityLevel,
     EmployeeProjectGrant,
     ProjectAction,
@@ -46,6 +47,9 @@ from .authorization import (
     ProjectRole,
     ServiceProjectGrant,
 )
+
+if TYPE_CHECKING:
+    from .consistency import ConflictCode, ConflictReport
 
 
 class CanonicalStorePort(Protocol):
@@ -125,6 +129,23 @@ class CanonicalStorePort(Protocol):
     def schema_version(self) -> int: ...
 
     def quick_check(self) -> bool: ...
+
+
+class ConflictSnapshotPort(Protocol):
+    """在一个一致读快照中生成正式写冲突差异。"""
+
+    def capture_conflict(
+        self,
+        authorization: AuthorizationDecision,
+        *,
+        context: CommandContext,
+        command_name: str,
+        code: ConflictCode,
+        reason: str,
+        resource_type: str | None,
+        resource_id: str | None,
+        max_events: int,
+    ) -> ConflictReport: ...
 
 
 class CanonicalBackupPort(Protocol):

@@ -2,7 +2,7 @@
 
 > 当前生效路线：公司定制 OpenWork 唯一员工客户端 + Brand Project OS Service<br>
 > 权威决策：[ADR-0005](../adr/0005-single-client-server-authority.md)<br>
-> Phase 1：本地 SQLite 纵切，已完成；F2.1-F2.5 已通过，当前 F2.6；Phase 2-4：服务器权威、联网客户端和团队试点
+> Phase 1：本地 SQLite 纵切，已完成；F2.1-F2.6 已通过，当前 F2.7；Phase 2-4：服务器权威、联网客户端和团队试点
 
 ## 架构结论
 
@@ -54,6 +54,12 @@ PostgreSQL v8 保存预登记员工、稳定 `(issuer, subject)` 绑定、授权
 F2.5 已实现 `project-authorization.v1`、五种员工角色、九种稳定动作、P0-P3 保密上限和独立 AI/MCP/Workflow/System 服务身份。应用服务必须先判定主体、项目、动作和资料级别；服务动作采用显式白名单，任何服务身份都不能取得 `PROPOSAL_REVIEW` 或 `ACCESS_MANAGE`。
 
 PostgreSQL v9 保存项目成员、服务主体、服务授权和只追加授权事件。项目业务表启用并强制 RLS，非所有者运行时角色通过事务级 `SET LOCAL` 注入主体、项目和动作；授权表本身不暴露给运行时角色。完整边界见 [F2.5 项目 RBAC、保密级别与 RLS](../phase2/project-authorization-and-rls.md)。
+
+### F2.6 写一致性与冲突差异（已完成）
+
+F2.6 已实现 `write-consistency.v1` 和 `write-conflict.v1`。正式写调用统一返回 `COMMITTED`、`REPLAYED` 或 `CONFLICT`；同一幂等键更换请求摘要、版本过期和资源状态已变化使用不同冲突代码。冲突报告可稳定映射为 HTTP 409，但路由和 OpenAPI 仍由 F2.8 实现。
+
+PostgreSQL 适配器在一个 `REPEATABLE READ READ ONLY` 快照内从人工批准事件重建预期与当前正式状态，核对 `state_items` 投影，再返回新增、移除、修改和期间事件元数据。投影漂移或未知事务异常不会被伪装成业务冲突。完整边界见 [F2.6 幂等、乐观锁和冲突差异](../phase2/write-consistency-and-conflicts.md)。
 
 完整边界见：
 
@@ -323,6 +329,8 @@ cancel(run_id)
 | `server-boundary.v3` | 服务器组件职责 | 只有应用服务推进正式状态；OIDC 只认证员工；项目授权先于存储；OpenWork Runtime 不是业务服务 |
 | `service-config.v2` | 安全配置摘要 | OIDC、存储和会话加密秘密只报告 `configured`，不提供秘密值 |
 | `service-health.v1` | 存活/就绪报告 | 必需依赖阻断就绪，可选组件只能降级 |
+| `write-consistency.v1` | 正式写结果 | 提交、幂等重放和冲突三种结果分开；授权必须匹配项目、动作和主体 |
+| `write-conflict.v1` | 可复核冲突 | 409 代码、预期/当前版本、状态摘要、正式差异和期间事件可稳定序列化 |
 | `postgresql-authority.v4` | PostgreSQL v1-v9 权威、对象、身份和项目授权元数据 | v1-v6 领域事务不变；v7 对象准入；v8 员工身份；v9 项目授权与 RLS |
 | `object-evidence.v1` | S3 兼容原件准入 | 桶版本控制、ACTIVE-only、SHA-256 内容地址、无分布式事务和延迟删除 |
 | `oidc-identity.v1` | 员工身份与服务器会话 | S256 PKCE、预登记 issuer/subject、令牌加密、会话撤权和人工身份审计 |
