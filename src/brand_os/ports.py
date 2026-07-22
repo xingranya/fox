@@ -11,6 +11,7 @@ from .domain import (
     CommandResult,
     MeetingIngestBatch,
     ProposalDraft,
+    ProposalReopen,
     ProposalReview,
     RelationDraft,
     SourceRecord,
@@ -43,6 +44,8 @@ class CanonicalStorePort(Protocol):
 
     def review_proposal(self, context: CommandContext, review: ProposalReview) -> CommandResult: ...
 
+    def reopen_proposal(self, context: CommandContext, reopen: ProposalReopen) -> CommandResult: ...
+
     def get_project_version(self, project_id: str) -> int: ...
 
     def get_current_state(self, project_id: str) -> Sequence[Mapping[str, object]]: ...
@@ -71,7 +74,17 @@ class CanonicalStorePort(Protocol):
 
     def list_human_actions(self, project_id: str) -> Sequence[Mapping[str, object]]: ...
 
+    def get_proposal_history(
+        self, project_id: str, proposal_id: str
+    ) -> Mapping[str, object]: ...
+
+    def list_proposal_supersessions(
+        self, project_id: str
+    ) -> Sequence[Mapping[str, object]]: ...
+
     def rebuild_state_projection(self, project_id: str) -> int: ...
+
+    def rebuild_proposal_lifecycle(self, project_id: str) -> int: ...
 
 
 class CanonicalBackupPort(Protocol):

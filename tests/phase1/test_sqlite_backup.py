@@ -17,6 +17,7 @@ from brand_os.domain import (
     ActorKind,
     CommandContext,
     ProposalDraft,
+    ProposalReopen,
     ProposalReview,
     ReviewAction,
     SourceRecord,
@@ -68,6 +69,12 @@ class SQLiteBackupTest(unittest.TestCase):
             ProposalReview("proposal-1", ReviewAction.APPROVE, "确认开放问题"),
         )
         backup_id = self.backups.create()
+        manifest = json.loads(
+            (self.layout.backups / backup_id / "manifest.json").read_text(encoding="utf-8")
+        )
+        self.assertEqual(manifest["schema_version"], "sqlite-backup.v4")
+        self.assertEqual(manifest["proposal_lifecycle_count"], 1)
+        self.assertEqual(len(manifest["proposal_digest"]), 64)
         restored_path = self.backups.restore(backup_id, self.base / "restored" / "project.db")
         restored = SQLiteCanonicalStore(restored_path)
         self.assertEqual(restored.schema_version, self.store.schema_version)
@@ -76,6 +83,58 @@ class SQLiteBackupTest(unittest.TestCase):
         self.assertEqual(restored.get_current_state("hongri"), self.store.get_current_state("hongri"))
         self.assertEqual(restored.list_human_actions("hongri"), self.store.list_human_actions("hongri"))
         self.assertTrue(restored.quick_check())
+
+    def test_online_backup_reconciles_reopened_proposal_lifecycle(self) -> None:
+        self.store.review_proposal(
+            CommandContext("hongri", self.fox, "reject", 2),
+            ProposalReview("proposal-1", ReviewAction.REJECT, "证据不足"),
+        )
+        self.store.reopen_proposal(
+            CommandContext("hongri", self.fox, "reopen", 3),
+            ProposalReopen("proposal-1", "补到新证据", ("evidence:new",)),
+        )
+        self.store.review_proposal(
+            CommandContext("hongri", self.fox, "approve-after-reopen", 4),
+            ProposalReview("proposal-1", ReviewAction.APPROVE, "新证据足够"),
+        )
+        self.store.create_proposal(
+            CommandContext("hongri", self.ai, "supersede", 5),
+            ProposalDraft(
+                "proposal-2",
+                "supersede",
+                "OPEN",
+                "question-2",
+                {"id": "question-1", "question": "主推版本是什么"},
+                {"id": "question-2", "question": "本轮主推哪个版本"},
+                "问题表述已经调整",
+                "本轮内容",
+                ("evidence:newer",),
+                supersedes_proposal_id="proposal-1",
+            ),
+        )
+        self.store.review_proposal(
+            CommandContext("hongri", self.fox, "approve-supersede", 6),
+            ProposalReview("proposal-2", ReviewAction.APPROVE, "确认替代旧问题"),
+        )
+        backup_id = self.backups.create()
+        manifest = json.loads(
+            (self.layout.backups / backup_id / "manifest.json").read_text(encoding="utf-8")
+        )
+        self.assertEqual(manifest["proposal_lifecycle_count"], 2)
+        self.assertEqual(manifest["proposal_lifecycle_action_count"], 2)
+        self.assertEqual(manifest["proposal_reopen_count"], 1)
+        self.assertEqual(manifest["proposal_supersession_count"], 1)
+
+        restored_path = self.backups.restore(backup_id, self.base / "proposal-restored.db")
+        restored = SQLiteCanonicalStore(restored_path)
+        self.assertEqual(
+            restored.get_proposal_history("hongri", "proposal-1"),
+            self.store.get_proposal_history("hongri", "proposal-1"),
+        )
+        self.assertEqual(
+            restored.list_proposal_supersessions("hongri"),
+            self.store.list_proposal_supersessions("hongri"),
+        )
 
     def test_online_backup_reconciles_imported_source_versions(self) -> None:
         manifest_path = self.base / "source-import.json"
@@ -209,6 +268,12 @@ class SQLiteBackupTest(unittest.TestCase):
             "meeting_item_count",
             "meeting_conflict_count",
             "meeting_digest",
+            "proposal_lifecycle_count",
+            "proposal_lifecycle_action_count",
+            "proposal_reopen_count",
+            "proposal_supersession_count",
+            "meeting_item_proposal_count",
+            "proposal_digest",
         ):
             manifest.pop(key)
         manifest_path.write_text(
@@ -229,6 +294,12 @@ class SQLiteBackupTest(unittest.TestCase):
             "meeting_item_count",
             "meeting_conflict_count",
             "meeting_digest",
+            "proposal_lifecycle_count",
+            "proposal_lifecycle_action_count",
+            "proposal_reopen_count",
+            "proposal_supersession_count",
+            "meeting_item_proposal_count",
+            "proposal_digest",
         ):
             manifest.pop(key)
         manifest_path.write_text(
@@ -237,10 +308,31 @@ class SQLiteBackupTest(unittest.TestCase):
         restored_path = self.backups.restore(backup_id, self.base / "v2-restored.db")
         self.assertTrue(SQLiteCanonicalStore(restored_path).quick_check())
 
+    def test_legacy_v3_manifest_remains_restorable(self) -> None:
+        backup_id = self.backups.create()
+        manifest_path = self.layout.backups / backup_id / "manifest.json"
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        manifest["schema_version"] = "sqlite-backup.v3"
+        for key in (
+            "proposal_lifecycle_count",
+            "proposal_lifecycle_action_count",
+            "proposal_reopen_count",
+            "proposal_supersession_count",
+            "meeting_item_proposal_count",
+            "proposal_digest",
+        ):
+            manifest.pop(key)
+        manifest_path.write_text(
+            json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+        )
+        restored_path = self.backups.restore(backup_id, self.base / "v3-restored.db")
+        self.assertTrue(SQLiteCanonicalStore(restored_path).quick_check())
+
     def test_actual_old_schema_databases_do_not_require_newer_tables(self) -> None:
         cases = (
             (2, "sqlite-backup.v1"),
             (3, "sqlite-backup.v2"),
+            (4, "sqlite-backup.v3"),
         )
         source_fields = (
             "source_import_batch_count",
@@ -257,6 +349,14 @@ class SQLiteBackupTest(unittest.TestCase):
             "meeting_conflict_count",
             "meeting_digest",
         )
+        proposal_fields = (
+            "proposal_lifecycle_count",
+            "proposal_lifecycle_action_count",
+            "proposal_reopen_count",
+            "proposal_supersession_count",
+            "meeting_item_proposal_count",
+            "proposal_digest",
+        )
         for schema_version, manifest_version in cases:
             with self.subTest(schema_version=schema_version, manifest_version=manifest_version):
                 database = self.base / f"schema-{schema_version}.db"
@@ -267,7 +367,12 @@ class SQLiteBackupTest(unittest.TestCase):
                 manifest_path = self.layout.backups / backup_id / "manifest.json"
                 manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
                 manifest["schema_version"] = manifest_version
-                fields = meeting_fields if schema_version == 3 else (*source_fields, *meeting_fields)
+                fields_by_schema = {
+                    2: (*source_fields, *meeting_fields, *proposal_fields),
+                    3: (*meeting_fields, *proposal_fields),
+                    4: proposal_fields,
+                }
+                fields = fields_by_schema[schema_version]
                 for key in fields:
                     manifest.pop(key)
                 manifest_path.write_text(

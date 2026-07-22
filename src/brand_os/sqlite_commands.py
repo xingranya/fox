@@ -2,37 +2,29 @@
 
 from __future__ import annotations
 
-import json
 import sqlite3
-from collections.abc import Mapping
 from dataclasses import asdict
-from uuid import uuid4
 
 from .domain import (
     ActorKind,
     ClassificationCandidate,
     CommandContext,
     CommandResult,
-    ProposalDraft,
-    ProposalReview,
     RelationDraft,
-    ReviewAction,
     SourceRecord,
     legacy_source_version_id,
 )
 from .sqlite_base import (
-    APPROVED_TYPE_MAP,
     BusinessPermissionDenied,
     ResourceConflict,
     SQLiteStoreBase,
     VersionConflict,
-    canonical_json,
     utc_now,
 )
 
 
 class SQLiteCommandMixin(SQLiteStoreBase):
-    """实现创建项目、来源、候选、Proposal、关系和人工评审。"""
+    """实现项目、来源、候选和工作层关系写入。"""
 
     def create_project(self, context: CommandContext, name: str) -> CommandResult:
         """创建项目并写入第一条权威事件。"""
@@ -226,58 +218,6 @@ class SQLiteCommandMixin(SQLiteStoreBase):
 
         return self._execute(context, "record_candidate", request, operation)
 
-    def create_proposal(self, context: CommandContext, proposal: ProposalDraft) -> CommandResult:
-        """创建不会直接改变当前状态的 Proposal。"""
-
-        request = {"proposal": asdict(proposal), "expected_version": context.expected_version}
-
-        def operation(connection: sqlite3.Connection, version: int) -> tuple[str, str]:
-            payload = {
-                **asdict(proposal),
-                "before": dict(proposal.before) if proposal.before is not None else None,
-                "after": dict(proposal.after),
-                "evidence_refs": list(proposal.evidence_refs),
-            }
-            event_id = self._append_event(
-                connection,
-                context,
-                version,
-                "proposal",
-                proposal.proposal_id,
-                "PROPOSAL_CREATED",
-                payload,
-            )
-            connection.execute(
-                """
-                INSERT INTO proposals(
-                    proposal_id, project_id, base_state_version, proposal_kind, subject_id,
-                    classification, before_json, after_json, reason, impact_scope,
-                    created_event_id, created_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    proposal.proposal_id,
-                    context.project_id,
-                    context.expected_version,
-                    proposal.proposal_kind,
-                    proposal.subject_id,
-                    proposal.classification,
-                    canonical_json(proposal.before) if proposal.before is not None else None,
-                    canonical_json(proposal.after),
-                    proposal.reason,
-                    proposal.impact_scope,
-                    event_id,
-                    utc_now(),
-                ),
-            )
-            connection.executemany(
-                "INSERT INTO proposal_evidence(proposal_id, evidence_ref) VALUES (?, ?)",
-                ((proposal.proposal_id, evidence_ref) for evidence_ref in proposal.evidence_refs),
-            )
-            return event_id, proposal.proposal_id
-
-        return self._execute(context, "create_proposal", request, operation)
-
     def add_relation(self, context: CommandContext, relation: RelationDraft) -> CommandResult:
         """登记带证据的工作层关系，不自动提升为正式决定。"""
 
@@ -316,106 +256,3 @@ class SQLiteCommandMixin(SQLiteStoreBase):
             return event_id, relation.relation_id
 
         return self._execute(context, "add_relation", request, operation)
-
-    def review_proposal(self, context: CommandContext, review: ProposalReview) -> CommandResult:
-        """仅允许 Fox 的人工动作改变 Proposal 和当前投影。"""
-
-        if context.actor.kind is not ActorKind.HUMAN or context.actor.actor_id not in self.allowed_reviewers:
-            raise BusinessPermissionDenied("只有已配置的人工评审人可以改变正式状态")
-        request = {"review": asdict(review), "expected_version": context.expected_version}
-
-        def operation(connection: sqlite3.Connection, version: int) -> tuple[str, str]:
-            proposal = connection.execute(
-                "SELECT * FROM proposals WHERE project_id = ? AND proposal_id = ?",
-                (context.project_id, review.proposal_id),
-            ).fetchone()
-            if proposal is None:
-                raise ResourceConflict("Proposal 不存在")
-            if proposal["status"] != "proposed":
-                raise ResourceConflict("Proposal 已经完成评审")
-            evidence_refs = [
-                row[0]
-                for row in connection.execute(
-                    "SELECT evidence_ref FROM proposal_evidence WHERE proposal_id = ? ORDER BY evidence_ref",
-                    (review.proposal_id,),
-                )
-            ]
-            before = json.loads(proposal["before_json"]) if proposal["before_json"] else None
-            original_after = json.loads(proposal["after_json"])
-            after = dict(review.replacement_after) if review.replacement_after is not None else original_after
-            approved = review.action in {ReviewAction.APPROVE, ReviewAction.MODIFY_AND_APPROVE}
-            state_item = self._state_item(proposal, after) if approved else None
-            payload = {
-                "proposal_id": review.proposal_id,
-                "action": review.action.value,
-                "reason": review.reason,
-                "before": before,
-                "after": after if approved else None,
-                "evidence_refs": evidence_refs,
-                "state_item": state_item,
-            }
-            event_type = "PROPOSAL_APPROVED" if approved else "PROPOSAL_REJECTED"
-            event_id = self._append_event(
-                connection,
-                context,
-                version,
-                "proposal",
-                review.proposal_id,
-                event_type,
-                payload,
-            )
-            now = utc_now()
-            connection.execute(
-                """
-                UPDATE proposals
-                SET status = ?, after_json = ?, reviewed_event_id = ?, reviewed_at = ?
-                WHERE proposal_id = ? AND status = 'proposed'
-                """,
-                (
-                    "approved" if approved else "rejected",
-                    canonical_json(after if approved else original_after),
-                    event_id,
-                    now,
-                    review.proposal_id,
-                ),
-            )
-            connection.execute(
-                """
-                INSERT INTO human_actions(
-                    action_id, project_id, proposal_id, action, actor_id, reason,
-                    before_json, after_json, evidence_json, base_state_version, event_id, acted_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    str(uuid4()),
-                    context.project_id,
-                    review.proposal_id,
-                    review.action.value,
-                    context.actor.actor_id,
-                    review.reason,
-                    canonical_json(before) if before is not None else None,
-                    canonical_json(after) if approved else None,
-                    canonical_json(evidence_refs),
-                    context.expected_version,
-                    event_id,
-                    now,
-                ),
-            )
-            if state_item is not None:
-                self._apply_approval_projection(connection, context.project_id, state_item, event_id, version)
-            return event_id, review.proposal_id
-
-        return self._execute(context, "review_proposal", request, operation)
-
-    def _state_item(self, proposal: sqlite3.Row, after: Mapping[str, object]) -> dict[str, object]:
-        """从批准后的 Proposal 生成最小当前状态项。"""
-
-        item_id = proposal["subject_id"] or after.get("id")
-        if not isinstance(item_id, str) or not item_id.strip():
-            raise ResourceConflict("批准 Proposal 前必须有稳定 subject_id 或 after.id")
-        return {
-            "item_type": APPROVED_TYPE_MAP.get(proposal["classification"], proposal["classification"]),
-            "item_id": item_id,
-            "payload": dict(after),
-            "source_proposal_id": proposal["proposal_id"],
-        }

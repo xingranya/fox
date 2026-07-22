@@ -1,0 +1,43 @@
+{
+  "schema_version": "proposal-lifecycle.v1",
+  "purpose": "让工作层候选经过 Fox 逐项确认、修改、驳回、替代或重开，并保留完整历史",
+  "statuses": ["proposed", "approved", "rejected", "superseded"],
+  "transitions": [
+    {"from": "proposed", "action": "approve", "to": "approved", "actor": "Fox"},
+    {"from": "proposed", "action": "modify_and_approve", "to": "approved", "actor": "Fox"},
+    {"from": "proposed", "action": "reject", "to": "rejected", "actor": "Fox"},
+    {"from": "rejected", "action": "reopen", "to": "proposed", "actor": "Fox", "requires_new_evidence": true},
+    {"from": "approved", "action": "supersede", "to": "superseded", "actor": "Fox", "requires_successor_proposal": true}
+  ],
+  "proposal": {
+    "meeting_item_link_optional": true,
+    "meeting_item_link_requires_matching_classification_and_evidence": true,
+    "supersede_requires": [
+      "supersedes_proposal_id",
+      "before",
+      "new_subject_id",
+      "approved_predecessor",
+      "current_predecessor_state"
+    ]
+  },
+  "state_projection": {
+    "changes_only_on_human_approval": true,
+    "same_subject_silent_overwrite_forbidden": true,
+    "supersede_removes_predecessor_from_current_projection": true,
+    "supersession_relation_and_old_payload_preserved": true,
+    "rebuild_source": "human proposal events"
+  },
+  "audit": {
+    "records_reason": true,
+    "records_evidence": true,
+    "records_before_and_after": true,
+    "records_actor_and_time": true,
+    "records_base_state_version": true
+  },
+  "authority": {
+    "proposal_creation_actor_kinds": ["HUMAN", "AI", "WORKFLOW", "SYSTEM"],
+    "review_reopen_and_supersede_actor_kinds": ["HUMAN"],
+    "allowed_reviewer_ids": ["Fox"],
+    "tool_permission_is_business_approval": false
+  }
+}

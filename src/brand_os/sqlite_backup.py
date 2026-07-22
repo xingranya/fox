@@ -37,7 +37,7 @@ class SQLiteBackupService:
             metadata = self._database_metadata(backup_database)
             digest, size = sha256_file(backup_database)
             manifest = {
-                "schema_version": "sqlite-backup.v3",
+                "schema_version": "sqlite-backup.v4",
                 "backup_id": backup_id,
                 "created_at": datetime.now(UTC).isoformat(),
                 "database_sha256": digest,
@@ -71,6 +71,7 @@ class SQLiteBackupService:
             "sqlite-backup.v1",
             "sqlite-backup.v2",
             "sqlite-backup.v3",
+            "sqlite-backup.v4",
         } or manifest.get("backup_id") != backup_id:
             raise BackupError("SQLite 备份版本或 ID 不匹配")
         digest, size = sha256_file(source_database)
@@ -215,6 +216,55 @@ class SQLiteBackupService:
                     separators=(",", ":"),
                 ).encode("utf-8")
             ).hexdigest()
+            proposal_lifecycle_count = 0
+            proposal_lifecycle_action_count = 0
+            proposal_reopen_count = 0
+            proposal_supersession_count = 0
+            meeting_item_proposal_count = 0
+            proposal_rows = {}
+            if schema_version >= 5:
+                proposal_lifecycle_count = int(
+                    connection.execute("SELECT COUNT(*) FROM proposal_lifecycle").fetchone()[0]
+                )
+                proposal_lifecycle_action_count = int(
+                    connection.execute(
+                        "SELECT COUNT(*) FROM proposal_lifecycle_actions"
+                    ).fetchone()[0]
+                )
+                proposal_reopen_count = int(
+                    connection.execute(
+                        "SELECT COUNT(*) FROM proposal_lifecycle_actions WHERE action = 'reopen'"
+                    ).fetchone()[0]
+                )
+                proposal_supersession_count = int(
+                    connection.execute("SELECT COUNT(*) FROM proposal_supersessions").fetchone()[0]
+                )
+                meeting_item_proposal_count = int(
+                    connection.execute("SELECT COUNT(*) FROM meeting_item_proposals").fetchone()[0]
+                )
+                proposal_rows = {
+                    table: [
+                        list(row)
+                        for row in connection.execute(f"SELECT * FROM {table} ORDER BY rowid")
+                    ]
+                    for table in (
+                        "proposals",
+                        "proposal_evidence",
+                        "human_actions",
+                        "proposal_lifecycle",
+                        "meeting_item_proposals",
+                        "proposal_lifecycle_actions",
+                        "proposal_supersessions",
+                    )
+                }
+            proposal_digest = hashlib.sha256(
+                json.dumps(
+                    proposal_rows,
+                    ensure_ascii=False,
+                    sort_keys=True,
+                    separators=(",", ":"),
+                ).encode("utf-8")
+            ).hexdigest()
         return {
             "store_schema_version": schema_version,
             "event_count": event_count,
@@ -229,10 +279,16 @@ class SQLiteBackupService:
             "meeting_segment_count": meeting_segment_count,
             "meeting_item_count": meeting_item_count,
             "meeting_conflict_count": meeting_conflict_count,
+            "proposal_lifecycle_count": proposal_lifecycle_count,
+            "proposal_lifecycle_action_count": proposal_lifecycle_action_count,
+            "proposal_reopen_count": proposal_reopen_count,
+            "proposal_supersession_count": proposal_supersession_count,
+            "meeting_item_proposal_count": meeting_item_proposal_count,
             "project_versions": project_versions,
             "state_digest": state_digest,
             "source_digest": source_digest,
             "meeting_digest": meeting_digest,
+            "proposal_digest": proposal_digest,
         }
 
     def _manifest_metadata(self, manifest: dict[str, object]) -> dict[str, object]:
@@ -244,7 +300,11 @@ class SQLiteBackupService:
             "project_versions": manifest.get("project_versions"),
             "state_digest": manifest.get("state_digest"),
         }
-        if manifest.get("schema_version") in {"sqlite-backup.v2", "sqlite-backup.v3"}:
+        if manifest.get("schema_version") in {
+            "sqlite-backup.v2",
+            "sqlite-backup.v3",
+            "sqlite-backup.v4",
+        }:
             metadata.update(
                 {
                     "source_import_batch_count": manifest.get("source_import_batch_count"),
@@ -254,7 +314,7 @@ class SQLiteBackupService:
                     "source_digest": manifest.get("source_digest"),
                 }
             )
-        if manifest.get("schema_version") == "sqlite-backup.v3":
+        if manifest.get("schema_version") in {"sqlite-backup.v3", "sqlite-backup.v4"}:
             metadata.update(
                 {
                     "meeting_ingest_batch_count": manifest.get("meeting_ingest_batch_count"),
@@ -263,6 +323,21 @@ class SQLiteBackupService:
                     "meeting_item_count": manifest.get("meeting_item_count"),
                     "meeting_conflict_count": manifest.get("meeting_conflict_count"),
                     "meeting_digest": manifest.get("meeting_digest"),
+                }
+            )
+        if manifest.get("schema_version") == "sqlite-backup.v4":
+            metadata.update(
+                {
+                    "proposal_lifecycle_count": manifest.get("proposal_lifecycle_count"),
+                    "proposal_lifecycle_action_count": manifest.get(
+                        "proposal_lifecycle_action_count"
+                    ),
+                    "proposal_reopen_count": manifest.get("proposal_reopen_count"),
+                    "proposal_supersession_count": manifest.get("proposal_supersession_count"),
+                    "meeting_item_proposal_count": manifest.get(
+                        "meeting_item_proposal_count"
+                    ),
+                    "proposal_digest": manifest.get("proposal_digest"),
                 }
             )
         return metadata
@@ -290,6 +365,20 @@ class SQLiteBackupService:
                 "meeting_item_count",
                 "meeting_conflict_count",
                 "meeting_digest",
+            ):
+                metadata.pop(key)
+        if manifest.get("schema_version") in {
+            "sqlite-backup.v1",
+            "sqlite-backup.v2",
+            "sqlite-backup.v3",
+        }:
+            for key in (
+                "proposal_lifecycle_count",
+                "proposal_lifecycle_action_count",
+                "proposal_reopen_count",
+                "proposal_supersession_count",
+                "meeting_item_proposal_count",
+                "proposal_digest",
             ):
                 metadata.pop(key)
         return metadata

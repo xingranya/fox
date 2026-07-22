@@ -11,6 +11,9 @@ ROOT = Path(__file__).parents[2]
 CONTRACT_PATH = ROOT / "contracts" / "phase1" / "canonical-store.json"
 SOURCE_IMPORT_CONTRACT_PATH = ROOT / "contracts" / "phase1" / "source-import.json"
 MEETING_INGEST_CONTRACT_PATH = ROOT / "contracts" / "phase1" / "meeting-ingest.json"
+PROPOSAL_LIFECYCLE_CONTRACT_PATH = (
+    ROOT / "contracts" / "phase1" / "proposal-lifecycle.json"
+)
 
 
 class CanonicalStoreContractTest(unittest.TestCase):
@@ -25,9 +28,12 @@ class CanonicalStoreContractTest(unittest.TestCase):
         cls.meeting_ingest_contract = json.loads(
             MEETING_INGEST_CONTRACT_PATH.read_text(encoding="utf-8")
         )
+        cls.proposal_lifecycle_contract = json.loads(
+            PROPOSAL_LIFECYCLE_CONTRACT_PATH.read_text(encoding="utf-8")
+        )
 
     def test_contract_is_replaceable_and_versioned(self) -> None:
-        self.assertEqual(self.contract["schema_version"], "canonical-store-port.v3")
+        self.assertEqual(self.contract["schema_version"], "canonical-store-port.v4")
         self.assertTrue(self.contract["replaceable"])
         self.assertEqual(self.contract["current_implementation"], "sqlite")
 
@@ -42,7 +48,40 @@ class CanonicalStoreContractTest(unittest.TestCase):
 
     def test_agent_cannot_receive_business_approval_or_direct_sql(self) -> None:
         forbidden = set(self.contract["forbidden_agent_operations"])
-        self.assertTrue({"approve", "modify_and_approve", "reject", "direct_sql"}.issubset(forbidden))
+        self.assertTrue(
+            {
+                "approve",
+                "modify_and_approve",
+                "reject",
+                "reopen",
+                "approve_supersede",
+                "direct_sql",
+            }.issubset(forbidden)
+        )
+
+    def test_reopen_and_supersede_keep_fox_as_the_only_business_reviewer(self) -> None:
+        reopen = next(
+            command for command in self.contract["commands"]
+            if command["name"] == "reopen_proposal"
+        )
+        self.assertEqual(reopen["allowed_actor_kinds"], ["HUMAN"])
+        self.assertEqual(reopen["allowed_actor_ids"], ["Fox"])
+        self.assertFalse(reopen["changes_current_state"])
+        self.assertTrue(
+            self.proposal_lifecycle_contract["state_projection"][
+                "supersede_removes_predecessor_from_current_projection"
+            ]
+        )
+        self.assertFalse(
+            self.proposal_lifecycle_contract["authority"][
+                "tool_permission_is_business_approval"
+            ]
+        )
+        self.assertEqual(
+            self.contract["proposal_lifecycle_rebuild_source"],
+            "proposal events from configured human reviewers",
+        )
+        self.assertEqual(self.contract["backup"]["schema_version"], "sqlite-backup.v4")
 
     def test_every_write_requires_idempotency_and_expected_version(self) -> None:
         requirements = self.contract["write_requirements"]

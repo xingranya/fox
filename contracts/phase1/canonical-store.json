@@ -1,5 +1,5 @@
 {
-  "schema_version": "canonical-store-port.v3",
+  "schema_version": "canonical-store-port.v4",
   "authority": "human_confirmed_events",
   "current_implementation": "sqlite",
   "replaceable": true,
@@ -39,7 +39,8 @@
     {
       "name": "create_proposal",
       "allowed_actor_kinds": ["HUMAN", "AI", "WORKFLOW", "SYSTEM"],
-      "changes_current_state": false
+      "changes_current_state": false,
+      "request_schema": "proposal-lifecycle.v1"
     },
     {
       "name": "add_relation",
@@ -50,7 +51,15 @@
       "name": "review_proposal",
       "allowed_actor_kinds": ["HUMAN"],
       "allowed_actor_ids": ["Fox"],
-      "changes_current_state": true
+      "changes_current_state": true,
+      "request_schema": "proposal-lifecycle.v1"
+    },
+    {
+      "name": "reopen_proposal",
+      "allowed_actor_kinds": ["HUMAN"],
+      "allowed_actor_ids": ["Fox"],
+      "changes_current_state": false,
+      "request_schema": "proposal-lifecycle.v1"
     }
   ],
   "query_capabilities": [
@@ -58,16 +67,22 @@
     "source_versions",
     "source_aliases",
     "source_gaps",
-    "meeting_ingest_report"
+    "meeting_ingest_report",
+    "proposal_history",
+    "proposal_supersessions"
   ],
   "forbidden_agent_operations": [
     "approve",
     "modify_and_approve",
     "reject",
+    "reopen",
+    "approve_supersede",
     "direct_sql"
   ],
   "projection_rebuild_source": "PROPOSAL_APPROVED events from configured human reviewers",
+  "proposal_lifecycle_rebuild_source": "proposal events from configured human reviewers",
   "backup": {
+    "schema_version": "sqlite-backup.v4",
     "method": "sqlite_online_backup_api",
     "direct_live_file_copy_forbidden": true,
     "restore_checks": [
@@ -77,14 +92,25 @@
       "event_count",
       "proposal_count",
       "human_action_count",
+      "source_import_batch_count",
+      "logical_source_count",
+      "source_version_count",
+      "source_gap_count",
       "meeting_ingest_batch_count",
       "meeting_count",
       "meeting_segment_count",
       "meeting_item_count",
       "meeting_conflict_count",
+      "proposal_lifecycle_count",
+      "proposal_lifecycle_action_count",
+      "proposal_reopen_count",
+      "proposal_supersession_count",
+      "meeting_item_proposal_count",
       "project_versions",
       "state_digest",
-      "meeting_digest"
+      "source_digest",
+      "meeting_digest",
+      "proposal_digest"
     ]
   }
 }

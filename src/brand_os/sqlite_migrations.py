@@ -620,6 +620,101 @@ MIGRATIONS = (
             "CREATE INDEX idx_meeting_conflicts_state ON meeting_conflict_candidates(project_id, state_item_type, state_item_id)",
         ),
     ),
+    Migration(
+        5,
+        "proposal_lifecycle_and_supersession",
+        (
+            "ALTER TABLE proposals ADD COLUMN supersedes_proposal_id TEXT REFERENCES proposals(proposal_id) ON DELETE RESTRICT",
+            "ALTER TABLE proposals ADD COLUMN source_meeting_item_id TEXT",
+            """
+            CREATE TABLE proposal_lifecycle (
+                project_id TEXT NOT NULL,
+                proposal_id TEXT NOT NULL,
+                status TEXT NOT NULL CHECK(status IN (
+                    'proposed','approved','rejected','superseded'
+                )),
+                revision INTEGER NOT NULL DEFAULT 0 CHECK(revision >= 0),
+                last_event_id TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                PRIMARY KEY(project_id, proposal_id),
+                FOREIGN KEY(proposal_id) REFERENCES proposals(proposal_id) ON DELETE CASCADE,
+                FOREIGN KEY(last_event_id) REFERENCES events(event_id) ON DELETE RESTRICT
+            )
+            """,
+            """
+            INSERT INTO proposal_lifecycle(
+                project_id, proposal_id, status, revision, last_event_id, updated_at
+            )
+            SELECT project_id, proposal_id, status, 0,
+                   COALESCE(reviewed_event_id, created_event_id),
+                   COALESCE(reviewed_at, created_at)
+            FROM proposals
+            """,
+            """
+            CREATE TABLE meeting_item_proposals (
+                project_id TEXT NOT NULL,
+                item_id TEXT NOT NULL,
+                proposal_id TEXT NOT NULL,
+                linked_event_id TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                PRIMARY KEY(project_id, item_id),
+                UNIQUE(project_id, proposal_id),
+                FOREIGN KEY(project_id, item_id)
+                    REFERENCES meeting_interpretation_items(project_id, item_id) ON DELETE RESTRICT,
+                FOREIGN KEY(proposal_id) REFERENCES proposals(proposal_id) ON DELETE CASCADE,
+                FOREIGN KEY(linked_event_id) REFERENCES events(event_id) ON DELETE RESTRICT
+            )
+            """,
+            """
+            CREATE TABLE proposal_lifecycle_actions (
+                action_id TEXT PRIMARY KEY,
+                project_id TEXT NOT NULL,
+                proposal_id TEXT NOT NULL,
+                action TEXT NOT NULL CHECK(action IN ('reopen','supersede')),
+                actor_id TEXT NOT NULL,
+                reason TEXT NOT NULL,
+                before_status TEXT NOT NULL CHECK(before_status IN (
+                    'proposed','approved','rejected','superseded'
+                )),
+                after_status TEXT NOT NULL CHECK(after_status IN (
+                    'proposed','approved','rejected','superseded'
+                )),
+                evidence_json TEXT NOT NULL,
+                base_state_version INTEGER NOT NULL CHECK(base_state_version >= 0),
+                event_id TEXT NOT NULL,
+                acted_at TEXT NOT NULL,
+                FOREIGN KEY(project_id, proposal_id)
+                    REFERENCES proposal_lifecycle(project_id, proposal_id) ON DELETE RESTRICT,
+                FOREIGN KEY(event_id) REFERENCES events(event_id) ON DELETE RESTRICT
+            )
+            """,
+            """
+            CREATE TABLE proposal_supersessions (
+                project_id TEXT NOT NULL,
+                predecessor_proposal_id TEXT NOT NULL,
+                successor_proposal_id TEXT NOT NULL,
+                predecessor_item_type TEXT NOT NULL,
+                predecessor_item_id TEXT NOT NULL,
+                successor_item_type TEXT NOT NULL,
+                successor_item_id TEXT NOT NULL,
+                predecessor_payload_json TEXT NOT NULL,
+                successor_payload_json TEXT NOT NULL,
+                approved_event_id TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                PRIMARY KEY(project_id, predecessor_proposal_id),
+                UNIQUE(project_id, successor_proposal_id),
+                CHECK(predecessor_proposal_id <> successor_proposal_id),
+                FOREIGN KEY(project_id, predecessor_proposal_id)
+                    REFERENCES proposal_lifecycle(project_id, proposal_id) ON DELETE RESTRICT,
+                FOREIGN KEY(project_id, successor_proposal_id)
+                    REFERENCES proposal_lifecycle(project_id, proposal_id) ON DELETE RESTRICT,
+                FOREIGN KEY(approved_event_id) REFERENCES events(event_id) ON DELETE RESTRICT
+            )
+            """,
+            "CREATE INDEX idx_proposal_lifecycle_status ON proposal_lifecycle(project_id, status, updated_at)",
+            "CREATE INDEX idx_proposal_lifecycle_actions ON proposal_lifecycle_actions(project_id, proposal_id, acted_at)",
+        ),
+    ),
 )
 
 

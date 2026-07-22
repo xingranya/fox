@@ -519,6 +519,8 @@ class ProposalDraft:
     reason: str
     impact_scope: str
     evidence_refs: tuple[str, ...]
+    supersedes_proposal_id: str | None = None
+    source_meeting_item_id: str | None = None
 
     def __post_init__(self) -> None:
         for value, field in (
@@ -533,6 +535,19 @@ class ProposalDraft:
             raise ValueError("classification 不在 Phase 0 冻结词表中")
         if not self.evidence_refs or any(not item.strip() for item in self.evidence_refs):
             raise ValueError("Proposal 必须至少有一个有效 evidence_ref")
+        if self.proposal_kind == "supersede":
+            if self.supersedes_proposal_id is None:
+                raise ValueError("supersede Proposal 必须指定 supersedes_proposal_id")
+            if self.before is None:
+                raise ValueError("supersede Proposal 必须保存被替代状态的旧值")
+        elif self.supersedes_proposal_id is not None:
+            raise ValueError("只有 supersede Proposal 可以指定 supersedes_proposal_id")
+        for value, field in (
+            (self.supersedes_proposal_id, "supersedes_proposal_id"),
+            (self.source_meeting_item_id, "source_meeting_item_id"),
+        ):
+            if value is not None:
+                _require_text(value, field)
 
 
 @dataclass(frozen=True, slots=True)
@@ -577,6 +592,21 @@ class ProposalReview:
             raise ValueError("modify_and_approve 必须提供 replacement_after")
         if self.action is not ReviewAction.MODIFY_AND_APPROVE and self.replacement_after is not None:
             raise ValueError("只有 modify_and_approve 可以提供 replacement_after")
+
+
+@dataclass(frozen=True, slots=True)
+class ProposalReopen:
+    """记录 Fox 以新证据重开已驳回 Proposal 的动作。"""
+
+    proposal_id: str
+    reason: str
+    evidence_refs: tuple[str, ...]
+
+    def __post_init__(self) -> None:
+        _require_text(self.proposal_id, "proposal_id")
+        _require_text(self.reason, "reason")
+        if not self.evidence_refs or any(not item.strip() for item in self.evidence_refs):
+            raise ValueError("重开 Proposal 必须提供新证据")
 
 
 @dataclass(frozen=True, slots=True)
