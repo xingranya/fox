@@ -37,6 +37,26 @@
         "confirmed_at": {"type": ["string", "null"], "format": "date-time"}
       },
       "additionalProperties": false
+    },
+    "review_outcome": {
+      "type": "object",
+      "required": ["selected_candidate", "ai_like_selection", "veto_detected", "vetoes"],
+      "properties": {
+        "selected_candidate": {"type": "string", "pattern": "^[A-Z]$"},
+        "ai_like_selection": {
+          "type": ["object", "null"],
+          "properties": {
+            "candidate": {"type": "string", "pattern": "^[A-Z]$"},
+            "description": {"type": "string"},
+            "reference": {"type": "string"}
+          },
+          "required": ["candidate"],
+          "additionalProperties": false
+        },
+        "veto_detected": {"type": ["boolean", "null"]},
+        "vetoes": {"type": "array", "items": {"type": "string"}, "uniqueItems": true}
+      },
+      "additionalProperties": false
     }
   },
   "additionalProperties": false

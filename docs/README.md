@@ -2,7 +2,7 @@
 
 本目录保存 Brand Project OS 的产品、分析、架构、验证和执行 SPEC。2026-07-13 依据[场景化需求澄清与产品反馈](../20260713_品牌AI长期项目协作系统_场景化需求澄清与产品反馈_v0.1(1).md)完成范围重定：当前先用鸿日项目证明 Fox 本地单用户真实提效，再决定是否进入团队服务器化。
 
-当前尚无应用代码，Phase 0 已完成 5/7：样本治理、会议分类、运行协议、黄金测试和 OpenWork 技术适配契约已建立；BrandBench 等待 Fox 人工评分。未经用户明确要求，不启动桌面应用、Web、数据库、Docker 或其他常驻服务。
+当前已有 Phase 1 本地核心骨架。Phase 0 已完成 7/7：样本治理、会议分类、运行协议、黄金测试、BrandBench 人工评审和 OpenWork 技术适配边界已经通过；F1.1 的可配置工作空间、只读证据与备份恢复也已完成。未经用户明确要求，不启动桌面应用、Web、数据库、Docker 或其他常驻服务。
 
 ## 当前结论
 
@@ -45,6 +45,10 @@
 - [Phase 2：鸿日真实工作连续验证](progress/phase-2-real-work-validation.md)
 - [Phase 3：团队服务器化决策门](progress/phase-3-team-server-decision.md)
 
+## Phase 1 当前实现
+
+- [F1.1 本地工作空间、只读证据与备份恢复](phase1/local-workspace.md)
+
 ## Phase 0 当前证据
 
 - [Example 脱敏样本登记](phase0/example-sample-register.md)
@@ -52,6 +56,7 @@
 - [已知资料缺口](phase0/known-source-gaps.md)
 - [BrandBench 匿名评审指引](phase0/brandbench-review-guide.md)
 - [BrandBench 首轮人工基线结果](phase0/brandbench-baseline-result.md)
+- [BrandBench 第二轮人工评审结果](phase0/brandbench-second-round-result.md)
 - [技术实施就绪与 OpenWork 交接](phase0/technical-readiness-and-openwork-handoff.md)
 - [阶段成果简报](phase0/leadership-progress-brief.md)
 

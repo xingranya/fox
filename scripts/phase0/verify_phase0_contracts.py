@@ -8,12 +8,14 @@ import json
 import re
 from dataclasses import dataclass
 from pathlib import Path
+from statistics import median
 
 
 ROOT = Path(__file__).parents[2]
 GOLDEN_PATH = ROOT / "fixtures" / "phase0" / "golden-cases.json"
 BRANDBENCH_PATH = ROOT / "fixtures" / "phase0" / "brandbench-review-template.json"
 BRANDBENCH_BASELINE_PATH = ROOT / "fixtures" / "phase0" / "brandbench-baseline-result.json"
+BRANDBENCH_HUMANIZED_PATH = ROOT / "fixtures" / "phase0" / "brandbench-humanized-result.json"
 PORT_CATALOG_PATH = ROOT / "contracts" / "phase0" / "port-catalog.json"
 OPENWORK_ADAPTER_PATH = ROOT / "contracts" / "phase0" / "openwork-adapter.json"
 REPORT_PATH = ROOT / ".work" / "phase0" / "contract-verification.json"
@@ -117,6 +119,47 @@ def validate_brandbench_baseline(data: dict[str, object]) -> list[CheckResult]:
     ]
 
 
+def scores_by_candidate(data: dict[str, object]) -> dict[str, dict[str, int]]:
+    """按候选与维度整理已完成的人工评分。"""
+
+    result: dict[str, dict[str, int]] = {}
+    for row in data.get("scores", []):
+        candidate = row.get("candidate")
+        dimension = row.get("dimension")
+        score = row.get("score")
+        if isinstance(candidate, str) and isinstance(dimension, str) and isinstance(score, int):
+            result.setdefault(candidate, {})[dimension] = score
+    return result
+
+
+def validate_brandbench_humanized(
+    data: dict[str, object], baseline: dict[str, object]
+) -> list[CheckResult]:
+    """验证第二轮人工评分，并按首轮普通版基线复算质量门。"""
+
+    scores = scores_by_candidate(data)
+    baseline_scores = scores_by_candidate(baseline).get("A", {})
+    selected = data.get("review_outcome", {}).get("selected_candidate")
+    selected_scores = scores.get(selected, {}) if isinstance(selected, str) else {}
+    improved = sum(
+        selected_scores.get(dimension, 0) > baseline_scores.get(dimension, 0)
+        for dimension in EXPECTED_DIMENSIONS
+    )
+    selected_values = [selected_scores.get(dimension, 0) for dimension in EXPECTED_DIMENSIONS]
+    baseline_values = [baseline_scores.get(dimension, 0) for dimension in EXPECTED_DIMENSIONS]
+    outcome = data.get("review_outcome", {})
+    return [
+        CheckResult("第二轮人工评审完成", data.get("review_status") == "completed", "必须由 Fox 完成"),
+        CheckResult("第二轮评分矩阵完整", all(len(scores.get(candidate, {})) == 6 for candidate in ["A", "B"]), "A/B 均须有六维评分"),
+        CheckResult("第二轮评审人为 Fox", data.get("reviewer_confirmation", {}).get("reviewed_by") == "Fox", "AI 不得代评"),
+        CheckResult("Fox 已选择候选", selected in {"A", "B"}, "必须记录人工选择"),
+        CheckResult("第二轮无一票否决", outcome.get("veto_detected") is False and outcome.get("vetoes") == [], "一票否决必须由 Fox 明确回答"),
+        CheckResult("第二轮自然中文达标", selected_scores.get("自然中文", 0) >= 3, "采用候选自然中文至少 3/5"),
+        CheckResult("第二轮中位数不退步", median(selected_values) >= median(baseline_values), "采用候选中位数不得低于首轮普通版"),
+        CheckResult("第二轮至少三维改善", improved >= 3, f"采用候选实际改善 {improved} 个维度"),
+    ]
+
+
 def validate_technical_boundary(
     port_catalog: dict[str, object], openwork_adapter: dict[str, object]
 ) -> list[CheckResult]:
@@ -143,7 +186,9 @@ def build_report() -> dict[str, object]:
 
     results = validate_golden_cases(load_json(GOLDEN_PATH))
     results.extend(validate_brandbench(load_json(BRANDBENCH_PATH)))
-    results.extend(validate_brandbench_baseline(load_json(BRANDBENCH_BASELINE_PATH)))
+    baseline = load_json(BRANDBENCH_BASELINE_PATH)
+    results.extend(validate_brandbench_baseline(baseline))
+    results.extend(validate_brandbench_humanized(load_json(BRANDBENCH_HUMANIZED_PATH), baseline))
     results.extend(
         validate_technical_boundary(
             load_json(PORT_CATALOG_PATH), load_json(OPENWORK_ADAPTER_PATH)
@@ -154,6 +199,7 @@ def build_report() -> dict[str, object]:
         "passed": all(result.passed for result in results),
         "checks": [result.__dict__ for result in results],
         "brandbench_baseline": "completed_failed_quality_gate",
+        "brandbench_quality_gate": "completed_passed_quality_gate",
     }
 
 
