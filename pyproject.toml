@@ -9,7 +9,9 @@ description = "本地优先的品牌项目状态与证据协作核心"
 requires-python = ">=3.11"
 dependencies = [
     "boto3>=1.40,<2",
+    "cryptography>=45,<50",
     "mcp>=1.26,<2",
+    "PyJWT[crypto]>=2.10,<3",
     "psycopg[binary]>=3.2,<4",
 ]
 

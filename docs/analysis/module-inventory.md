@@ -1,6 +1,6 @@
 # 目标模块清单
 
-> 状态：Phase 0-1 模块基线。2026-07-22 后，团队服务器、OIDC、PostgreSQL/S3、远程 MCP、Dify 和四个外部组件已进入 Phase 2-3 活动计划；本文把它们写成远期候选的段落仅作历史风险输入。当前模块与任务以[任务分解](../plan/task-breakdown.md)和 [ADR-0005](../adr/0005-single-client-server-authority.md)为准。
+> 状态：Phase 0-1 模块基线。2026-07-23 已完成 F2.1-F2.4 的服务器基线、PostgreSQL/S3 和 OIDC 会话，当前进入项目权限；本文把团队能力写成远期候选的段落仅作历史风险输入。当前模块与任务以[任务分解](../plan/task-breakdown.md)和 [ADR-0005](../adr/0005-single-client-server-authority.md)为准。
 
 ## 范围说明
 
@@ -128,8 +128,9 @@ OpenWork 是 M09 的唯一员工客户端基础，也是 M08 的 Agent 运行辅
 | F2.1 服务器基线 | 配置优先级、秘密注入、组件职责和健康检查 | `server_config.py`、`server_baseline.py` | S/U/P/E/R：绿 |
 | F2.2 PostgreSQL 权威 | 事件、Proposal、人工动作、投影和稳定查询 | `CanonicalStorePort`；v1-v6 领域迁移 | S/U/P/E/R：绿 |
 | F2.3 对象准入 | 上传会话、哈希校验、不可变对象版本、墓碑和对账 | `ObjectStorePort`、`EvidenceMetadataPort`；PostgreSQL v7 + S3 | S/U/P/E/R：绿 |
+| F2.4 OIDC 身份会话 | 预登记员工绑定、协议校验、加密会话、刷新/撤销和身份审计 | `OidcProviderPort`、`IdentityRepositoryPort`；PostgreSQL v8 | S/U/P/E/R：绿 |
 
-F2.3 的 boto3 只存在于 `s3_store.py` 适配器；状态机、人工撤销和正式回源规则不依赖 S3 SDK。桶版本控制是准入前置条件，只有 `ACTIVE` 对象可以进入证据链，故障通过重试、过期清理和对账恢复。
+F2.3 的 boto3 只存在于 `s3_store.py` 适配器；状态机、人工撤销和正式回源规则不依赖 S3 SDK。F2.4 的 PyJWT 与 Fernet 只存在于 OIDC/秘密适配层；领域命令只接收由有效员工会话生成的 `HUMAN` Actor。项目授权、保密级别和 RLS 仍由 F2.5 完成。
 
 ## Phase 3 可替换适配器
 

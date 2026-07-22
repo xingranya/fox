@@ -1,5 +1,5 @@
 {
-  "schema_version": "server-boundary.v1",
+  "schema_version": "server-boundary.v2",
   "service": "Brand Project OS Service",
   "authority": {
     "only_application_service_may_advance_formal_state": true,
@@ -28,6 +28,34 @@
       "may_advance_formal_state": false,
       "stores_formal_business_state": false,
       "stores": [],
+      "replaceable": true,
+      "required_for_core_readiness": true
+    },
+    {
+      "id": "oidc_identity_adapter",
+      "kind": "identity_adapter",
+      "business_operations": ["authenticate_employee"],
+      "forbidden_operations": ["human_review", "direct_storage_write"],
+      "may_advance_formal_state": false,
+      "stores_formal_business_state": false,
+      "stores": [],
+      "replaceable": true,
+      "required_for_core_readiness": true
+    },
+    {
+      "id": "identity_session_store",
+      "kind": "storage_adapter",
+      "business_operations": [],
+      "forbidden_operations": ["direct_client_access", "direct_agent_access"],
+      "may_advance_formal_state": false,
+      "stores_formal_business_state": false,
+      "stores": [
+        "employee_accounts",
+        "oidc_identity_bindings",
+        "authorization_transactions",
+        "employee_sessions",
+        "session_audit"
+      ],
       "replaceable": true,
       "required_for_core_readiness": true
     },
@@ -88,7 +116,7 @@
     }
   ],
   "readiness": {
-    "required_dependencies": ["postgresql", "schema", "object_storage"],
+    "required_dependencies": ["postgresql", "schema", "object_storage", "oidc"],
     "optional_dependencies": [
       "openwork_runtime",
       "dify",
@@ -99,9 +127,7 @@
     ]
   },
   "deferred_from_f2_1": [
-    "postgresql_schema_and_migrations",
-    "object_upload_state_machine",
-    "oidc_login_flow",
+    "rbac_rls",
     "http_and_mcp_routes",
     "hongri_data_migration"
   ]

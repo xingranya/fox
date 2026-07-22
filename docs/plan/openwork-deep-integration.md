@@ -1,7 +1,7 @@
 # 公司定制版 OpenWork 单一客户端集成计划
 
-> 状态：Phase 1 客户端纵切和 F2.1-F2.3 已通过，当前执行 F2.4<br>
-> 当前目标：保留公司定制 OpenWork 这一唯一员工客户端，开始冻结服务器应用边界和联网契约<br>
+> 状态：Phase 1 客户端纵切和 F2.1-F2.4 已通过，当前执行 F2.5<br>
+> 当前目标：保留公司定制 OpenWork 这一唯一员工客户端，继续完成服务器权限和联网契约<br>
 > 单一安装：OpenCode Runtime、Sidecar 和本机桥接随 OpenWork 安装包分发<br>
 > 后续连接：公司服务器上的 Brand Project OS API、MCP Gateway 和 Skills<br>
 > 决策依据：[ADR-0004](../adr/0004-openwork-single-client.md) 与 [ADR-0005](../adr/0005-single-client-server-authority.md)
@@ -46,7 +46,7 @@ OpenWork 深度依赖 `@opencode-ai/sdk`，适合成为 OpenCode 控制面，但
 ### 非目标
 
 - 不把 OpenWork 本地 SQLite、JSON、Session 或 Workspace 当作鸿日权威状态。
-- 不把 OIDC、PostgreSQL 或远程 MCP 设为 Phase 1 本地纵切前置；它们在 Phase 2-3 分阶段实现。
+- 不把 OIDC、PostgreSQL 或远程 MCP 反写为 Phase 1 本地纵切前置；OIDC 服务端能力已由 F2.4 完成，客户端登录和系统钥匙串仍由 F3.2 接入。
 - 不部署 OpenWork Den、`ee/**` 或第二个轻量 Web 后备。
 - 不让 Tool Permission 承担事实、决定、约束、行动或时间的业务批准。
 - 不在 fork 中复制 Fox 领域核心或让业务页面导入 `@opencode-ai/sdk`。
@@ -231,7 +231,7 @@ F1.10 已通过，后续按活动 SPEC 实施以下内容：
 
 - 公司独立私有 fork、稳定/集成/发布分支和固定 tag/SHA。
 - 自有品牌、AppID、深链、代码签名、公证、私有更新、灰度和回滚。
-- OIDC PKCE、系统钥匙串、团队角色和设备撤权；不建设第二个 Web 后备。
+- F2.4 已完成服务端 OIDC PKCE 与会话撤权；F3.2 继续接系统钥匙串、项目选择和登录界面，F2.5/F4.6 完成团队角色、设备与真实 IdP 撤权；不建设第二个 Web 后备。
 - OpenWork Server/Orchestrator 的员工终端或托管 Agent Worker 形态。
 - 生成式服务端 SDK、兼容窗口、远程 MCP 和生产运行中心。
 - macOS/Windows/Linux E2E、供应链、SBOM、上游同步和团队试运行。

@@ -62,7 +62,7 @@ PostgreSQL 返回行同时支持字段名和数字位置，保证现有映射、
 ## 后续边界
 
 - F2.3 已增加 S3 兼容原件版本和准入状态机，详见[对象原件准入](object-evidence-store.md)。
-- F2.4-F2.5 增加 OIDC、项目权限和 RLS；当前 `allowed_reviewers` 只是 F2.2 的领域权限基线。
+- F2.4 已增加 OIDC 员工身份与服务器会话；F2.5 继续增加项目权限和 RLS，当前 `allowed_reviewers` 仍只是 F2.2 的领域权限基线。
 - F2.6 增加 API 级并发冲突差异，不把数据库异常直接暴露给客户端。
 - F2.7 增加审计、Outbox/Inbox 和后台任务。
 - F2.10 完成 PostgreSQL 备份恢复和故障演练。

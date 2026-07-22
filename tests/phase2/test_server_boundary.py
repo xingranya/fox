@@ -23,7 +23,7 @@ class ServerBoundaryContractTest(unittest.TestCase):
     def test_machine_contract_matches_runtime_boundary(self) -> None:
         self.assertEqual(self.contract, SERVER_BOUNDARY)
         self.assertEqual(validate_server_boundary(self.contract), ())
-        self.assertEqual(self.contract["schema_version"], "server-boundary.v1")
+        self.assertEqual(self.contract["schema_version"], "server-boundary.v2")
 
     def test_only_application_service_may_advance_formal_state(self) -> None:
         advancing = [
@@ -61,6 +61,18 @@ class ServerBoundaryContractTest(unittest.TestCase):
         self.assertFalse(runtime["stores_formal_business_state"])
         self.assertIn("session_state", runtime["stores"])
 
+    def test_oidc_authenticates_employee_without_business_approval(self) -> None:
+        identity = next(
+            component
+            for component in self.contract["components"]
+            if component["id"] == "oidc_identity_adapter"
+        )
+
+        self.assertEqual(identity["business_operations"], ["authenticate_employee"])
+        self.assertIn("human_review", identity["forbidden_operations"])
+        self.assertFalse(identity["may_advance_formal_state"])
+        self.assertIn("oidc", self.contract["readiness"]["required_dependencies"])
+
     def test_storage_and_optional_adapters_are_replaceable(self) -> None:
         adapters = [
             component
@@ -76,9 +88,7 @@ class ServerBoundaryContractTest(unittest.TestCase):
         self.assertEqual(
             set(self.contract["deferred_from_f2_1"]),
             {
-                "postgresql_schema_and_migrations",
-                "object_upload_state_machine",
-                "oidc_login_flow",
+                "rbac_rls",
                 "http_and_mcp_routes",
                 "hongri_data_migration",
             },

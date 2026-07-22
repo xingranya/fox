@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import BinaryIO, Iterator, Mapping, Protocol, Sequence
 
 from .domain import (
     Actor,
+    ActorKind,
     ClassificationCandidate,
     CommandContext,
     CommandResult,
@@ -28,6 +29,14 @@ from .object_evidence import (
     MultipartUploadInfo,
     ObjectInfo,
     ReconciliationReport,
+)
+from .identity import (
+    AuthorizationTransaction,
+    EmployeeSession,
+    IdentityBinding,
+    OidcTokenSet,
+    SensitiveValue,
+    VerifiedIdentity,
 )
 
 
@@ -265,6 +274,127 @@ class EvidenceMetadataPort(Protocol):
         cleanup_enabled: bool,
     ) -> None: ...
 
+
+class OidcProviderPort(Protocol):
+    """OIDC Discovery、Code + PKCE、令牌校验和撤销端口。"""
+
+    def authorization_url(
+        self,
+        *,
+        redirect_uri: str,
+        state: str,
+        nonce: str,
+        code_challenge: str,
+        scopes: Sequence[str],
+    ) -> str: ...
+
+    def exchange_code(
+        self,
+        *,
+        code: SensitiveValue,
+        code_verifier: SensitiveValue,
+        redirect_uri: str,
+        occurred_at: datetime,
+    ) -> OidcTokenSet: ...
+
+    def verify_id_token(
+        self,
+        id_token: SensitiveValue,
+        *,
+        expected_nonce_digest: str | None,
+        access_token: SensitiveValue,
+        occurred_at: datetime,
+        clock_skew: timedelta,
+    ) -> VerifiedIdentity: ...
+
+    def refresh(
+        self,
+        refresh_token: SensitiveValue,
+        *,
+        occurred_at: datetime,
+    ) -> OidcTokenSet: ...
+
+    def revoke_token(self, token: SensitiveValue) -> None: ...
+
+
+class IdentityRepositoryPort(Protocol):
+    """预登记员工、OIDC 绑定、一次性授权事务和服务器会话端口。"""
+
+    def create_authorization(self, transaction: AuthorizationTransaction) -> None: ...
+
+    def claim_authorization(
+        self,
+        *,
+        state_digest: str,
+        authorization_code_digest: str,
+        occurred_at: datetime,
+    ) -> AuthorizationTransaction: ...
+
+    def fail_authorization(
+        self,
+        transaction_id: str,
+        *,
+        reason_code: str,
+        occurred_at: datetime,
+    ) -> None: ...
+
+    def resolve_binding(self, issuer: str, subject: str) -> IdentityBinding: ...
+
+    def create_session(
+        self,
+        *,
+        transaction_id: str,
+        binding: IdentityBinding,
+        session_id: str,
+        session_secret_digest: str,
+        token_set: OidcTokenSet,
+        access_token_expires_at: datetime,
+        session_expires_at: datetime,
+        occurred_at: datetime,
+    ) -> EmployeeSession: ...
+
+    def get_session(self, session_id: str) -> EmployeeSession: ...
+
+    def rotate_session_tokens(
+        self,
+        session_id: str,
+        *,
+        expected_token_version: int,
+        token_set: OidcTokenSet,
+        access_token_expires_at: datetime,
+        occurred_at: datetime,
+    ) -> EmployeeSession: ...
+
+    def revoke_session(
+        self,
+        session_id: str,
+        *,
+        reason: str,
+        actor_kind: ActorKind,
+        actor_id: str,
+        occurred_at: datetime,
+    ) -> bool: ...
+
+    def revoke_employee_sessions(
+        self,
+        employee_id: str,
+        *,
+        reason: str,
+        actor_id: str,
+        occurred_at: datetime,
+    ) -> int: ...
+
+    def expire_session(self, session_id: str, *, occurred_at: datetime) -> bool: ...
+
+    def record_identity_assertion(
+        self,
+        session_id: str,
+        *,
+        project_id: str,
+        command_name: str,
+        idempotency_key: str,
+        occurred_at: datetime,
+    ) -> None: ...
 
 class EvidenceQueryPort(Protocol):
     """当前决定、开放问题、关系与稳定证据链的只读端口。"""

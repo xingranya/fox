@@ -107,7 +107,7 @@ class PostgreSQLConnection:
 
 
 class PostgreSQLStoreBase(SQLiteStoreBase):
-    """复用 v1-v6 领域语义，并把持久化事务交给 PostgreSQL。"""
+    """复用 v1-v6 领域语义，并承载后续服务器版本化迁移。"""
 
     def __init__(self, dsn: str, allowed_reviewers: Sequence[str] = ("Fox",)) -> None:
         if not dsn.strip():
@@ -193,7 +193,7 @@ class PostgreSQLCanonicalStore(
     SQLiteCommandMixin,
     SQLiteQueryMixin,
 ):
-    """服务器侧 v1-v6 权威事件、人工审批和投影适配器。"""
+    """服务器侧权威事件、人工审批和投影适配器。"""
 
 
 __all__ = ["PostgreSQLCanonicalStore", "PostgreSQLStoreBase"]

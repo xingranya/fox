@@ -1,6 +1,10 @@
 """Brand Project OS 领域核心与服务器契约。"""
 
 from .config import WorkspaceSettings, load_workspace_settings
+from .identity import InteractiveEmployeePrincipal, OidcIdentityService
+from .oidc_provider import OidcProviderAdapter
+from .postgresql_identity import PostgreSQLIdentityRepository
+from .secret_cipher import FernetSecretCipher
 from .server_baseline import (
     SERVER_BOUNDARY,
     ServiceHealthReport,
@@ -13,6 +17,11 @@ from .workspace import WorkspaceLayout, initialize_workspace
 __all__ = [
     "WorkspaceLayout",
     "WorkspaceSettings",
+    "FernetSecretCipher",
+    "InteractiveEmployeePrincipal",
+    "OidcIdentityService",
+    "OidcProviderAdapter",
+    "PostgreSQLIdentityRepository",
     "ServerEnvironment",
     "ServerSettings",
     "ServiceHealthReport",

@@ -108,6 +108,7 @@ class ServerConfigTest(unittest.TestCase):
                 "object_store_access_key",
                 "object_store_secret_key",
                 "oidc_client_secret",
+                "session_encryption_key",
             },
         )
         self.assertFalse(settings.safe_dict()["secrets"]["database_dsn"]["configured"])
@@ -118,6 +119,7 @@ class ServerConfigTest(unittest.TestCase):
             "BRAND_OS_SERVER_OBJECT_STORE_ACCESS_KEY": "object-access-key",
             "BRAND_OS_SERVER_OBJECT_STORE_SECRET_KEY": "object-secret-key",
             "BRAND_OS_SERVER_OIDC_CLIENT_SECRET": "oidc-client-secret",
+            "BRAND_OS_SERVER_SESSION_ENCRYPTION_KEY": "session-encryption-key",
         }
         settings = load_server_settings(environ=secrets)
 
@@ -140,6 +142,7 @@ class ServerConfigTest(unittest.TestCase):
                 "oidc_issuer_url": "http://id.example.com",
                 "oidc_client_id": "brand-os-service",
                 "oidc_client_secret": "secret",
+                "session_encryption_key": "MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA=",
             },
             environ={},
         )
@@ -155,13 +158,29 @@ class ServerConfigTest(unittest.TestCase):
             }.issubset(issue_codes)
         )
 
+    def test_session_encryption_key_must_be_valid_without_leaking_value(self) -> None:
+        invalid_key = "not-a-fernet-key"
+        settings = load_server_settings(
+            explicit={"session_encryption_key": invalid_key},
+            environ={},
+        )
+
+        issues = settings.validation_issues()
+
+        self.assertIn("invalid_session_encryption_key", {issue.code for issue in issues})
+        self.assertNotIn(invalid_key, json.dumps(settings.safe_dict(), ensure_ascii=False))
+
     def test_safe_config_schema_cannot_serialize_secret_values(self) -> None:
         schema = json.loads(CONFIG_SCHEMA_PATH.read_text(encoding="utf-8"))
         secret_status = schema["$defs"]["secretStatus"]
 
-        self.assertEqual(schema["properties"]["schema_version"]["const"], "service-config.v1")
+        self.assertEqual(schema["properties"]["schema_version"]["const"], "service-config.v2")
         self.assertFalse(secret_status["additionalProperties"])
         self.assertEqual(set(secret_status["properties"]), {"configured"})
+        self.assertIn(
+            "session_encryption_key",
+            schema["properties"]["secrets"]["required"],
+        )
 
 
 if __name__ == "__main__":

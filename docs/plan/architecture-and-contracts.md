@@ -2,7 +2,7 @@
 
 > 当前生效路线：公司定制 OpenWork 唯一员工客户端 + Brand Project OS Service<br>
 > 权威决策：[ADR-0005](../adr/0005-single-client-server-authority.md)<br>
-> Phase 1：本地 SQLite 纵切，已完成；F2.1-F2.3 已通过，当前 F2.4；Phase 2-4：服务器权威、联网客户端和团队试点
+> Phase 1：本地 SQLite 纵切，已完成；F2.1-F2.4 已通过，当前 F2.5；Phase 2-4：服务器权威、联网客户端和团队试点
 
 ## 架构结论
 
@@ -25,22 +25,29 @@ F2.1 已冻结 `Brand Project OS Service` 的服务器边界，但没有启动 H
 | 对象存储秘密 | `BRAND_OS_SERVER_OBJECT_STORE_ACCESS_KEY`、`BRAND_OS_SERVER_OBJECT_STORE_SECRET_KEY` | 只能环境变量/显式注入，禁止进入日志与序列化 |
 | OIDC | `BRAND_OS_SERVER_OIDC_ISSUER_URL`、`BRAND_OS_SERVER_OIDC_CLIENT_ID` | 生产发行方必须 HTTPS |
 | OIDC 秘密 | `BRAND_OS_SERVER_OIDC_CLIENT_SECRET` | 只能环境变量/显式注入，禁止进入日志与序列化 |
+| 会话加密 | `BRAND_OS_SERVER_SESSION_ENCRYPTION_KEY` | 有效 Fernet key；只能环境变量/显式注入，禁止进入日志与序列化 |
 
-健康语义也已冻结：`live` 只证明进程能响应；`ready` 检查必需配置、PostgreSQL、Schema 和对象存储。OpenWork Runtime、Dify、Zvec、Open Notebook、Nubase 和 FlowLong 属于可选依赖，故障只记录为降级，不能让核心 API 失去就绪状态。F2.1 不实现 `/livez`、`/readyz` 路由，路由和真实探针留给 F2.8/F2.9。
+健康语义也已冻结：`live` 只证明进程能响应；`ready` 检查必需配置、PostgreSQL、Schema、对象存储和 OIDC。OpenWork Runtime、Dify、Zvec、Open Notebook、Nubase 和 FlowLong 属于可选依赖，故障只记录为降级，不能让核心 API 失去就绪状态。F2.1 不实现 `/livez`、`/readyz` 路由，路由和真实探针留给 F2.8/F2.9。
 
-机器契约：`server-boundary.v1`、`service-config.v1`、`service-health.v1`。服务器边界明确只有应用服务可以推进正式状态；Employee API、MCP Gateway、OpenWork Runtime 和工作流只能读取或创建 Proposal，存储适配器不得被客户端或 Agent 直连。
+机器契约当前为 `server-boundary.v2`、`service-config.v2`、`service-health.v1`。服务器边界明确只有应用服务可以推进正式状态；OIDC 只认证员工，不执行人工审批；Employee API、MCP Gateway、OpenWork Runtime 和工作流只能读取或创建 Proposal，存储适配器不得被客户端或 Agent 直连。
 
 ### F2.2 PostgreSQL 权威适配器（已完成）
 
 F2.2 已实现 PostgreSQL v1-v6 迁移和 `PostgreSQLCanonicalStore`。事件、人工动作、Proposal 状态、当前投影、项目版本与幂等结果在同一事务提交；同一命令使用事务级幂等锁，项目版本使用行锁。状态投影和 Proposal 生命周期都能从经配置人工评审人产生的事件重建。
 
-机器契约已随 F2.3 升级为 `postgresql-authority.v2`：v1-v6 仍是 F2.2 领域语义，v7 只增加对象准入元数据。完整实现和测试边界见 [F2.2 PostgreSQL 权威事件、审批和投影](../phase2/postgresql-authority-store.md)。当前没有迁移鸿日数据、没有双写，也没有提前实现 OIDC/RBAC/RLS、Outbox 或 HTTP API。F3.1 正式切换前，鸿日仍以 Phase 1 SQLite 为权威。
+机器契约已随 F2.4 升级为 `postgresql-authority.v3`：v1-v6 仍是 F2.2 领域语义，v7 只增加对象准入元数据，v8 只增加员工身份与会话。完整实现和测试边界见 [F2.2 PostgreSQL 权威事件、审批和投影](../phase2/postgresql-authority-store.md)。当前没有迁移鸿日数据、没有双写，也没有提前实现 RBAC/RLS、Outbox 或 HTTP API。F3.1 正式切换前，鸿日仍以 Phase 1 SQLite 为权威。
 
 ### F2.3 对象原件准入（已完成）
 
 F2.3 已实现 `object-evidence.v1`、`ObjectStorePort`、`EvidenceMetadataPort`、PostgreSQL v7 元数据和 boto3 S3 兼容适配器。临时对象按 `UPLOADING -> QUARANTINED -> VERIFIED -> ACTIVE` 进入证据层；校验失败进入 `REJECTED`，上传超时进入 `EXPIRED`，获授权员工可将 `ACTIVE` 显式撤销为 `REVOKED`。
 
 只有 `ACTIVE` 可以回源。正式对象按 SHA-256 寻址并绑定明确 S3 VersionId；删除使用延迟墓碑和对象级认领锁，对账按对象键与 VersionId 检查缺失、哈希、孤儿和残留分片。PostgreSQL 与 S3 不做分布式事务，中断后由 `VERIFIED` 重试、到期清理和对账记录恢复。完整边界见 [F2.3 S3 兼容原件版本、哈希和准入状态机](../phase2/object-evidence-store.md)。
+
+### F2.4 OIDC 员工身份与服务器会话（已完成）
+
+F2.4 已实现 `oidc-identity.v1`、`OidcProviderPort` 和 `IdentityRepositoryPort`。登录使用 Authorization Code + S256 PKCE，一次性 state/nonce 和授权码只保存摘要；Discovery issuer、JWKS 非对称签名、`iss/aud/azp/exp/iat/nbf/nonce/at_hash` 与最多 5 分钟时钟偏差均显式校验。
+
+PostgreSQL v8 保存预登记员工、稳定 `(issuer, subject)` 绑定、授权事务、加密令牌会话和严格递增的会话审计。有效会话可以生成 `HUMAN` 命令身份并记录 `IDENTITY_ASSERTED`；AI、Workflow、System Actor、OIDC 登录本身和 OpenCode Tool Permission 都不能获得人工批准权。撤销先落本地并清空令牌密文，提供方撤销只作尽力通知。完整边界见 [F2.4 OIDC 员工身份与服务器会话](../phase2/oidc-identity-and-sessions.md)。
 
 完整边界见：
 
@@ -162,7 +169,7 @@ backup(destination)
 health()
 ```
 
-Phase 1 本地实现为 SQLite；服务器 PostgreSQL 当前使用 v1-v7，其中 v1-v6 承载 F2.2 领域语义，v7 承载 F2.3 对象元数据。F3.1 切换前两者不双写，鸿日仍以 SQLite 为正式权威。一次 `execute` 必须在一个事务内：
+Phase 1 本地实现为 SQLite；服务器 PostgreSQL 当前使用 v1-v8，其中 v1-v6 承载 F2.2 领域语义，v7 承载 F2.3 对象元数据，v8 承载 F2.4 员工身份与会话。F3.1 切换前两者不双写，鸿日仍以 SQLite 为正式权威。一次 `execute` 必须在一个事务内：
 
 1. 验证调用来自本地应用层，并确认命令是否要求 Fox 人工动作。
 2. 登记幂等键和请求摘要；同键不同摘要返回冲突。
@@ -307,11 +314,12 @@ cancel(run_id)
 | `proposal-create-input.v1` | AI 创建 Proposal 的输入 | 证据、预期版本和幂等键必填；不包含批准动作 |
 | `runtime-adapter.v1` | Codex/Claude stdio MCP 配置 | 两个运行时指向同一 MCP；配置不包含模型提供商凭据 |
 | `tool-permission.v1` | 运行时工具权限 | 运行、工具、参数摘要、路径/网络、时限和决定人完整；不能表达业务批准 |
-| `server-boundary.v1` | 服务器组件职责 | 只有应用服务推进正式状态；OpenWork Runtime 不是业务服务 |
-| `service-config.v1` | 安全配置摘要 | 秘密只报告 `configured`，不提供秘密值 |
+| `server-boundary.v2` | 服务器组件职责 | 只有应用服务推进正式状态；OIDC 只认证员工；OpenWork Runtime 不是业务服务 |
+| `service-config.v2` | 安全配置摘要 | OIDC、存储和会话加密秘密只报告 `configured`，不提供秘密值 |
 | `service-health.v1` | 存活/就绪报告 | 必需依赖阻断就绪，可选组件只能降级 |
-| `postgresql-authority.v2` | PostgreSQL v1-v7 权威与对象元数据 | v1-v6 领域事务不变；v7 增加对象准入、版本、墓碑和对账记录 |
+| `postgresql-authority.v3` | PostgreSQL v1-v8 权威、对象和身份元数据 | v1-v6 领域事务不变；v7 增加对象准入；v8 增加员工身份与会话 |
 | `object-evidence.v1` | S3 兼容原件准入 | 桶版本控制、ACTIVE-only、SHA-256 内容地址、无分布式事务和延迟删除 |
+| `oidc-identity.v1` | 员工身份与服务器会话 | S256 PKCE、预登记 issuer/subject、令牌加密、会话撤权和人工身份审计 |
 
 ## 本地 CLI 与 MCP 契约
 
@@ -336,9 +344,9 @@ Phase 2-3 按以下映射替换端口实现：
 
 | 当前本地实现 | 服务器目标实现 | 必须保持的契约 |
 |:---|:---|:---|
-| SQLite `CanonicalStorePort` | PostgreSQL v1-v7 已完成；RLS、Outbox 待后续任务 | 稳定 ID、事件顺序、人工批准和版本冲突语义 |
+| SQLite `CanonicalStorePort` | PostgreSQL v1-v8 已完成；RLS、Outbox 待后续任务 | 稳定 ID、事件顺序、人工批准和版本冲突语义 |
 | 本地证据区 | S3 兼容内容寻址对象准入已完成；正式迁移待 F3.1 | SHA-256、来源版本、原文定位和不可变性 |
-| 本地 OS 用户 | OIDC + 应用层角色/Scope | 人工与 AI 身份分离、AI 禁止批准 |
+| 本地 OS 用户 | OIDC 身份会话已完成；应用层角色/Scope 由 F2.5 完成 | 人工与 AI 身份分离、AI 禁止批准 |
 | 进程内派生 | Outbox/Inbox Worker | 至少一次投递、消费者幂等和权威事务不等待派生层 |
 | 本地 MCP/CLI | OAuth 远程 MCP/HTTPS API | 同一读取与 Proposal Schema，不新增 AI 批准工具 |
 | 本地 Agent 子进程 | 员工/托管 Worker | Task Packet、Tool Permission、Artifact 和 Proposal 边界 |

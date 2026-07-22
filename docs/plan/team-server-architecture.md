@@ -1,10 +1,10 @@
 # 团队服务器架构
 
 > 状态：已批准，按 Phase 2-4 分阶段实施<br>
-> 当前进度：F2.1-F2.3 已通过，当前执行 F2.4 OIDC 登录、会话和员工身份绑定<br>
+> 当前进度：F2.1-F2.4 已通过，当前执行 F2.5 项目 RBAC、保密级别和 RLS 防线<br>
 > 当前生效决策：[ADR-0005：单一客户端与服务器权威服务](../adr/0005-single-client-server-authority.md)
 
-F2.1 已完成配置优先级、秘密注入、服务器组件职责和健康报告基线。F2.2 已完成 PostgreSQL v1-v6 权威存储，F2.3 已完成 PostgreSQL v7 对象元数据、S3 版本、完整性准入、对账和延迟墓碑，并在一次性临时 PostgreSQL 17 与 Moto S3 HTTP 环境完成验证。当前仍不启动常驻服务，不执行公司 S3/OIDC 初始化，也不迁移鸿日正式数据。
+F2.1 已完成配置优先级、秘密注入、服务器组件职责和健康报告基线。F2.2 已完成 PostgreSQL v1-v6 权威存储，F2.3 已完成 PostgreSQL v7 对象元数据与 S3 原件准入，F2.4 已完成 PostgreSQL v8 员工绑定、OIDC 协议校验和加密会话，并在一次性临时 PostgreSQL 17 与离线 OIDC 测试环境完成验证。当前仍不启动常驻服务，不执行公司 S3/OIDC 初始化，也不迁移鸿日正式数据。
 
 旧可视化交付：[可编辑 Draw.io 源文件](../diagrams/team-server-architecture.drawio)；[嵌入源数据的 PNG](../diagrams/team-server-architecture.drawio.png)。旧图包含轻量 Web 等已取消边界，只作历史参考；当前拓扑以本文和 ADR-0005 为准，后续需单独更新图文件。
 
@@ -18,7 +18,7 @@ OpenWork 已被选定为客户端基础。OpenWork Server、Orchestrator 和 Ope
 
 - Phase 1 已用 SQLite、内容寻址本地证据区和本地 CLI/MCP 完成纵切，没有运行本页服务器拓扑。
 - F1.10 已通过；验收数据库、来源 Manifest 和证据哈希作为后续迁移对账基线。
-- F2.1 已冻结服务器配置、职责和健康基线，F2.2-F2.3 已完成 PostgreSQL 权威存储与 S3 原件准入；当前从 F2.4 开始，依次完成身份权限、一致性、恢复、联网客户端和团队试点。
+- F2.1 已冻结服务器配置、职责和健康基线，F2.2-F2.4 已完成 PostgreSQL 权威存储、S3 原件准入和 OIDC 员工会话；当前从 F2.5 开始，依次完成项目权限、一致性、恢复、联网客户端和团队试点。
 - Phase 3 使用一次性迁移和冻结本地写入完成权威切换，不提前运行双套可写系统。
 
 ```mermaid
@@ -61,6 +61,7 @@ flowchart TB
 | 对象存储 | 原始文件、提交件、版本化导出和备份 | 临时区校验后转为不可变正式对象 | 新上传暂停，已登记状态保持可查 |
 | Brand OS Desktop | UI 状态、短期缓存、草稿、设备配置和令牌引用 | 只调 API；离线仅草稿/Proposal | 显示带水位快照和故障状态，不提供第二套 Web 入口 |
 | API/MCP | 身份、权限、业务用例和协议适配 | 无状态；不得保存独立业务事实 | 任一副本可替换 |
+| OIDC/身份会话 | 员工认证、预绑定外部身份、短期服务器会话和身份审计 | 只生成交互式员工身份；不判断项目权限或业务批准 | 提供方故障时停止新登录/刷新，既有本地撤销继续有效 |
 | OpenWork Server/Orchestrator | Agent 会话、运行配置、流式事件、工具请求和产物引用 | 只经 `AgentRuntimePort`；正式结果经 API 成为 Proposal | 运行暂停/重试，权威查询与审批不受影响 |
 | OpenCode | 默认交互式 Agent 运行时 | 使用短期任务身份和最小 Task Packet | 可由其他 `AgentRuntimePort` 适配器替换 |
 | Worker | Outbox 消费、投影外派、通知和重建 | 至少一次投递，消费者幂等 | 积压后追平，不阻塞正式事务 |
@@ -114,7 +115,7 @@ flowchart TB
 
 - F2.1 已冻结 `live`/`ready` 的语义并提供 `service-health.v1` 报告模型。实现阶段将把它们挂到 HTTP 路由，但 F2.1 不启动路由或依赖探针。
 - `/livez` 只确认进程仍可服务，避免依赖抖动触发重启风暴。
-- `/readyz` 检查 PostgreSQL、Schema 版本和必要配置；Zvec、Dify、Notebook、FlowLong、OpenCode 或 Agent Worker 故障不得让核心 API 整体失去就绪状态。
+- `/readyz` 检查 PostgreSQL、Schema、对象存储、OIDC 和必要配置；Zvec、Dify、Notebook、FlowLong、OpenCode 或 Agent Worker 故障不得让核心 API 整体失去就绪状态。
 - 指标至少覆盖可用率、P95 延迟、5xx、连接池、死锁、版本冲突、Outbox 延迟、Worker 租约/心跳、Agent 队列、运行取消、工具拒绝、备份年龄、WAL、磁盘、证书和外部模型错误率。
 - 桌面运行中心显示核心 API、事件水位、Outbox、搜索、Agent Worker、Dify/Notebook/FlowLong 和客户端更新状态；普通成员只看必要状态，管理员可看详细诊断。
 - 严重告警：核心不可用超过 3 分钟、数据库不可用、WAL 归档停止、最近成功备份超过 24 小时、磁盘超过 90%、跨项目越权、未授权业务升级或签名更新失败。

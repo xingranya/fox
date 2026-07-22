@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 from .sqlite_migrations import MIGRATIONS, Migration
 
 
-POSTGRESQL_SCHEMA_VERSION = 7
+POSTGRESQL_SCHEMA_VERSION = 8
 
 
 def _translate_statement(statement: str) -> str:
@@ -142,9 +142,116 @@ POSTGRESQL_OBJECT_EVIDENCE_MIGRATION = Migration(
 )
 
 
+POSTGRESQL_OIDC_IDENTITY_MIGRATION = Migration(
+    8,
+    "oidc_employee_identity_and_sessions",
+    (
+        """
+        CREATE TABLE employees (
+            employee_id TEXT PRIMARY KEY CHECK(length(employee_id) > 0),
+            display_name TEXT NOT NULL CHECK(length(display_name) > 0),
+            primary_email TEXT,
+            status TEXT NOT NULL CHECK(status IN ('ACTIVE','DISABLED')),
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            disabled_at TEXT,
+            disabled_by TEXT,
+            disable_reason TEXT
+        )
+        """,
+        """
+        CREATE TABLE oidc_identity_bindings (
+            binding_id TEXT PRIMARY KEY CHECK(length(binding_id) > 0),
+            issuer TEXT NOT NULL CHECK(length(issuer) > 0),
+            subject TEXT NOT NULL CHECK(length(subject) > 0),
+            employee_id TEXT NOT NULL,
+            email_at_binding TEXT,
+            status TEXT NOT NULL CHECK(status IN ('ACTIVE','DISABLED')),
+            created_at TEXT NOT NULL,
+            created_by TEXT NOT NULL CHECK(length(created_by) > 0),
+            disabled_at TEXT,
+            disabled_by TEXT,
+            disable_reason TEXT,
+            UNIQUE(issuer, subject),
+            FOREIGN KEY(employee_id) REFERENCES employees(employee_id) ON DELETE RESTRICT
+        )
+        """,
+        """
+        CREATE TABLE oidc_authorization_transactions (
+            transaction_id TEXT PRIMARY KEY CHECK(length(transaction_id) > 0),
+            state_digest TEXT NOT NULL UNIQUE CHECK(length(state_digest) = 64),
+            nonce_digest TEXT NOT NULL CHECK(length(nonce_digest) = 64),
+            code_verifier_ciphertext TEXT NOT NULL CHECK(length(code_verifier_ciphertext) > 0),
+            redirect_uri TEXT NOT NULL CHECK(length(redirect_uri) > 0),
+            status TEXT NOT NULL CHECK(status IN (
+                'PENDING','PROCESSING','CONSUMED','FAILED','EXPIRED'
+            )),
+            authorization_code_digest TEXT UNIQUE CHECK(
+                authorization_code_digest IS NULL OR length(authorization_code_digest) = 64
+            ),
+            failure_code TEXT,
+            created_at TEXT NOT NULL,
+            expires_at TEXT NOT NULL,
+            claimed_at TEXT,
+            consumed_at TEXT,
+            failed_at TEXT
+        )
+        """,
+        """
+        CREATE TABLE employee_sessions (
+            session_id TEXT PRIMARY KEY CHECK(length(session_id) > 0),
+            session_secret_digest TEXT NOT NULL UNIQUE CHECK(length(session_secret_digest) = 64),
+            employee_id TEXT NOT NULL,
+            binding_id TEXT NOT NULL,
+            status TEXT NOT NULL CHECK(status IN ('ACTIVE','REVOKED','EXPIRED')),
+            access_token_ciphertext TEXT CHECK(
+                access_token_ciphertext IS NULL OR length(access_token_ciphertext) > 0
+            ),
+            refresh_token_ciphertext TEXT,
+            token_version INTEGER NOT NULL CHECK(token_version > 0),
+            access_token_expires_at TEXT NOT NULL,
+            session_expires_at TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            revoked_at TEXT,
+            revoked_by TEXT,
+            revocation_reason TEXT,
+            CHECK(status != 'ACTIVE' OR access_token_ciphertext IS NOT NULL),
+            FOREIGN KEY(employee_id) REFERENCES employees(employee_id) ON DELETE RESTRICT,
+            FOREIGN KEY(binding_id) REFERENCES oidc_identity_bindings(binding_id) ON DELETE RESTRICT
+        )
+        """,
+        """
+        CREATE TABLE employee_session_events (
+            event_id TEXT PRIMARY KEY CHECK(length(event_id) > 0),
+            session_id TEXT NOT NULL,
+            sequence_number INTEGER NOT NULL CHECK(sequence_number > 0),
+            employee_id TEXT NOT NULL,
+            event_type TEXT NOT NULL CHECK(event_type IN (
+                'CREATED','REFRESHED','IDENTITY_ASSERTED','REVOKED','EXPIRED'
+            )),
+            actor_kind TEXT NOT NULL CHECK(actor_kind IN ('HUMAN','AI','WORKFLOW','SYSTEM')),
+            actor_id TEXT NOT NULL CHECK(length(actor_id) > 0),
+            details_json TEXT NOT NULL,
+            occurred_at TEXT NOT NULL,
+            UNIQUE(session_id, sequence_number),
+            FOREIGN KEY(session_id) REFERENCES employee_sessions(session_id) ON DELETE RESTRICT,
+            FOREIGN KEY(employee_id) REFERENCES employees(employee_id) ON DELETE RESTRICT
+        )
+        """,
+        "CREATE INDEX idx_oidc_authorization_expiry ON oidc_authorization_transactions(status, expires_at)",
+        "CREATE INDEX idx_oidc_bindings_employee ON oidc_identity_bindings(employee_id, status)",
+        "CREATE INDEX idx_employee_sessions_employee ON employee_sessions(employee_id, status, session_expires_at)",
+        "CREATE INDEX idx_employee_sessions_expiry ON employee_sessions(status, session_expires_at)",
+        "CREATE INDEX idx_employee_session_events_session ON employee_session_events(session_id, occurred_at)",
+    ),
+)
+
+
 POSTGRESQL_MIGRATIONS = (
     *_SHARED_POSTGRESQL_MIGRATIONS,
     POSTGRESQL_OBJECT_EVIDENCE_MIGRATION,
+    POSTGRESQL_OIDC_IDENTITY_MIGRATION,
 )
 
 
@@ -214,6 +321,7 @@ def apply_postgresql_migrations(connection) -> int:
 __all__ = [
     "POSTGRESQL_MIGRATIONS",
     "POSTGRESQL_OBJECT_EVIDENCE_MIGRATION",
+    "POSTGRESQL_OIDC_IDENTITY_MIGRATION",
     "POSTGRESQL_SCHEMA_VERSION",
     "apply_postgresql_migrations",
 ]

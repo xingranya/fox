@@ -9,7 +9,7 @@ from .server_config import ServerSettings
 
 
 SERVER_BOUNDARY: dict[str, object] = {
-    "schema_version": "server-boundary.v1",
+    "schema_version": "server-boundary.v2",
     "service": "Brand Project OS Service",
     "authority": {
         "only_application_service_may_advance_formal_state": True,
@@ -38,6 +38,34 @@ SERVER_BOUNDARY: dict[str, object] = {
             "may_advance_formal_state": False,
             "stores_formal_business_state": False,
             "stores": [],
+            "replaceable": True,
+            "required_for_core_readiness": True,
+        },
+        {
+            "id": "oidc_identity_adapter",
+            "kind": "identity_adapter",
+            "business_operations": ["authenticate_employee"],
+            "forbidden_operations": ["human_review", "direct_storage_write"],
+            "may_advance_formal_state": False,
+            "stores_formal_business_state": False,
+            "stores": [],
+            "replaceable": True,
+            "required_for_core_readiness": True,
+        },
+        {
+            "id": "identity_session_store",
+            "kind": "storage_adapter",
+            "business_operations": [],
+            "forbidden_operations": ["direct_client_access", "direct_agent_access"],
+            "may_advance_formal_state": False,
+            "stores_formal_business_state": False,
+            "stores": [
+                "employee_accounts",
+                "oidc_identity_bindings",
+                "authorization_transactions",
+                "employee_sessions",
+                "session_audit",
+            ],
             "replaceable": True,
             "required_for_core_readiness": True,
         },
@@ -98,7 +126,7 @@ SERVER_BOUNDARY: dict[str, object] = {
         },
     ],
     "readiness": {
-        "required_dependencies": ["postgresql", "schema", "object_storage"],
+        "required_dependencies": ["postgresql", "schema", "object_storage", "oidc"],
         "optional_dependencies": [
             "openwork_runtime",
             "dify",
@@ -109,9 +137,7 @@ SERVER_BOUNDARY: dict[str, object] = {
         ],
     },
     "deferred_from_f2_1": [
-        "postgresql_schema_and_migrations",
-        "object_upload_state_machine",
-        "oidc_login_flow",
+        "rbac_rls",
         "http_and_mcp_routes",
         "hongri_data_migration",
     ],
@@ -236,7 +262,7 @@ def validate_server_boundary(document: Mapping[str, object]) -> tuple[str, ...]:
     """检查组件职责契约的一票否决项。"""
 
     errors: list[str] = []
-    if document.get("schema_version") != "server-boundary.v1":
+    if document.get("schema_version") != "server-boundary.v2":
         errors.append("服务器边界 Schema 版本不正确")
     components = document.get("components")
     if not isinstance(components, list):
@@ -270,6 +296,20 @@ def validate_server_boundary(document: Mapping[str, object]) -> tuple[str, ...]:
         or runtime.get("stores_formal_business_state") is not False
     ):
         errors.append("OpenWork Server/Orchestrator 只能属于 Agent Runtime")
+    identity = by_id.get("oidc_identity_adapter")
+    if identity is None:
+        errors.append("缺少组件：oidc_identity_adapter")
+    elif (
+        identity.get("business_operations") != ["authenticate_employee"]
+        or "human_review" not in identity.get("forbidden_operations", [])
+        or identity.get("may_advance_formal_state") is not False
+    ):
+        errors.append("OIDC 只能认证员工，不能执行人工审批")
+    readiness = document.get("readiness")
+    if not isinstance(readiness, dict) or "oidc" not in readiness.get(
+        "required_dependencies", []
+    ):
+        errors.append("OIDC 必须属于服务器就绪依赖")
     authority = document.get("authority")
     if not isinstance(authority, dict) or authority.get("client_may_access_storage_directly") is not False:
         errors.append("客户端不得直连权威存储")

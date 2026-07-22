@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import json
 import os
+import base64
+import binascii
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
@@ -26,6 +28,7 @@ ENV_BY_FIELD = {
     "oidc_issuer_url": "BRAND_OS_SERVER_OIDC_ISSUER_URL",
     "oidc_client_id": "BRAND_OS_SERVER_OIDC_CLIENT_ID",
     "oidc_client_secret": "BRAND_OS_SERVER_OIDC_CLIENT_SECRET",
+    "session_encryption_key": "BRAND_OS_SERVER_SESSION_ENCRYPTION_KEY",
     "dependency_timeout_seconds": "BRAND_OS_SERVER_DEPENDENCY_TIMEOUT_SECONDS",
 }
 NON_SECRET_FIELDS = {
@@ -43,6 +46,7 @@ SECRET_FIELDS = {
     "object_store_access_key",
     "object_store_secret_key",
     "oidc_client_secret",
+    "session_encryption_key",
 }
 ALL_FIELDS = NON_SECRET_FIELDS | SECRET_FIELDS
 DEFAULTS: Mapping[str, object] = {
@@ -117,7 +121,8 @@ class ServerSettings:
     object_store_access_key: SecretValue | None = field(repr=False)
     object_store_secret_key: SecretValue | None = field(repr=False)
     oidc_client_secret: SecretValue | None = field(repr=False)
-    schema_version: str = field(default="service-config.v1", init=False)
+    session_encryption_key: SecretValue | None = field(repr=False)
+    schema_version: str = field(default="service-config.v2", init=False)
 
     def validation_issues(self) -> tuple[ConfigurationIssue, ...]:
         """校验启动必需配置和生产环境安全约束。"""
@@ -144,6 +149,7 @@ class ServerSettings:
             "object_store_access_key": self.object_store_access_key,
             "object_store_secret_key": self.object_store_secret_key,
             "oidc_client_secret": self.oidc_client_secret,
+            "session_encryption_key": self.session_encryption_key,
         }
         for field_name, value in required_secrets.items():
             if value is None:
@@ -154,6 +160,17 @@ class ServerSettings:
                         f"缺少必需秘密：{field_name}",
                     )
                 )
+
+        if self.session_encryption_key is not None and not _is_valid_fernet_key(
+            self.session_encryption_key.reveal()
+        ):
+            issues.append(
+                ConfigurationIssue(
+                    "invalid_session_encryption_key",
+                    "session_encryption_key",
+                    "session_encryption_key 必须是 32 字节 URL-safe Base64 Fernet key",
+                )
+            )
 
         if self.database_pool_size < 1:
             issues.append(
@@ -240,6 +257,9 @@ class ServerSettings:
                     "configured": self.object_store_secret_key is not None
                 },
                 "oidc_client_secret": {"configured": self.oidc_client_secret is not None},
+                "session_encryption_key": {
+                    "configured": self.session_encryption_key is not None
+                },
             },
             "valid": not issues,
             "issues": [issue.to_dict() for issue in issues],
@@ -250,6 +270,16 @@ def _uses_https(value: str) -> bool:
     """判断服务地址是否明确使用 HTTPS。"""
 
     return urlparse(value).scheme.lower() == "https"
+
+
+def _is_valid_fernet_key(value: str) -> bool:
+    """校验 Fernet 密钥编码和解码后的固定长度。"""
+
+    try:
+        decoded = base64.b64decode(value.encode("ascii"), altchars=b"-_", validate=True)
+    except (UnicodeEncodeError, binascii.Error, ValueError):
+        return False
+    return len(decoded) == 32
 
 
 def _load_config_file(path: Path) -> dict[str, object]:
@@ -387,4 +417,7 @@ def load_server_settings(
             "object_store_secret_key", raw["object_store_secret_key"]
         ),
         oidc_client_secret=_secret("oidc_client_secret", raw["oidc_client_secret"]),
+        session_encryption_key=_secret(
+            "session_encryption_key", raw["session_encryption_key"]
+        ),
     )

@@ -29,6 +29,7 @@ def valid_settings():
             "oidc_issuer_url": "http://oidc.test",
             "oidc_client_id": "brand-os-test",
             "oidc_client_secret": "test-oidc-secret",
+            "session_encryption_key": "MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA=",
         },
         environ={},
     )
@@ -51,6 +52,7 @@ class ServiceHealthTest(unittest.TestCase):
                 "postgresql": True,
                 "schema": True,
                 "object_storage": True,
+                "oidc": True,
             },
         )
 
@@ -64,11 +66,26 @@ class ServiceHealthTest(unittest.TestCase):
                 "postgresql": False,
                 "schema": True,
                 "object_storage": True,
+                "oidc": True,
             },
         )
 
         self.assertEqual(report.status, "not_ready")
         self.assertIn("postgresql", report.blocking_dependencies)
+
+    def test_oidc_failure_blocks_employee_api_readiness(self) -> None:
+        report = build_readiness_report(
+            valid_settings(),
+            dependency_states={
+                "postgresql": True,
+                "schema": True,
+                "object_storage": True,
+                "oidc": False,
+            },
+        )
+
+        self.assertEqual(report.status, "not_ready")
+        self.assertIn("oidc", report.blocking_dependencies)
 
     def test_optional_failures_do_not_block_core_readiness(self) -> None:
         report = build_readiness_report(
@@ -77,6 +94,7 @@ class ServiceHealthTest(unittest.TestCase):
                 "postgresql": True,
                 "schema": True,
                 "object_storage": True,
+                "oidc": True,
                 "dify": False,
                 "zvec": False,
                 "openwork_runtime": False,
@@ -95,6 +113,7 @@ class ServiceHealthTest(unittest.TestCase):
                 "postgresql": True,
                 "schema": True,
                 "object_storage": True,
+                "oidc": True,
             },
         )
 
@@ -105,6 +124,7 @@ class ServiceHealthTest(unittest.TestCase):
             "test-access",
             "test-secret",
             "test-oidc-secret",
+            "MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA=",
         ):
             self.assertNotIn(secret, rendered)
         self.assertEqual(report.to_dict()["schema_version"], "service-health.v1")

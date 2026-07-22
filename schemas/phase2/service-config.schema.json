@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://brand-os.local/schema/service-config.v1.json",
+  "$id": "https://brand-os.local/schema/service-config.v2.json",
   "title": "Brand Project OS Service 安全配置摘要",
   "type": "object",
   "required": [
@@ -18,7 +18,7 @@
     "issues"
   ],
   "properties": {
-    "schema_version": {"const": "service-config.v1"},
+    "schema_version": {"const": "service-config.v2"},
     "environment": {"enum": ["development", "test", "production"]},
     "public_base_url": {"type": "string", "minLength": 1},
     "database_pool_size": {"type": "integer"},
@@ -33,13 +33,15 @@
         "database_dsn",
         "object_store_access_key",
         "object_store_secret_key",
-        "oidc_client_secret"
+        "oidc_client_secret",
+        "session_encryption_key"
       ],
       "properties": {
         "database_dsn": {"$ref": "#/$defs/secretStatus"},
         "object_store_access_key": {"$ref": "#/$defs/secretStatus"},
         "object_store_secret_key": {"$ref": "#/$defs/secretStatus"},
-        "oidc_client_secret": {"$ref": "#/$defs/secretStatus"}
+        "oidc_client_secret": {"$ref": "#/$defs/secretStatus"},
+        "session_encryption_key": {"$ref": "#/$defs/secretStatus"}
       },
       "additionalProperties": false
     },
