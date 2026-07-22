@@ -1,34 +1,30 @@
-# 团队服务器架构（远期候选）
+# 团队服务器架构
 
-> 状态：`future-candidate`<br>
-> 当前 MVP：`not-approved-for-current-mvp`<br>
-> 复审时点：`review-after-hongri-pilot`
-> 当前生效架构：[ADR-0003：本地优先的鸿日单用户验证](../adr/0003-local-first-hongri-validation.md)
+> 状态：已批准，按 Phase 2-4 分阶段实施<br>
+> 当前前置：先完成 F1.10 单一客户端本地纵切<br>
+> 当前生效决策：[ADR-0005：单一客户端与服务器权威服务](../adr/0005-single-client-server-authority.md)
 
-可视化交付：[可编辑 Draw.io 源文件](../diagrams/team-server-architecture.drawio)；[嵌入源数据的 PNG](../diagrams/team-server-architecture.drawio.png)。图中拓扑作为研究保留，必须同时显示“远期候选 / 当前 MVP 未批准 / 鸿日试点后复审”，不能被当作当前部署图。
+旧可视化交付：[可编辑 Draw.io 源文件](../diagrams/team-server-architecture.drawio)；[嵌入源数据的 PNG](../diagrams/team-server-architecture.drawio.png)。旧图包含轻量 Web 等已取消边界，只作历史参考；当前拓扑以本文和 ADR-0005 为准，后续需单独更新图文件。
 
-## 候选结论（未批准当前 MVP）
+## 当前结论
 
-如果鸿日试点后正式批准团队服务器路线，候选生产形态采用“服务器唯一权威、Brand OS Desktop 主客户端、轻量 Web 后备、AI 多入口共用同一 API”。团队自托管指数据、账号、密钥和备份由团队控制，不要求所有基础设施运行在同一台自建主机上，也不允许员工电脑或 Agent Worker 形成第二个正式写入面。
+生产形态采用“服务器唯一权威、公司定制 OpenWork 唯一员工客户端、AI 多入口共用同一应用服务”。团队自托管指数据、账号、密钥和备份由公司控制，不要求所有基础设施运行在同一台自建主机上，也不允许员工电脑或 Agent Worker 形成第二个正式写入面。
 
-OpenWork 仅在通过本地纵向切片后，才可能成为此候选架构中的 Brand OS Desktop 基础。即使采用，OpenWork Server、Orchestrator 和 OpenCode 也只组成隔离 Agent Worker；它们的会话、SQLite、运行配置和工具权限不属于 Brand OS 正式状态。完整条件见 [OpenWork 深度集成计划](openwork-deep-integration.md) 和 [ADR-0002](../adr/0002-openwork-primary-client.md)。
+OpenWork 已被选定为客户端基础。OpenWork Server、Orchestrator 和 OpenCode 只组成隔离 Agent Runtime；它们的会话、SQLite、运行配置和工具权限不属于正式状态。完整条件见 [OpenWork 深度集成计划](openwork-deep-integration.md) 和 [ADR-0004](../adr/0004-openwork-single-client.md)。
 
-## 与当前鸿日 MVP 的边界
+## 与 Phase 1 的边界
 
-- 当前只有 Fox 本地单用户写入面，使用 SQLite、内容寻址本地证据区和本地 UI/CLI/MCP；不部署本页拓扑。
-- 当前不要求团队账号、OIDC、RLS、PostgreSQL、S3、Outbox、远程 MCP、轻量 Web、托管 Worker、高可用或生产 RPO/RTO。
-- 本页所有“生产”“首发”“必须”均以“团队服务器路线通过未来采用 ADR”为前提，不构成当前任务要求。
-- 当前实现仍保留稳定 ID、事件、证据哈希、Proposal、人工批准和版本化端口，使未来可以单向迁移，而不是提前运行双套系统。
-- 复审前不得以本页架构的完整度代替鸿日冷启动、会议解释、证据回源、策略探索、执行落地和模型切换验收。
+- Phase 1 仍使用 SQLite、内容寻址本地证据区和本地 CLI/MCP，不运行本页服务器拓扑。
+- 服务器能力已经批准，但不能反向成为 F1.9/F1.10 的运行前置。
+- F1.10 通过后依次完成 PostgreSQL/对象存储、身份权限、一致性、恢复、联网客户端和团队试点。
+- Phase 3 使用一次性迁移和冻结本地写入完成权威切换，不提前运行双套可写系统。
 
 ```mermaid
 flowchart TB
     HUMAN["团队成员"] --> DESKTOP["Brand OS Desktop 主客户端"]
-    MOBILE["移动 / 应急 / 外部访客"] --> WEB["轻量 Web"]
     OTHERAI["Codex / Claude / 其他 MCP 客户端"] --> EDGE["HTTPS 入口 / WAF / Caddy"]
     CLI["CLI / 自动化"] --> EDGE
     DESKTOP --> EDGE
-    WEB --> EDGE
 
     EDGE --> API["无状态 Brand OS API"]
     EDGE --> MCP["远程 MCP 网关"]
@@ -61,8 +57,7 @@ flowchart TB
 |:---|:---|:---|:---|
 | PostgreSQL | 身份映射、项目权限、领域事件、正式投影、审批、Outbox、审计 | 只经领域应用服务写入 | 核心写入停止，禁止伪成功 |
 | 对象存储 | 原始文件、提交件、版本化导出和备份 | 临时区校验后转为不可变正式对象 | 新上传暂停，已登记状态保持可查 |
-| Brand OS Desktop | UI 状态、短期缓存、草稿、设备配置和令牌引用 | 只调 API；离线仅草稿/Proposal | 显示快照和故障状态，转轻量 Web 应急 |
-| 轻量 Web | 身份、管理、移动审批、外部访问和应急查询 | 只调 API；浏览器无正式数据库 | 保留只读故障页，不承担本地 Agent |
+| Brand OS Desktop | UI 状态、短期缓存、草稿、设备配置和令牌引用 | 只调 API；离线仅草稿/Proposal | 显示带水位快照和故障状态，不提供第二套 Web 入口 |
 | API/MCP | 身份、权限、业务用例和协议适配 | 无状态；不得保存独立业务事实 | 任一副本可替换 |
 | OpenWork Server/Orchestrator | Agent 会话、运行配置、流式事件、工具请求和产物引用 | 只经 `AgentRuntimePort`；正式结果经 API 成为 Proposal | 运行暂停/重试，权威查询与审批不受影响 |
 | OpenCode | 默认交互式 Agent 运行时 | 使用短期任务身份和最小 Task Packet | 可由其他 `AgentRuntimePort` 适配器替换 |
@@ -94,19 +89,19 @@ flowchart TB
 
 ## 部署档位
 
-以下档位只比较未来服务器路线，不包含当前本地鸿日 MVP：
+以下档位用于 Phase 2-4；实际生产档位由恢复演练和试点负载决定：
 
 | 档位 | 服务端拓扑 | 客户端/Worker | 用途 | RPO / RTO | 结论 |
 |:---|:---|:---|:---|:---|:---|
-| 服务端开发与演示 | Docker Compose，PostgreSQL、对象存储和单 API 节点 | 未签名开发桌面 + 本地 Worker | 服务器方案 CI、迁移演练、隔离 POC | 不作为生产承诺 | 未来采用后保留 |
-| 小团队生产 | 1 个应用节点 + 托管 PostgreSQL + 托管对象存储 + 独立备份域 | 签名稳定版桌面 + 员工终端 Worker；按需 1 个托管 Worker | 3-10 人首发 | 5 分钟 / 60 分钟 | 未来候选首选 |
-| 高可用生产 | 2 个以上应用节点 + 负载均衡 + 多可用区 PostgreSQL + 版本化对象存储 | 灰度桌面通道 + 多托管 Worker | 稳定使用后 | 1 分钟 / 15-30 分钟 | 达到升级门后采用 |
+| 服务端开发与演示 | Docker Compose，PostgreSQL、对象存储和单 API 节点 | 未签名开发桌面 + 本机 Runtime | CI、迁移演练、隔离 POC | 不作为生产承诺 | Phase 2 使用 |
+| 小团队生产 | 应用节点 + 托管 PostgreSQL + 托管对象存储 + 独立备份域 | 签名稳定版桌面；按需托管 Worker | 第一批内部成员 | 初始目标 5 分钟 / 60 分钟 | Phase 4 依据恢复演练确认 |
+| 高可用生产 | 2 个以上应用节点 + 负载均衡 + 多可用区 PostgreSQL + 版本化对象存储 | 灰度桌面通道 + 多托管 Worker | 试点负载达到升级门后 | 初始目标 1 分钟 / 15-30 分钟 | 按测量采用 |
 
 不采用“两台自建 PostgreSQL 即高可用”的方案。缺少仲裁、自动故障转移和成熟备份体系时，它会增加脑裂风险。首发也不引入 Kubernetes；无状态容器、托管数据库和自动化发布已经能满足小团队需求。
 
 ## 网络与信任区
 
-- 公网只开放 443。OIDC 回调、API、MCP、Web 和桌面更新使用独立路径/域名及最小安全策略。
+- 公网只开放 443。OIDC 回调、API、MCP 和桌面更新使用独立路径或域名及最小安全策略。
 - PostgreSQL、对象存储管理端、Redis、Zvec、Dify、Open Notebook、FlowLong、OpenWork Server/Orchestrator 和监控管理端不得直接暴露公网。
 - 员工终端 Worker 只建立出站连接；不在局域网监听无认证端口。桌面与本机 Worker 的 IPC/回环 HTTP 使用随机短期令牌、来源校验和窄化路由。
 - 运维入口使用 VPN、Tailscale、堡垒机或云厂商私网控制面，并启用 MFA。
@@ -122,7 +117,7 @@ flowchart TB
 - 严重告警：核心不可用超过 3 分钟、数据库不可用、WAL 归档停止、最近成功备份超过 24 小时、磁盘超过 90%、跨项目越权、未授权业务升级或签名更新失败。
 - 日志使用 `request_id`、`correlation_id` 和 `run_id`；禁止记录 Token、密码、完整原文、未脱敏提示词、对象签名 URL 或模型密钥。
 
-## 候选服务目标
+## 初始内部服务目标
 
 | 指标 | 首个生产目标 |
 |:---|:---|
@@ -138,7 +133,7 @@ flowchart TB
 
 所有目标必须以压测、监控和独立恢复演练证明，不能只依据云服务商或上游项目宣传。AI 生成时延按运行时和模型单独统计，不混入核心 API SLO。
 
-## 候选服务端发布与迁移
+## 服务端发布与迁移
 
 1. 镜像固定版本和摘要，生产禁用 `latest`。
 2. 迁移采用 expand-migrate-contract，并通过 PostgreSQL advisory lock 保证只有一个迁移任务执行。
@@ -147,25 +142,25 @@ flowchart TB
 5. 破坏性迁移至少延迟一个发布周期，并在执行前创建可验证恢复点。
 6. 单应用节点允许明确维护窗口；升级为双节点后采用滚动或蓝绿发布。
 
-## 候选桌面发布与上游同步
+## 桌面发布与上游同步
 
 1. 公司独立 fork 只构建 OpenWork MIT 社区核心；CI 扫描 `ee/**`、Den、上游云、遥测、商标和更新端点越界。
 2. 产品名、AppID、深链协议、包名、图标、签名和更新清单全部由公司控制。
 3. macOS 完成代码签名与公证，Windows 完成受信代码签名，Linux 包提供校验和与签名；更新清单和安装包都必须验签。
-4. 稳定、灰度和开发通道使用不同授权；服务端维护最小/推荐客户端版本，可阻断已知不安全版本但必须提供升级或 Web 应急入口。
+4. 稳定、灰度和开发通道使用不同授权；服务端维护最小/推荐客户端版本，可阻断已知不安全版本并提供明确升级、只读或回退路径。
 5. 持续监控 `upstream/dev`，但月度同步和生产构建只选择稳定 tag 与审查过的提交 SHA；严重安全修复可加急回移。许可、SBOM、类型、IPC、E2E、API 兼容、升级/回退全部通过后才能进入稳定通道。
 6. 客户端与 API 至少保持一个发布周期的向后兼容；服务端先扩展，桌面升级覆盖后再收缩旧契约。
 
-## 候选扩容门
+## 扩容门
 
 满足任一条件时评估双应用节点、更高数据库规格和托管 Worker 池：连续 30 天正式使用、活跃成员超过 5 人、月可用性接近 99.5% 下限、CPU 或连接池连续一周超过 70%、核心请求 P95 连续超标、托管运行排队 P95 超过 2 分钟。扩容后的服务目标提高到 99.9%，但不改变权威边界，也不把员工终端 Worker 视为服务器容量。
 
-## 从鸿日试点进入复审的门
+## 实施门
 
-本页只能在以下条件同时满足后进入正式采用评审：
+本页已经批准，但仍按以下顺序执行：
 
-1. 鸿日本地 MVP 通过冷启动、会议分类、证据回源、增量 Proposal、探索/执行、多模型一致和品牌质量金标。
-2. Fox 的连续真实使用证明重复解释和项目状态混乱显著下降。
-3. 出现可量化的多人、远程、中心权限、常驻自动化或本机可靠性需求。
-4. 明确哪些数据中心化、哪些能力继续本地优先，并重新评估 OpenWork 是否仍是合适客户端。
-5. 新 ADR 正式接受服务器路线，并批准从 SQLite/本地证据区到 PostgreSQL/S3 的单向迁移、对账、回滚和停止双写方案。
+1. F1.10 通过冷启动、会议分类、证据回源、增量 Proposal、探索/执行、多模型一致和品牌质量金标。
+2. F2.10 通过身份、权限、一致性、审计、备份恢复和内部运行目标验收。
+3. F3.1 完成 SQLite/本地证据到 PostgreSQL/S3 的单向迁移、对账、回滚演练和停止双写。
+4. F3.13 通过唯一客户端、MCP/Skills、Dify 和外部组件 NoOp 回退验收。
+5. Phase 4 用真实成员、并发和故障数据确认部署档位，未经 F4.9 不宣称生产可用。

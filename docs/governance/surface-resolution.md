@@ -41,4 +41,4 @@
 
 ## 远期真相面候选
 
-团队服务器、PostgreSQL、S3/MinIO、OIDC、RLS、Outbox 和灾备属于 `future-candidate`、`not-approved-for-current-mvp`、`review-after-hongri-pilot`。只有 Phase 2 证明个人试点有效并通过 Phase 3 决策门后，才允许替换当前部署适配器；替换不得创造第二真相源或改变人工批准边界。
+2026-07-22 后，团队服务器、PostgreSQL、对象存储、OIDC、RLS、Outbox 和恢复已进入 Phase 2-4 活动计划。Phase 3 通过一次性迁移替换本地适配器；替换不得创造第二真相源或改变人工批准边界。权威决策见 ADR-0005。

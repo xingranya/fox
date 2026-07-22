@@ -1,193 +1,140 @@
 # 部署拓扑评估
 
-## 当前决策
+## 当前结论
 
-CURRENT 不是团队服务器部署，而是 Fox 在 `/Users/fox/work` 上验证鸿日的本地单用户 MVP。
+2026-07-22，Fox 批准“公司定制 OpenWork 唯一员工客户端 + 公司服务器权威服务”。Brand Project OS 是当前项目名，最终发行名可以调整，但员工不能面对两个软件。
 
-| 方案 | 状态 | 结论 |
-|:---|:---|:---|
-| 本地鸿日单用户原型 | **CURRENT** | 当前唯一实施与验收目标 |
-| OpenWork 本地桌面壳 | CURRENT 候选 | 可以验证界面适配，但不是 MVP 前置条件 |
-| 团队服务器 | `future-candidate` | 保留设计，不实施 |
-| PostgreSQL、S3、OIDC、并发、HA、PITR、灾备 | `not-approved-for-current-mvp` | 不进入当前依赖、工期和完成标准 |
-| 服务器化复审 | `review-after-hongri-pilot` | 由鸿日真实使用和团队需求重新决定 |
+| 部分 | 当前决定 |
+|:---|:---|
+| 员工客户端 | 基于 OpenWork 的公司发行版；最终发行名待定 |
+| 本机运行 | OpenCode Runtime、Sidecar、文件/终端/桌面桥接随安装包 |
+| 业务后端 | Brand Project OS Service，部署在公司服务器 |
+| 正式状态 | Phase 1 SQLite；Phase 3 切换后 PostgreSQL 唯一写入权威 |
+| 原始证据 | Phase 1 本地内容寻址快照；切换后 S3 兼容对象存储版本 |
+| AI 接入 | MCP Gateway、Skills 和 CLI/API；其他 Agent 是辅助入口 |
+| 工作流 | Dify 正式适配；FlowLong 等组件逐项评估、可禁用 |
+| 第二客户端 | 不建设 Web/PWA 或另一个桌面客户端 |
 
-## CURRENT 本地拓扑
+## 为什么不能“只部署 MCP”
+
+MCP 解决 Agent 如何调用工具，不负责保存权威事件、做事务、处理并发、校验人工身份或恢复数据。服务器至少包含以下部分：
+
+- 领域应用服务和版本化 HTTP API；
+- MCP Gateway 与 Skills 目录；
+- PostgreSQL 事件、审批、投影和审计；
+- 对象存储原件版本和 SHA-256；
+- OIDC、RBAC/RLS、幂等、乐观锁和 Outbox；
+- 备份、恢复、监控和告警。
+
+MCP Gateway 调用应用服务。它不能直写 PostgreSQL，也不能通过服务账号执行人工批准。
+
+## 目标拓扑
 
 ```mermaid
 flowchart TB
-    FOX["Fox"]
-    UI["本地界面\n简单界面或 OpenWork 候选壳"]
-    API["本地应用用例\n状态、证据、Proposal、Task Packet"]
-    STORE[("轻量结构化存储\nSQLite 或等价实现")]
-    FILES["/Users/fox/work\n鸿日只读原件"]
-    INDEX["本地来源/全文索引"]
-    MCP["本地 API / MCP / CLI"]
-    CODEX["Codex"]
-    CLAUDE["Claude"]
+    subgraph DEVICE["员工电脑"]
+        DESKTOP["Brand Project OS Desktop\n公司定制 OpenWork"]
+        RUNTIME["OpenCode Runtime / Sidecar"]
+        BRIDGE["本机文件 / 终端 / 桌面桥接"]
+        CACHE["缓存 / 草稿 / 运行态"]
+        DESKTOP --> RUNTIME
+        DESKTOP --> BRIDGE
+        DESKTOP --> CACHE
+    end
 
-    FOX --> UI --> API
-    FILES --> INDEX --> API
-    API --> STORE
-    STORE --> API
-    API --> MCP
-    MCP --> CODEX
-    MCP --> CLAUDE
-    CODEX -->|"候选/Proposal"| API
-    CLAUDE -->|"候选/Proposal"| API
+    subgraph COMPANY["公司服务器"]
+        EDGE["HTTPS 入口"]
+        API["Brand Project OS API"]
+        MCP["MCP Gateway / Skills"]
+        APP["领域应用服务"]
+        PG[("PostgreSQL\n事件 / 审批 / 投影 / 审计")]
+        OBJ[("S3 兼容对象存储\n原件版本 / SHA-256")]
+        JOB["Outbox / Worker"]
+        OBS["日志 / 指标 / 追踪 / 备份"]
+
+        EDGE --> API --> APP
+        EDGE --> MCP --> APP
+        APP --> PG
+        APP --> OBJ
+        PG --> JOB
+        APP --> OBS
+    end
+
+    DESKTOP --> EDGE
+    AGENT["Codex / Claude / Dify / 其他 Agent"] --> EDGE
+    JOB --> ADAPTERS["Zvec / Open Notebook / Nubase / FlowLong"]
+    ADAPTERS -. "派生结果 / Proposal" .-> APP
 ```
 
-### 当前边界
+## 权威与运行态
 
-- 所有组件运行在 Fox 的本地环境；不开放公网团队服务。
-- `/Users/fox/work` 原件只读，系统写入独立应用数据目录。
-- 轻量结构化存储承载单用户当前状态、关系、Proposal 和确认历史。
-- 当前状态只有 Fox 确认后改变；模型会话和检索结果不直接写入。
-- Codex 与 Claude 通过本地 API/MCP/CLI 读取同一 Task Packet。
-- OpenWork 若使用，只提供本地界面、会话或工具运行；OpenWork Server/OpenCode 不是业务真相源。
-
-## 当前文件与状态一致性
-
-CURRENT 不需要 PostgreSQL/S3 两阶段提交，但仍需防止损坏 Fox 原始工作：
-
-1. 扫描获准资料，只记录路径、SHA-256、大小、媒体类型、时间和版本关系。
-2. 解析文本、索引和缩略图写入独立派生目录，不回写原件。
-3. 文件哈希变化时建立新版本候选，不静默覆盖旧索引记录。
-4. 文件缺失、移动或无法读取时显示来源缺口，不用模型摘要补齐。
-5. 重要结论保存稳定 Source ID 和可打开的原文定位。
-
-本地元数据备份可以使用版本化快照或导出文件；是否需要更强恢复能力由真实使用风险决定。
-
-## 当前状态写入流程
-
-```mermaid
-sequenceDiagram
-    participant S as 新资料/会议
-    participant L as 本地解释层
-    participant F as Fox
-    participant D as 当前状态库
-    participant P as Task Packet
-
-    S->>L: 只读摄取 + 原话/来源定位
-    L->>L: 去重、分类、冲突、增量差异
-    L-->>F: Proposal + 旧新差异 + 证据
-    F->>L: 确认 / 修改 / 驳回 / 保持开放
-    L->>D: 仅保存 Fox 最终动作和新状态版本
-    D->>P: 按任务装配不可变 Packet
-```
-
-CURRENT 不需要多人乐观锁，但 Proposal 仍应带基础状态版本，避免 Fox 打开旧页面后覆盖较新的本地状态。
-
-## 增量会议运行路径
-
-1. 新会议作为独立来源登记。
-2. 识别会议模式：探索、评估、决策或同步。
-3. 仅抽取新增的事实候选、观点、假设、选项、倾向、行动和时间性质。
-4. 与当前状态和已有证据比较，单列重复、冲突和可能替代。
-5. 生成变化 Proposal，保留原话、发言人和时间点。
-6. Fox 确认后才形成新状态版本。
-7. 旧 Task Packet 标记过期；后续模型读取新 Packet。
-
-禁止重新总结全历史后直接写回当前状态。
-
-## 多模型一致性路径
-
-| 层 | CURRENT 规则 |
-|:---|:---|
-| 状态 | 本地核心只维护一份 Fox 已确认状态 |
-| Task Packet | 同一任务固定 `packet_version` 与内容摘要 |
-| 模型入口 | Codex、Claude 调用同一读取用例和证据定位 |
-| 模型输出 | 只作为候选，必须携带 Packet 版本和证据引用 |
-| 对比评测 | 只切换模型，不改变状态、工作模式和证据集合 |
-| 模式切换 | 仅由 Fox 从探索切到执行或返回探索 |
-
-## OpenWork 本地候选
-
-OpenWork 的 React/Electron 工作区、Session、Skills/MCP、文件和终端体验可用于本地候选界面。但 CURRENT 只需要验证：
-
-- 是否能低成本显示当前状态、待确认和证据；
-- 是否能向 Codex/Claude 提供同一 Task Packet；
-- OpenCode Tool Permission 与 Fox 业务确认是否完全分开；
-- 停用 OpenWork 后本地核心数据和模型入口是否仍然可用。
-
-当前不部署远程 OpenWork Server、Den/`ee/`、团队控制面、企业身份或公司自动更新链。OpenWork 深度 fork 是 `review-after-hongri-pilot` 决策。
-
-## CURRENT 可用性与恢复
-
-当前产品价值指标不是服务器 SLO，而是工作正确性。最低运行保护包括：
-
-- 原件永不由系统自动修改或删除；
-- 本地状态库支持可读导出和周期快照；
-- 索引和派生文本可从原件重建；
-- Task Packet、状态版本和 Proposal 具备稳定 Schema；
-- OpenWork/OpenCode 或任一模型不可用时，Fox 仍能查看当前状态和证据；
-- 失败不触发自动状态升级或静默回退到过期内容。
-
-建议观察：冷启动正确率、回源完整率、非法升级次数、会议增量准确性、多模型事实一致性和 Fox 品牌质量评分，而不是先承诺月度在线率、RPO 或 RTO。
-
-## CURRENT 安全边界
-
-- 默认绑定本机，不开放局域网和公网；
-- 本地 API/MCP 使用最小工具表，不暴露批准、任意文件写入和任意 SQL；
-- 外部模型调用前按任务选择最小证据，并记录提供商和资料范围；
-- 密钥使用系统安全存储或受控环境注入，不写入仓库、URL、日志和 Task Packet；
-- OpenWork Renderer、插件、MCP、PTY 和文件访问仍按不可信边界处理；
-- CURRENT 单用户不等于允许跳过原件只读、凭据保护和数据外发确认。
-
-## 远期团队服务器候选
-
-既有服务器研究保留为复审输入，不作为当前批准：
-
-```mermaid
-flowchart LR
-    CLIENTS["团队客户端"] --> EDGE["TLS / OIDC"]
-    EDGE --> APP["版本化应用 API"]
-    APP --> PG[("PostgreSQL")]
-    APP --> S3[("S3 原件")]
-    PG --> OUTBOX["Outbox Worker"]
-    OUTBOX --> DERIVED["可替换索引/工作流"]
-```
-
-候选能力包括：
-
-- 标准 PostgreSQL 正式状态、事件、审批和并发控制；
-- S3/MinIO 不可变原件、对象版本和跨故障域备份；
-- OIDC、MFA、RBAC/RLS、服务账号和撤权；
-- 幂等、预期版本、Outbox、重试、死信和对账；
-- 轻量 Web、远程 MCP、CLI 和团队 Desktop；
-- 多实例、HA、PITR、RPO/RTO、监控和灾备。
-
-全部状态：`future-candidate` / `not-approved-for-current-mvp` / `review-after-hongri-pilot`。
-
-## 服务器化触发条件
-
-至少出现一项真实证据，并由 Fox 重新批准后才进入服务器设计：
-
-- 两名以上成员需要同时查看或修改同一项目状态；
-- 跨设备或远程访问成为高频刚需；
-- 本地文件容量、备份或设备故障风险已不可接受；
-- 需要可撤销的具名账户和差异权限；
-- 本地单用户冲突模型无法覆盖真实工作；
-- 鸿日试点已经证明项目认知层本身有稳定价值；
-- FoxWork 团队文件线完成独立需求确认并证明适合共享底层能力。
-
-服务器化不是默认 Phase 2，而是一次新的产品范围决定。
-
-## 后置组件部署边界
-
-| 组件 | CURRENT | 未来候选角色 |
+| 数据 | 权威位置 | 删除后影响 |
 |:---|:---|:---|
-| Zvec | 不部署 | 可重建检索适配器 |
-| Open Notebook | 不部署 | 内容处理/研究 sidecar |
-| Nubase | 不部署 | 单项 Memory/模型网关候选 |
-| Dify | 不部署 | AI 工作流适配器 |
-| FlowLong | 不部署 | 复杂人工路由适配器 |
+| 原始文件版本和哈希 | 对象存储 + PostgreSQL 元数据 | 不可删除；按保留策略恢复 |
+| 人工批准事件和当前状态 | PostgreSQL | 必须从备份和事件恢复 |
+| OpenWork/OpenCode Session | 员工设备或运行服务 | 可删除，不影响正式状态 |
+| 客户端缓存和离线草稿 | 员工设备 | 可删除；未提交草稿可能丢失，但不能影响正式状态 |
+| Zvec/FTS、摘要、Notebook、Memory | 派生层 | 可重建或停用 |
+| Dify/FlowLong 流程实例 | 协调层 | 可对账、重试或回退内置流程，不能定义正式状态 |
 
-每个候选都必须保留本地直接基线，且不得成为项目状态或 Fox 批准的唯一存储。
+## 数据一致性
 
-## 最终采用决策
+正式写入只走一个方向：
 
-- **当前采用**：本地单用户、只读原件、轻量结构化状态、增量 Proposal、同一 Task Packet、本地 AI 入口和最小界面。
-- **当前候选**：OpenWork MIT 社区客户端壳，仅限本地体验验证。
-- **当前不采用**：团队服务器、PostgreSQL、S3、OIDC、HA、灾备、远程 OpenWork Server 和五个外部适配器。
-- **复审时间**：鸿日真实试点完成后，由 Fox 依据提效、正确性和团队需求执行 `review-after-hongri-pilot`。
+```text
+员工交互或 Agent Proposal
+  -> 应用服务鉴权和 Schema
+  -> idempotency_key + expected_version
+  -> 单事务写入事件、审批、投影、审计、Outbox
+  -> 返回新状态版本
+```
+
+- 并发版本冲突返回 409 和差异，不做最后写入覆盖。
+- Agent、MCP、Skill、Dify 和服务账号只能创建 Proposal。
+- 离线 Desktop 只保存草稿。恢复联网后以最新版本重新生成差异。
+- SQLite 到 PostgreSQL 采用一次性迁移和写入冻结；服务器接受新写入后不允许回升本地旧库。
+
+## 稳定性档位
+
+| 档位 | 拓扑 | 用途 | 进入条件 |
+|:---|:---|:---|:---|
+| 开发/集成 | 单 API、PostgreSQL、对象存储；隔离测试数据 | CI、迁移、故障注入和恢复演练 | F2.1 后 |
+| 小团队试点 | 应用节点、托管 PostgreSQL/对象存储、独立备份域 | 第一批内部成员 | F2.10 与 F3.13 通过 |
+| 高可用 | 多应用节点、负载均衡、多可用区数据库和对象版本 | 试点负载达到升级门 | F4.7 测量后由 Fox 批准 |
+
+高可用不是“多起一个数据库进程”。没有成熟故障转移、仲裁和恢复体系时，额外副本会增加脑裂风险。初期也不默认引入 Kubernetes。
+
+## 故障行为
+
+| 故障 | Desktop 行为 | 服务端行为 |
+|:---|:---|:---|
+| API 不可达 | 显示最后水位，进入只读/草稿 | 告警并恢复；不返回伪成功 |
+| PostgreSQL 不可达 | 禁止正式提交 | API 失去就绪，写入停止 |
+| 对象存储不可达 | 已登记状态可读，新原件上传暂停 | 上传保持隔离状态，不形成 ACTIVE 证据 |
+| OpenCode/Sidecar 故障 | 状态与证据仍可用，AI 工作暂停 | 不影响业务 API 就绪 |
+| Zvec/Dify/Notebook 等故障 | 显示功能降级 | 回退 FTS/直接 Worker/内置流程，核心事务继续 |
+| 客户端版本故障 | 回滚上一签名版本 | API 保持一个兼容窗口 |
+
+## 初始内部目标
+
+以下数值是待 Phase 2/4 验证的内部目标，不是外部承诺：
+
+| 指标 | 初始目标 |
+|:---|:---|
+| 核心 API 月可用性 | 小团队档不低于 99.5% |
+| 读取接口 P95 | 不高于 500 ms |
+| 非 AI 写入 P95 | 不高于 1 s |
+| Outbox 追平 P95 | 不高于 5 s |
+| PostgreSQL RPO | 不高于 5 分钟 |
+| 核心服务 RTO | 不高于 60 分钟 |
+
+目标必须由负载测试、监控和隔离恢复演练证明。AI 生成时延按模型单独统计，不混入核心 API SLO。
+
+## 阶段判断
+
+- Phase 1：不启动服务器也能完成本地纵切；这保证业务语义和客户端不被基础设施绑死。
+- Phase 2：建立权威存储、身份权限、一致性、API、审计和恢复。
+- Phase 3：完成一次性迁移、Desktop 联网、MCP/Skills/Dify 和外部适配。
+- Phase 4：用真实成员、并发和故障数据决定小团队或高可用档位。
+
+部署已进入批准路线，但每一阶段仍需独立通过。没有恢复、权限和一致性证据时，不能因为服务器能启动就宣称稳定。

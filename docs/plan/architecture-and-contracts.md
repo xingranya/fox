@@ -1,15 +1,14 @@
 # 架构与接口契约计划
 
-> 当前生效路线：Fox 本地单用户鸿日 MVP<br>
-> 权威决策：[ADR-0003](../adr/0003-local-first-hongri-validation.md)<br>
-> 团队服务器：[远期候选](team-server-architecture.md)，未批准进入当前 MVP
-> OpenWork：[条件性客户端候选](../adr/0002-openwork-primary-client.md)，服务端化不是前置
+> 当前生效路线：公司定制 OpenWork 唯一员工客户端 + Brand Project OS Service<br>
+> 权威决策：[ADR-0005](../adr/0005-single-client-server-authority.md)<br>
+> Phase 1：本地 SQLite 纵切；Phase 2-4：服务器权威、联网客户端和团队试点
 
 ## 架构结论
 
-Brand Project OS 当前不是团队服务器产品，而是运行在 `/Users/fox/work` 的本地品牌项目认知与状态协作层。第一用户是 Fox，第一项目是鸿日。当前技术目标是用最短纵向切片证明：AI 能正确读取当前状态、解释新会议、回到证据、区分探索与执行、生成增量 Proposal，并由 Fox 最终批准。
+Brand Project OS 是一个产品，包含基于 OpenWork 的唯一员工客户端和公司服务器上的业务服务。第一用户是 Fox，第一项目是鸿日。Phase 1 先完成本地纵切；随后把同一领域语义迁移到服务器权威层。
 
-本地 MVP 使用一个领域应用层统一图形界面、CLI、MCP、Skills 和 Agent Runtime。SQLite 保存事件、人工批准和当前投影；内容寻址的本地证据区保存只读原件快照。OpenWork、OpenCode、Codex、Claude、全文/向量索引和模型摘要都在端口之后，删除或替换它们不能改变鸿日正式状态。
+所有入口调用同一领域应用层。Phase 1 由 SQLite 和本地证据区承载；Phase 3 切换后由 PostgreSQL 和对象存储承载。OpenWork、OpenCode、Codex、Claude、Dify、检索和模型摘要都在端口之后，删除或替换它们不能改变正式状态。
 
 完整边界见：
 
@@ -17,60 +16,58 @@ Brand Project OS 当前不是团队服务器产品，而是运行在 `/Users/fox
 - [数据一致性与可靠性计划](data-consistency-and-reliability.md)
 - [前端与 AI 访问规划](frontend-and-ai-access.md)
 - [OpenWork 深度集成计划](openwork-deep-integration.md)
-- [ADR-0001：团队服务器远期候选](../adr/0001-team-server-authority.md)
-- [ADR-0002：条件性采用 OpenWork](../adr/0002-openwork-primary-client.md)
-- [ADR-0003：本地优先鸿日验证](../adr/0003-local-first-hongri-validation.md)
+- [ADR-0003：Phase 0-1 本地验证](../adr/0003-local-first-hongri-validation.md)
+- [ADR-0004：唯一员工客户端](../adr/0004-openwork-single-client.md)
+- [ADR-0005：服务器权威服务](../adr/0005-single-client-server-authority.md)
 
 ## 决策优先级
 
 发生冲突时按以下顺序解释：
 
-1. ADR-0003 定义当前 MVP；任何“生产服务器唯一权威”表述不能覆盖它。
-2. 本文与运行时协议定义当前实现契约。
-3. ADR-0002 只决定是否复用 OpenWork 客户端基础，不决定产品权威架构。
-4. ADR-0001 与团队服务器文档仅是 `future-candidate`，鸿日试点后经新 ADR 才能生效。
+1. ADR-0005 定义产品拓扑和团队权威边界。
+2. ADR-0004 定义唯一员工客户端和单安装包边界。
+3. ADR-0003 的会议、人工确认、证据和 Task Packet 规则继续生效；长期本地单用户拓扑不再生效。
+4. 本文与运行时品牌协议定义接口和语义细节。
 
 ## 当前不可突破的不变量
 
-1. 原始资料快照及其 SHA-256 证明“原文是什么”；SQLite 中的 Fox 人工批准事件证明“当前正式状态如何形成”。
+1. 原始资料版本及 SHA-256 证明“原文是什么”；人工批准事件证明“当前正式状态如何形成”。
 2. 图形界面、CLI、MCP、Skill、Agent 和导入器不能直接修改正式表或证据区，必须调用同一应用用例。
-3. AI 只生成 Proposal。只有 Fox 的显式人工动作可以产生批准事件。
+3. AI 只生成 Proposal。只有具备项目权限的员工在交互式客户端执行显式动作，才可以产生批准事件。
 4. `VIEW`、`PREFERENCE`、`HYPOTHESIS`、`OPTION`、`TENDENCY`、`TARGET_DATE` 和 `OPEN` 不得自动升级为 `DECISION` 或 `CONSTRAINT`。
 5. 目标日期必须区分外部硬截止、内部目标、评审节点、暂定日期和未知；未知不能按硬截止处理。
 6. 探索协议与执行规格显式切换；AI 可以建议，不能自行切换。
 7. 新会议只产生基于 `base_state_version` 的增量 Proposal，不重新总结并覆盖全部历史。
 8. Task Packet 先给最小当前上下文，再按需回源；旧聊天和随机检索命中不是正式状态。
-9. SQLite 是当前单用户 MVP 的可写权威实现；PostgreSQL/S3 仅是未来端口实现，不得同时写入。
+9. Phase 1 SQLite 是迁移前权威；Phase 3 切换后 PostgreSQL/S3 是团队权威，本地库只读，不得同时写入。
 10. OpenWork/OpenCode 会话、Tool Permission、索引、摘要、模型运行和缓存均为运行态或派生态。
 11. 开发仓库 `AGENTS.md` 约束软件开发；运行时品牌 Agent 只加载品牌宪法、工作模式、鸿日规则和本轮 Task Packet。
 12. 领域核心只依赖版本化端口和可序列化 Schema，不导入 OpenWork、OpenCode、Electron 或具体模型 SDK。
 
-## 当前逻辑架构
+## 逻辑架构
 
 ```mermaid
 flowchart TB
-    FOX["Fox"] --> UI["本地查看与确认界面"]
-    FOX --> CLI["本地 CLI"]
-    AI["Codex / Claude / OpenCode / 其他模型"] --> MCP["本地 MCP / CLI 适配"]
+    FOX["员工"] --> UI["公司定制 OpenWork\n唯一客户端"]
+    AI["Codex / Claude / Dify / 其他 Agent"] --> MCP["stdio/远程 MCP、Skills"]
 
-    UI --> APP["本地应用层：查询、Proposal、人工确认"]
-    CLI --> APP
+    UI --> APP["版本化应用服务：查询、Proposal、人工确认"]
     MCP --> APP
     APP --> CORE["领域核心：状态、会议、证据、模式与端口"]
 
-    CORE --> DB[("SQLite：事件、审批、投影")]
-    CORE --> EVIDENCE["内容寻址只读证据区"]
-    CORE --> SEARCH["SQLite FTS5 / 可重建索引"]
+    CORE --> DB[("Phase 1 SQLite\nPhase 2+ PostgreSQL")]
+    CORE --> EVIDENCE["Phase 1 本地证据\nPhase 2+ 对象存储"]
+    CORE --> SEARCH["FTS / Zvec 可重建索引"]
 
     APP --> PACKET["Task Packet 装配器"]
     PACKET --> RUNTIME["AgentRuntimePort"]
     RUNTIME --> ADAPTERS["Codex / Claude / OpenCode 适配器"]
     ADAPTERS -. "Artifact / 增量 Proposal" .-> APP
 
-    UI -->|"Fox 批准、修改、驳回"| APP
+    UI -->|"员工批准、修改、驳回"| APP
 ```
 
-`APP` 可以是进程内服务或仅监听回环地址的本地 API。当前不要求远程 HTTPS、OIDC、团队身份网关或常驻服务器。无论采用哪种进程形态，只有应用层持有 SQLite 写连接。
+Phase 1 的 `APP` 可以是进程内服务或本机回环 API。Phase 2 起部署为公司服务器服务；无论在哪个阶段，只有应用层持有权威存储写权限。
 
 ## 规划目录
 
@@ -79,10 +76,10 @@ flowchart TB
 ```text
 fox/
 ├─ apps/
-│  ├─ local-api/                # 可选回环 API；本地用例与事件流
-│  ├─ local-ui/                 # 简单查看、回源、确认和诊断界面
+│  ├─ service/                  # Brand Project OS Service、HTTP API 与 MCP Gateway
+│  ├─ desktop/                  # OpenWork 定制客户端中的业务页面与本机桥接
 │  ├─ cli/                      # 状态、导入、会议、Task Packet 与诊断
-│  └─ mcp/                      # 本地 stdio MCP；只读、回源、Proposal
+│  └─ mcp/                      # stdio/远程 MCP；只读、回源、Proposal
 ├─ packages/
 │  ├─ core/
 │  │  ├─ domain/                # 陈述类型、会议模式、状态和关系
@@ -91,11 +88,13 @@ fox/
 │  │  ├─ projections/           # 当前状态、决定、开放项和行动
 │  │  └─ ports/                 # 存储、证据、检索、模型与运行时端口
 │  ├─ adapters/
-│  │  ├─ sqlite/                # 当前权威实现
-│  │  ├─ local-evidence/        # 本地内容寻址证据区
+│  │  ├─ sqlite/                # Phase 1 实现和迁移只读归档
+│  │  ├─ postgres/              # Phase 2+ 权威事件、审批和投影
+│  │  ├─ local-evidence/        # Phase 1 内容寻址证据区
+│  │  ├─ object-storage/        # Phase 2+ 原件版本与哈希
 │  │  ├─ search/                # FTS5 与可选增强索引
 │  │  ├─ model/                 # Codex、Claude、OpenCode 等适配器
-│  │  └─ openwork/              # 条件性客户端/运行时适配器
+│  │  └─ openwork/              # 唯一员工客户端与运行时适配器
 │  ├─ ingestion/                # 文件清单、会议转写、分段与候选
 │  └─ runtime-rules/            # 品牌宪法、工作模式和鸿日项目规则
 ├─ schemas/                     # JSON Schema 与版本兼容样本
@@ -116,7 +115,7 @@ fox/
 
 `.fox/runtime/` 不得保存唯一的正式事实、批准记录或原始证据。
 
-## 本地权威存储契约
+## 权威存储契约
 
 ### `CanonicalStorePort`
 
@@ -194,7 +193,7 @@ reject(proposal_id, human_action, expected_version)
 supersede(proposal_id, replacement_id, human_action)
 ```
 
-`approve`、`modify_and_approve` 和 `reject` 只供本地人类界面调用。MCP、Skill、AgentRuntime 和模型适配器的能力表不得包含这些方法。每次人工动作记录 Fox、时间、理由、旧值、新值、证据、作用范围和基础版本。
+`approve`、`modify_and_approve` 和 `reject` 只供有项目权限的员工在交互式 Desktop 调用。MCP、Skill、AgentRuntime 和模型适配器的能力表不得包含这些方法。每次人工动作记录员工身份、时间、理由、旧值、新值、证据、作用范围和基础版本。
 
 ## Task Packet 契约
 
@@ -229,7 +228,7 @@ publish_artifact(run_id, artifact_ref)
 health(runtime_id)
 ```
 
-首版可以通过本地 CLI/子进程调用 Codex、Claude 或 OpenCode。OpenWork 只是可选 UI/控制面适配器。Tool Permission 控制文件、命令、网络和工具，不得复用 Proposal 人工确认 Schema。`publish_artifact` 只能登记产物或创建 `proposed` 状态的 Proposal。
+Phase 1 可以通过本地 CLI/子进程调用 Codex、Claude 或 OpenCode。OpenWork 是唯一员工客户端及运行控制面，但仍通过 `AgentRuntimePort` 调用运行时。Tool Permission 控制文件、命令、网络和工具，不得复用 Proposal 人工确认 Schema。`publish_artifact` 只能登记产物或创建 `proposed` 状态的 Proposal。
 
 F1.7 已实现 `runtime-run.v1` 的起始留痕：角色和模式从不可变 Task Packet 复制，记录 Packet 哈希、状态版本、任务版本、协议、运行时和模型版本。F1.8 已增加本地工具调用的超时和取消传播，以及 Codex/Claude 使用同一 Packet 的运行登记。模型流式事件、产物和运行完成状态尚未实现，不能把一次 `created` 留痕解释成模型已经完成任务。
 
@@ -294,11 +293,11 @@ cancel(run_id)
 
 Codex 与 Claude 的 `runtime-adapter.v1` 配置只指向同一个本地 stdio MCP。提供商登录与凭据由各自运行时管理；Brand Project OS 不读取凭据，也不把凭据写入配置、日志或 Task Packet。模型切换必须复用既有 Packet，且 `model_id` 必须在 Packet 的允许列表中。
 
-## 未来服务器实现配置
+## 服务器实现配置
 
-服务器化不是当前实现任务。若 ADR-0001 通过复审，各端口可替换为：
+Phase 2-3 按以下映射替换端口实现：
 
-| 当前本地实现 | 未来候选实现 | 必须保持的契约 |
+| 当前本地实现 | 服务器目标实现 | 必须保持的契约 |
 |:---|:---|:---|
 | SQLite `CanonicalStorePort` | PostgreSQL、RLS、事件/投影/Outbox | 稳定 ID、事件顺序、人工批准和版本冲突语义 |
 | 本地证据区 | S3 兼容内容寻址对象存储 | SHA-256、来源版本、原文定位和不可变性 |
@@ -318,11 +317,13 @@ Codex 与 Claude 的 `runtime-adapter.v1` 配置只指向同一个本地 stdio M
 5. OpenWork/OpenCode 或其他适配器退出时，不迁移正式业务数据，只清理运行态并切换端口实现。
 6. 从本地到服务器的实现替换不得改变已批准内容的语义等级或证据引用。
 
-## 当前验收
+## 分阶段验收
 
 1. 一个未读旧聊天的 AI 通过本地入口获得正确、最小、可回源的鸿日 Task Packet。
 2. 新会议生成增量 Proposal，不非法升级观点、偏好、选项、倾向或目标日期。
 3. Fox 可以逐项查看差异与原话，批准后事件和投影在同一事务生效。
 4. 两个模型读取同一版本时事实、决定、约束和证据一致。
 5. 删除索引、缓存、模型会话和 OpenWork 状态后可重建读取面。
-6. SQLite 备份恢复、事件重放、证据哈希和 10-20 个鸿日金标全部通过。
+6. Phase 1 的 SQLite 备份恢复、事件重放、证据哈希和鸿日金标全部通过。
+7. Phase 2 的 PostgreSQL/S3、身份权限、并发冲突、审计和恢复全部通过。
+8. Phase 3 完成一次性迁移，本地库只读；唯一客户端、MCP/Skills 和工作流调用同一应用服务。

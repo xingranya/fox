@@ -1,12 +1,14 @@
 # 目标模块清单
 
+> 状态：Phase 0-1 模块基线。2026-07-22 后，团队服务器、OIDC、PostgreSQL/S3、远程 MCP、Dify 和四个外部组件已进入 Phase 2-3 活动计划；本文把它们写成远期候选的段落仅作历史风险输入。当前模块与任务以[任务分解](../plan/task-breakdown.md)和 [ADR-0005](../adr/0005-single-client-server-authority.md)为准。
+
 ## 范围说明
 
-当前没有业务实现代码。本清单按产品验证顺序重排：M00-M09 是鸿日本地单用户 MVP 的 **CURRENT** 模块；团队服务器和外部平台全部进入远期候选区。
+M00-M09 是 Phase 0-1 的领域与本地纵切模块，其中 F1.1-F1.8 已实现。后续活动模块包括服务器权威存储、对象存储、身份权限、并发一致性、HTTP API、远程 MCP/Skills、OpenWork 联网适配和团队试点。
 
-远期模块统一标记为 `future-candidate`、`not-approved-for-current-mvp`、`review-after-hongri-pilot`，不得成为 M00-M09 的实现依赖。
+Zvec、Open Notebook、Nubase、Dify 和 FlowLong 已进入 Phase 3 的独立适配任务，但仍不得成为 M00-M09 或核心联网旅程的必需依赖。
 
-## CURRENT 模块总览
+## Phase 0-1 模块总览
 
 | ID | 模块 | 服务场景 | 主要输入 | 主要输出 | S.U.P.E.R 目标 |
 |:---|:---|:---|:---|:---|:---|
@@ -19,7 +21,7 @@
 | M06 | 品牌 Agent 宪法与工作模式 | 场景 3 | 品牌角色、品味规则、模式选择 | 探索协议或执行规格 | `S绿 U绿 P绿 E绿 R绿` |
 | M07 | Task Packet 上下文装配 | 场景 2、3、5 | 当前状态、模式、任务、证据 | 不可变版本 Task Packet | `S绿 U绿 P绿 E绿 R绿` |
 | M08 | 多模型本地入口 | 场景 5 | Task Packet、模型选择 | Codex/Claude 可读取的 API/MCP/CLI 响应 | `S绿 U绿 P绿 E绿 R绿` |
-| M09 | Fox 本地界面 | 场景 1、4、6 | 当前状态、Proposal、证据、运行结果 | 查看、确认、驳回、回源和任务入口 | `S黄 U绿 P绿 E黄 R绿` |
+| M09 | Brand Project OS Desktop | 场景 1、4、6 | 当前状态、Proposal、证据、运行结果 | 查看、确认、驳回、回源和任务入口 | `S黄 U绿 P绿 E黄 R绿` |
 
 ## 依赖方向
 
@@ -107,44 +109,44 @@ M00 黄金测试与 BrandBench 横向验证 M01-M09
 - **验证**：固定 Packet 下事实、决定和证据必须一致；差异主要来自推理质量和表达。
 - **边界**：不暴露批准、任意数据库写入、原件删除和项目规则切换。
 
-### M09 Fox 本地界面
+### M09 Brand Project OS Desktop
 
 - **责任**：让 Fox 最短路径查看当前状态、待确认变化、证据和 AI 工作结果。
 - **最小视图**：当前、待确认、证据、任务/模式和 AI 工作。
 - **命令**：确认、修改、驳回、保持开放、打开原件、创建 Task Packet、启动/切换模型任务。
-- **候选实现**：简单本地 Web 或 OpenWork MIT 社区客户端壳；选择由最小闭环成本决定。
+- **实现边界**：基于 OpenWork MIT 社区代码改造，是员工唯一客户端；OpenCode Runtime、Sidecar 和本机桥接随同一安装包交付。
 - **非目标**：通用项目管理、团队成员管理、系统健康大屏和完整企业设置。
 
 ## OpenWork 当前定位
 
-OpenWork 只作为 M09 的本地桌面候选和 M08 的 Agent 运行辅助。OpenWork Server、OpenCode Session、Permission、SQLite/JSON 状态不是业务真相源；OpenCode Tool Permission 也不是 M05 的业务批准。是否深度 fork 必须在鸿日本地闭环证明有用之后决定。
+OpenWork 是 M09 的唯一员工客户端基础，也是 M08 的 Agent 运行辅助。OpenWork Server、OpenCode Session、Permission、SQLite/JSON 状态不是业务真相源；OpenCode Tool Permission 也不是 M05 的业务批准。
 
-## 后置可替换适配器
+## Phase 3 可替换适配器
 
-| 候选 | 未来端口 | CURRENT 状态 | 当前替代基线 |
+| 候选 | 端口 | 当前状态 | 替代基线 |
 |:---|:---|:---|:---|
-| Zvec | `SearchIndexPort` | `future-candidate` | SQLite/本地全文与结构化过滤 |
-| Open Notebook | `ContentProcessingPort` / `ResearchWorkspacePort` | `future-candidate` | 直接解析、原件索引和证据回源 |
-| Nubase | `MemoryPort` / `ModelGatewayPort` | `future-candidate` | 本地状态、Task Packet 和直接模型配置 |
-| Dify | `AIWorkflowPort` | `future-candidate` | 直接 Worker/脚本调用模型 |
-| FlowLong | `ApprovalWorkflowPort` | `future-candidate` | Fox 本地确认队列 |
+| Zvec | `SearchIndexPort` | F3.9 评估/适配 | PostgreSQL FTS 与结构化过滤 |
+| Open Notebook | `ContentProcessingPort` | F3.10 评估/适配 | 直接解析、原件索引和证据回源 |
+| Nubase | `MemoryPort` | F3.11 评估/适配 | 当前状态、Task Packet 和显式规则 |
+| Dify | `AIWorkflowPort` | F3.8 正式适配任务 | 直接 Worker/脚本调用模型 |
+| FlowLong | `ApprovalWorkflowPort` | F3.12 许可门后评估 | Brand Project OS 待确认队列 |
 
-五项均为 `not-approved-for-current-mvp`，必须 `review-after-hongri-pilot` 后按单端口、可禁用、可导出、可退出方式重新评估。
+五项均按单端口、可禁用、可导出、可退出实施。Zvec、Open Notebook、Nubase 和 FlowLong 可以有证据地拒绝采用。
 
-## 远期团队模块
+## Phase 2-4 团队模块
 
-以下模块不是 CURRENT：团队身份与账户、PostgreSQL 权威事件、S3 对象存储、RLS、远程 API、Outbox、多用户并发、完整 Web/PWA、服务监控、HA、PITR 和灾备。
+活动模块包括团队身份与账户、PostgreSQL 权威事件、S3 对象存储、RLS、远程 API、Outbox、多用户并发、服务监控、HA、PITR 和灾备。完整 Web/PWA 不采用。
 
-它们作为一个独立远期模块组保留，状态统一为：
+实施顺序为：
 
 ```text
-future-candidate
-not-approved-for-current-mvp
-review-after-hongri-pilot
+Phase 2: 权威数据、身份、权限、一致性、API、恢复
+Phase 3: 联网客户端、MCP/Skills、工作流与外部适配器
+Phase 4: 团队并发、稳定性、安全、容量和分发
 ```
 
-只有鸿日试点证明个人价值，并出现真实多人/远程/恢复需求后，才重新分解和批准。
+每阶段通过后才能进入下一阶段；服务器路线已批准，不再重复做候选决策。
 
 ## S.U.P.E.R 结论
 
-CURRENT 目标准备度为 `S绿 U黄 P黄 E绿 R绿`：职责和替换边界已收敛，但分类 Schema、Task Packet、Proposal 状态机和模型入口尚未落地。最高优先级是 M00 金标以及 M02/M05/M06/M07 的协议正确性，不是安装服务器、数据库或五个外部平台。
+Phase 1 当前准备度为 `S绿 U绿 P绿 E黄 R绿`。F1.1-F1.8 已落地本地状态、证据、Proposal、Task Packet 和 MCP 契约；现在的缺口是 F1.9 单安装包与安全收口，以及 F1.10 鸿日桌面旅程。服务器模块仍按 Phase 2-4 实施，不能反向成为这两个任务的运行前置。

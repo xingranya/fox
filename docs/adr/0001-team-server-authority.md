@@ -1,11 +1,14 @@
 # ADR-0001：团队服务器权威架构作为远期候选
 
-- 状态：候选（`future-candidate`）
-- 当前 MVP：未批准（`not-approved-for-current-mvp`）
-- 复审时点：鸿日真实试点后（`review-after-hongri-pilot`）
+- 状态：已被 [ADR-0005](0005-single-client-server-authority.md) 取代；保留历史
+- 当时状态：未批准（`not-approved-for-current-mvp`）
+- 当时复审时点：鸿日真实试点后（`review-after-hongri-pilot`）
 - 日期：2026-07-13
+- 取代日期：2026-07-22
 - 影响范围：未来团队部署、多人身份、权限、并发、远程访问和灾备
-- 当前生效决策：[ADR-0003：本地优先的鸿日单用户验证](0003-local-first-hongri-validation.md)
+- 当前生效决策：[ADR-0005：单一客户端与服务器权威服务](0005-single-client-server-authority.md)
+
+> 本文记录第一次 rescope 时为何暂缓服务器。Fox 已在 2026-07-22 明确团队部署和单一客户端目标，正文不再代表当前实施顺序。
 
 ## 背景
 

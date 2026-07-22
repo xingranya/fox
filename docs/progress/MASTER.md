@@ -1,21 +1,22 @@
-# Brand Project OS 鸿日本地价值验证 - 总进度
+# Brand Project OS 单一客户端与团队服务 - 总进度
 
-> 任务：先以 Fox 单用户和鸿日真实项目证明 AI 能正确理解会议、当前状态、证据、策略探索与执行，并让 Codex/Claude 共享同一项目认知；通过真实工作价值门后再决定是否团队服务器化。
+> 任务：交付基于 OpenWork 的唯一员工客户端，以及公司服务器上的 Brand Project OS Service，让员工和不同 Agent 使用同一项目状态、证据、人工确认和工作流能力。
 > 开始日期：2026-07-13
 > 最后更新：2026-07-22
-> 模式：`LOCAL_ONLY`（表示 SPEC 任务在本地 Markdown 追踪；当前产品也选择本地优先，但两者概念不同）
+> 模式：`LOCAL_ONLY`（只表示 SPEC 在本地 Markdown 追踪，不表示产品只能本地运行）
 > 第一用户：Fox
 > 第一验证项目：鸿日
 > 需求基线：`20260713_品牌AI长期项目协作系统_场景化需求澄清与产品反馈_v0.1(1).md`
 
 ## 当前结论
 
-- 原 6 阶段 42 项“团队服务器先行”方案全部未开始，现已被 rescope，不再作为活动任务体系。
-- 新方案为 4 阶段 32 项：Phase 0 先定义边界/分类/运行协议/黄金用例；Phase 1 交付鸿日本地单用户原型；Phase 2 用真实工作连续验证；Phase 3 仅在价值 Go 后作团队服务器化决策。
+- 当前活动方案为 5 阶段 49 项：保留已完成的 Phase 0 和 F1.1-F1.8；完成唯一客户端纵切后，建设服务器权威层、MCP/Skills/工作流接入和团队试点。
+- 旧 42 项服务器草案和 32 项本地价值验证方案均保留在 Git 历史中，不再作为当前依赖或完成度来源。
 - 当前主线不是通用项目管理、企业知识库或完整 RAG，而是长期品牌项目的状态与品牌认知协作层。
-- 本地原型采用只读原件、轻量 SQLite/FTS、增量会议解释、当前状态/Proposal、Task Packet、本地 CLI/MCP 和简单查看/确认界面。
-- PostgreSQL、S3、OIDC、RLS、并发、HA/灾备、完整 PWA、OpenWork 深度团队化、Zvec、Open Notebook、Nubase、FlowLong、Dify 都是 Phase 3 候选，不是 Phase 1 前置。
-- OpenWork MIT 社区核心仍可作为本地界面壳候选，但本地价值验证不以深度 fork、团队身份或签名分发为成功条件。
+- 公司定制版 OpenWork 是唯一员工客户端。Brand Project OS 是当前项目名，最终发行名可以另定；OpenCode Runtime、Sidecar 和本机桥接仍随同一安装包分发。
+- Brand Project OS Service 部署在公司服务器。PostgreSQL 保存团队正式事件、审批和投影，对象存储保存原件版本；客户端不得直连存储。
+- MCP Gateway、Skills 和 Dify/外部组件适配都调用同一应用服务。MCP 是 AI 接口，不是数据库；AI 和服务账号无人工批准权。
+- Phase 1 SQLite 在迁移前继续承载本地验证；Phase 3 一次性切换后退出正式写入，不形成双主。
 - 七项一票否决适用于所有模型/协议/版本；任何一项出现即阻断阶段门。
 
 ## 参考文档
@@ -26,59 +27,63 @@
 - [依赖图](../plan/dependency-graph.md)
 - [里程碑](../plan/milestones.md)
 - [Phase 0：边界、协议与黄金测试](phase-0-boundary-and-bench.md)
-- [Phase 1：鸿日本地单用户原型](phase-1-hongri-local-prototype.md)
-- [Phase 2：真实工作连续验证](phase-2-real-work-validation.md)
-- [Phase 3：团队服务器化决策门](phase-3-team-server-decision.md)
+- [Phase 1：单一客户端本地纵向切片](phase-1-hongri-local-prototype.md)
+- [Phase 2：服务器权威基础](phase-2-server-authority-foundation.md)
+- [Phase 3：客户端联网、MCP、Skills 与工作流](phase-3-connected-client-and-integrations.md)
+- [Phase 4：团队试点与生产准入](phase-4-team-pilot-and-production-gate.md)
 
-### 分析与候选架构背景
+### 分析与架构依据
 
 - [项目概览](../analysis/project-overview.md)
 - [目标模块清单](../analysis/module-inventory.md)
 - [风险评估](../analysis/risk-assessment.md)
 - [部署拓扑评估](../analysis/deployment-topology-evaluation.md)
 - [开源项目评估](../analysis/open-source-evaluation.md)
-- [OpenWork 本地客户端候选评估](../analysis/openwork-client-evaluation.md)
+- [OpenWork 唯一客户端评估](../analysis/openwork-client-evaluation.md)
 - [OpenWork 深度集成计划](../plan/openwork-deep-integration.md)
+- [ADR-0005：单一客户端与服务器权威服务](../adr/0005-single-client-server-authority.md)
 
-服务器架构、数据一致性、完整安全和 OpenWork 深度集成文档在本轮 rescope 后只作为 `future-candidate` 背景；若与当前三份活动计划冲突，以新需求源和本节“当前活动 SPEC”为准，待 Phase 3 决策后重新建立实施 SPEC。
+服务器架构、数据一致性、安全和 OpenWork 集成文档均按 ADR-0005 执行。历史分析中的 `future-candidate`、`not-approved-for-current-mvp` 和 `review-after-hongri-pilot` 只描述旧方案，不再决定当前实施顺序。
 
 ## 阶段汇总
 
 | 阶段 | 名称 | 任务 | 完成 | 进度 | 交付边界 |
 |:---|:---|---:|---:|:---|:---|
 | 0 | 边界、协议与黄金测试先行 | 7 | 7 | 100% | 一页边界、鸿日样本、分类标准、品牌 Agent 协议、10-20 黄金用例与 BrandBench |
-| 1 | 鸿日本地单用户原型 | 10 | 8 | 80% | 本地资料、SQLite 状态、会议增量、证据、Task Packet、多模型与简单界面闭环 |
-| 2 | 鸿日真实工作连续验证 | 8 | 0 | 0% | 真实增量、策略/执行、多模型、匿名评审、错误修订和价值 Go/No-Go |
-| 3 | 团队服务器化决策门 | 7 | 0 | 0% | 团队需求、候选架构/组件证据和独立后续 SPEC 决策 |
-| **合计** |  | **32** | **15** | **47%** | Phase 0-2 是当前价值验证；Phase 3 条件启动 |
+| 1 | 单一客户端本地纵向切片 | 10 | 8 | 80% | 本地领域核心、CLI/MCP、OpenWork 单安装包和鸿日桌面闭环 |
+| 2 | 服务器权威基础 | 10 | 0 | 0% | PostgreSQL、对象存储、OIDC/RBAC、一致性、API、审计和恢复 |
+| 3 | 客户端联网与集成 | 13 | 0 | 0% | Desktop 联网、MCP、Skills、Dify、Zvec、Open Notebook、Nubase、FlowLong |
+| 4 | 团队试点与生产准入 | 9 | 0 | 0% | 真实团队工作、并发、故障恢复、安全、SLO、签名分发和 Go/No-Go |
+| **合计** |  | **49** | **15** | **31%** | 当前从 F1.9 继续，后续阶段依次过门 |
 
 ## 阶段清单
 
 - [x] Phase 0：边界、协议与黄金测试先行（7/7）- [详情](phase-0-boundary-and-bench.md)
-- [ ] Phase 1：鸿日本地单用户原型（8/10）- [详情](phase-1-hongri-local-prototype.md)
-- [ ] Phase 2：鸿日真实工作连续验证（0/8）- [详情](phase-2-real-work-validation.md)
-- [ ] Phase 3：团队服务器化决策门（0/7）- [详情](phase-3-team-server-decision.md)
+- [ ] Phase 1：单一客户端本地纵向切片（8/10）- [详情](phase-1-hongri-local-prototype.md)
+- [ ] Phase 2：服务器权威基础（0/10）- [详情](phase-2-server-authority-foundation.md)
+- [ ] Phase 3：客户端联网、MCP、Skills 与工作流（0/13）- [详情](phase-3-connected-client-and-integrations.md)
+- [ ] Phase 4：团队试点与生产准入（0/9）- [详情](phase-4-team-pilot-and-production-gate.md)
 
 ## 当前状态
 
-**活动阶段**：Phase 1：鸿日本地单用户原型
-**活动任务**：F1.9：实现本地轻量查看与确认界面/Brand OS Desktop 最小纵切；`OW-L0` 已有条件通过，当前先做默认离线、安全和内部品牌补丁
-**阻塞项**：无阶段阻塞；未打补丁的 OpenWork 上游版本不得接触真实鸿日资料；远程 14GB 全量物理对账和无权限目录继续作为受控缺口
-**条件阶段**：Phase 3 只有 F2.8=Go 且 F3.1 团队需求门通过才启动
-**规划检查点**：Phase 0 已通过，Phase 1 已完成 F1.1-F1.8，当前完成 15/32
+**活动阶段**：Phase 1：单一客户端本地纵向切片
+**活动任务**：F1.9：完成公司定制 OpenWork 的离线、安全、品牌和单安装包收口；随后执行 F1.10 鸿日业务与 fraimz 验收
+**阻塞项**：真实鸿日资料只能在 F1.9 离线/安全门通过后接入；内部 macOS 包尚未签名、公证，不可向员工分发
+**后续顺序**：F1.10 -> Phase 2 服务器权威基础 -> Phase 3 联网与集成 -> Phase 4 团队试点
+**规划检查点**：Phase 0 已通过，Phase 1 已完成 F1.1-F1.8，当前完成 15/49
 
 ## 治理状态
 
 **共享指令面**：`AGENTS.md`
 **Claude 指令面**：`CLAUDE.md`
 **其他平台规则**：无
-**架构决策面**：`docs/adr/`；现有服务器/OpenWork ADR 视为远期候选，当前 MVP 不能据此跳过 Phase 0-2 价值门
+**架构决策面**：`docs/adr/`；ADR-0004 固定唯一员工客户端，ADR-0005 固定服务器权威服务
 **Memory 面**：不可用，不写入
 **仓库 Memory 回退路径**：无，未获用户批准
-**需求范围权威**：新需求源文件 + 当前三份活动计划 + 本 MASTER
+**需求范围权威**：新需求源文件 + `task-breakdown.md` + `milestones.md` + ADR-0004/0005 + 本 MASTER
 **本地原件权威**：获授权的鸿日原始文件、版本与 SHA-256，只读
-**本地状态权威**：Fox 人工确认事件及可重建当前投影；模型输出、摘要、索引和聊天记忆不是事实
-**未来生产规则**：团队服务器 ADR 与候选计划中的 PostgreSQL/S3 等约束只在 Phase 3=Go 并形成新实施 SPEC 后适用，不得反向成为 Phase 1 前置
+**Phase 1 状态权威**：本地人工确认事件及可重建投影；模型输出、摘要、索引和聊天记忆不是事实
+**团队状态权威**：Phase 3 切换后由 PostgreSQL 事件/审批和对象存储原件形成；本地库只读，无双主
 
 ## 一票否决状态
 
@@ -100,7 +105,7 @@
 |:---|:---|
 | 活动阶段 | Phase 1 |
 | drift_score | 2 |
-| strategy | 价值验证先行、黄金测试先行、本地单用户纵切、真实工作闭环、团队服务器条件决策 |
+| strategy | 保留本地领域验证、完成唯一客户端纵切、建设服务器权威、接入 Agent/工作流、团队试点过门 |
 | threshold_annotate | 2 |
 | threshold_replan | 4 |
 | threshold_rescope | 6 |
@@ -114,8 +119,9 @@
 |:---|---:|---:|---:|---:|
 | 0 | 7 | 2 | 3 | 5 |
 | 1 | 10 | 2 | 4 | 6 |
-| 2 | 8 | 2 | 4 | 5 |
-| 3 | 7 | 2 | 3 | 5 |
+| 2 | 10 | 2 | 4 | 6 |
+| 3 | 13 | 3 | 6 | 8 |
+| 4 | 9 | 2 | 4 | 6 |
 
 阈值按阶段任务数的 20%/40%/60% 向上取整。切换阶段时将活动状态切换为对应行，`drift_score` 从该阶段 0 开始累计。
 
@@ -147,16 +153,17 @@
 |:---|:---|:---|:---|:---|
 | 初始本地草案 | 个人本地 29 项 | 未开始 | 本地知识与 AI 接入 | 被团队服务器方案替代 |
 | 团队服务器方案 | 6 阶段 / 42 项 | 0/42，未开始 | OpenWork Electron + PostgreSQL/S3 团队服务器先行 | 被本次 rescope 替代；逐项映射保留在任务分解 |
-| 当前价值验证方案 | 4 阶段 / 32 项 | 15/32，执行中 | Fox/鸿日、本地单用户、黄金测试与真实工作先行 | 当前活动方案 |
+| 本地价值验证方案 | 4 阶段 / 32 项 | 15/32 时 rescope | Fox/鸿日、本地单用户、黄金测试与真实工作先行 | Phase 0 和 F1.1-F1.8 保留；未开始的旧 Phase 2/3 被取代 |
+| 单一客户端 + 服务器权威服务 | 5 阶段 / 49 项 | 15/49，执行中 | OpenWork 唯一客户端、公司服务器权威、MCP/Skills/工作流和团队试点 | 当前活动方案 |
 
-旧 42 项没有已完成代码或遥测需要继承。服务器、外部组件、团队身份和高可用内容被后移为 F3.2-F3.6 的候选，只有 F3.7=Go 才重新生成实施任务。
+服务器、身份、一致性、恢复、Dify 和四个开源组件已进入正式实施顺序。外部组件仍需逐项证明收益；“拒绝并使用 NoOp”是合法结果。
 
 ## 下一步
 
-1. 从 `v0.17.36@ddf3e482` 建立正式 OpenWork fork，不在 `.work/vendor` 评估副本积累补丁。
-2. 默认关闭 PostHog、Den/Cloud、上游模型目录和自动更新；更换内部名称/AppID/协议/更新源，收紧 Electron 网络权限。
-3. 完成无上游请求测试后进入 OW-L1，并让 Brand OS 页面只调用本地 CLI/MCP 或受控应用端口。
-4. F1.10 用黄金集完成本地端到端验收，再进入真实连续工作验证；任何一票否决先修复并全量回归。
+1. 核对 OpenWork fork 的离线、安全、品牌和实际 `.app` 产物证据，完成 F1.9 遥测与独立提交。
+2. 重写 `brand-os-offline-shell` fraimz 契约，短时启动桌面应用完成单一客户端验收并立即退出。
+3. 接入鸿日当前状态、证据、Proposal 和 AI 工作纵切，通过黄金集后完成 F1.10。
+4. 只有 F1.10 通过，才开始 F2.1 服务器应用边界和测试基线。
 
 ## 会话日志
 
@@ -184,3 +191,6 @@
 | 2026-07-22 | F1.7 Task Packet 与运行留痕 | 完成 `task-packet.v2`、`runtime-mode-switch.v2`、Fox 任务角色/模式登记、人工模式切换、L0-L4 分层、当前相关上下文裁剪、不可变 Packet 哈希和 `runtime-run.v1`；运行绑定状态、任务、协议、运行时与模型版本，AI 无模式切换权。SQLite 升级 v7，备份清单升级 v6 并兼容 v1-v5；133 项测试和 5 组旧 Schema 子测试通过。真实鸿日 v3 数据库副本迁移后项目版本与业务计数未变，运行表为空。任务漂移 0。 |
 | 2026-07-22 | F1.8 本地 CLI/MCP 与模型切换 | 完成统一 `LocalAIService`、`brand-os` CLI、官方 stdio MCP、9 个封闭 Schema 白名单工具和 Codex/Claude 无密钥适配配置；模型切换复用既有 Task Packet，并受 Packet 模型允许列表约束。没有开放审批、模式切换、任意 SQL、硬删除、密钥或任意文件读取。148 项测试和 5 组旧备份 Schema 子测试通过；真实鸿日 v3 数据库副本迁移到 v7 后项目版本和业务计数未变。任务漂移 0。 |
 | 2026-07-22 | OpenWork OW-L0 选型门 | 固定 `v0.17.36@ddf3e482` 并完成社区切片构建、许可证、`ee/**`、默认外联和 Electron 配置核验。桌面测试 79 通过、1 跳过；OW-L0 有条件通过。上游默认外联、品牌标识和宽松 ATS 必须先修复，F1.9 仍未完成，总进度保持 15/32。 |
+| 2026-07-22 | OpenWork 单一客户端决策 | Fox 明确选择公司定制版 OpenWork 作为唯一员工客户端；Brand Project OS 不另做前端软件，OpenCode Runtime/Sidecar 随同一安装包分发。服务器 MCP/Skills 可供 OpenWork 与其他 Agent 共用，但服务器正式数据权威、身份和高可用仍按独立 SPEC 决策。 |
+| 2026-07-22 | 单一客户端与服务器权威 rescope | Fox 说明命名可调整，核心是员工只使用公司定制 OpenWork，Brand Project OS 是同一产品的业务服务。正式批准公司服务器权威、MCP/Skills/Dify 与外部组件接入路线；保留已完成 Phase 0 和 F1.1-F1.8，重排为 5 阶段 49 项。 |
+| 2026-07-22 | 命名边界澄清 | Fox 确认最终发行名可以调整；这不改变产品形态。SPEC 继续以 Brand Project OS 作为项目名，员工仍只安装一个基于 OpenWork 的公司客户端。 |

@@ -1,11 +1,13 @@
-# ADR-0002：条件性采用 OpenWork 作为本地客户端基础
+# ADR-0002：条件性评估 OpenWork 作为本地客户端基础
 
-- 状态：条件性候选；OW-L0 有条件通过
-- 当前结论：从固定稳定版继续本地切片，先完成默认离线补丁；尚未批准为必选主客户端
+- 状态：已被 [ADR-0004](0004-openwork-single-client.md) 取代；保留选型历史
+- 当前结论：OpenWork 已被 Fox 选定为唯一员工桌面客户端，本 ADR 的“条件性候选”结论不再生效
 - 日期：2026-07-13
 - 最近复审：2026-07-22
 - 影响范围：鸿日本地 MVP 界面、Agent 运行、本地文件访问和后续客户端演进
 - 关联：[ADR-0003](0003-local-first-hongri-validation.md)、[OpenWork 深度集成计划](../plan/openwork-deep-integration.md)
+
+> 2026-07-22，Fox 明确要求员工只安装公司定制版 OpenWork，不再交付第二个 Brand Project OS 客户端；MCP、Skills 与业务 API 可以部署在公司服务器。当前规则以 ADR-0004 为准，以下内容仅记录此前的选型过程与风险。
 
 ## 背景
 
