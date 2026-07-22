@@ -38,7 +38,7 @@ class SQLiteCommandMixin(SQLiteStoreBase):
         connection = self._connect()
         begun = False
         try:
-            connection.execute("BEGIN IMMEDIATE")
+            self._begin_command_transaction(connection, context, "create_project")
             begun = True
             existing = self._find_command(connection, context, "create_project")
             if existing is not None:

@@ -2,7 +2,7 @@
 
 > 当前生效路线：公司定制 OpenWork 唯一员工客户端 + Brand Project OS Service<br>
 > 权威决策：[ADR-0005](../adr/0005-single-client-server-authority.md)<br>
-> Phase 1：本地 SQLite 纵切，已完成；F2.1 已通过，当前 F2.2；Phase 2-4：服务器权威、联网客户端和团队试点
+> Phase 1：本地 SQLite 纵切，已完成；F2.1-F2.2 已通过，当前 F2.3；Phase 2-4：服务器权威、联网客户端和团队试点
 
 ## 架构结论
 
@@ -29,6 +29,12 @@ F2.1 已冻结 `Brand Project OS Service` 的服务器边界，但没有启动 H
 健康语义也已冻结：`live` 只证明进程能响应；`ready` 检查必需配置、PostgreSQL、Schema 和对象存储。OpenWork Runtime、Dify、Zvec、Open Notebook、Nubase 和 FlowLong 属于可选依赖，故障只记录为降级，不能让核心 API 失去就绪状态。F2.1 不实现 `/livez`、`/readyz` 路由，路由和真实探针留给 F2.8/F2.9。
 
 机器契约：`server-boundary.v1`、`service-config.v1`、`service-health.v1`。服务器边界明确只有应用服务可以推进正式状态；Employee API、MCP Gateway、OpenWork Runtime 和工作流只能读取或创建 Proposal，存储适配器不得被客户端或 Agent 直连。
+
+### F2.2 PostgreSQL 权威适配器（已完成）
+
+F2.2 已实现 PostgreSQL v1-v6 迁移和 `PostgreSQLCanonicalStore`。事件、人工动作、Proposal 状态、当前投影、项目版本与幂等结果在同一事务提交；同一命令使用事务级幂等锁，项目版本使用行锁。状态投影和 Proposal 生命周期都能从经配置人工评审人产生的事件重建。
+
+机器契约为 `postgresql-authority.v1`，完整实现和测试边界见 [F2.2 PostgreSQL 权威事件、审批和投影](../phase2/postgresql-authority-store.md)。本轮没有迁移鸿日数据、没有双写，也没有提前实现对象存储、OIDC/RBAC/RLS、Outbox 或 HTTP API。F3.1 正式切换前，鸿日仍以 Phase 1 SQLite 为权威。
 
 完整边界见：
 
@@ -75,7 +81,7 @@ flowchart TB
     MCP --> APP
     APP --> CORE["领域核心：状态、会议、证据、模式与端口"]
 
-    CORE --> DB[("Phase 1 SQLite\nPhase 2+ PostgreSQL")]
+    CORE --> DB[("Phase 1 SQLite\nPhase 2 PostgreSQL 适配器\nPhase 3 切换权威")]
     CORE --> EVIDENCE["Phase 1 本地证据\nPhase 2+ 对象存储"]
     CORE --> SEARCH["FTS / Zvec 可重建索引"]
 
@@ -150,7 +156,7 @@ backup(destination)
 health()
 ```
 
-当前实现为 SQLite。一次 `execute` 必须在一个事务内：
+Phase 1 本地实现为 SQLite；F2.2 已增加服务器 PostgreSQL v1-v6 适配器。F3.1 切换前两者不双写，鸿日仍以 SQLite 为正式权威。一次 `execute` 必须在一个事务内：
 
 1. 验证调用来自本地应用层，并确认命令是否要求 Fox 人工动作。
 2. 登记幂等键和请求摘要；同键不同摘要返回冲突。
@@ -159,7 +165,7 @@ health()
 5. 追加事件与人工动作，更新最小当前投影。
 6. 返回新版本、事件序号和可回源引用。
 
-SQLite 使用 WAL、外键、繁忙超时和单写入队列。多个 AI 只能并行读取或生成候选，不共享可写连接。
+SQLite 使用 WAL、外键、繁忙超时和单写入队列。PostgreSQL 使用事务级幂等锁、项目行锁和唯一约束保护事件顺序。多个 AI 只能并行读取或生成候选，不能获得人工批准权。
 
 ## 原始证据契约
 
@@ -264,7 +270,7 @@ rebuild(project_id)
 watermark(project_id)
 ```
 
-基线使用 SQLite FTS5 和结构化关系查询。向量索引是可选增强，命中必须返回稳定 ID，再从 SQLite 与证据区复核状态、版本和哈希。检索相似度不能决定内容是否当前有效。
+基线使用结构化关系查询；本地阶段可使用 SQLite FTS5。向量索引是可选增强，命中必须返回稳定 ID，再从当前权威存储与证据区复核状态、版本和哈希。检索相似度不能决定内容是否当前有效。
 
 ### `ModelGatewayPort`
 
@@ -298,6 +304,7 @@ cancel(run_id)
 | `server-boundary.v1` | 服务器组件职责 | 只有应用服务推进正式状态；OpenWork Runtime 不是业务服务 |
 | `service-config.v1` | 安全配置摘要 | 秘密只报告 `configured`，不提供秘密值 |
 | `service-health.v1` | 存活/就绪报告 | 必需依赖阻断就绪，可选组件只能降级 |
+| `postgresql-authority.v1` | PostgreSQL v1-v6 权威存储 | 事件、人工动作、投影和幂等结果同事务；不迁移鸿日数据、不双写 |
 
 ## 本地 CLI 与 MCP 契约
 
@@ -322,7 +329,7 @@ Phase 2-3 按以下映射替换端口实现：
 
 | 当前本地实现 | 服务器目标实现 | 必须保持的契约 |
 |:---|:---|:---|
-| SQLite `CanonicalStorePort` | PostgreSQL、RLS、事件/投影/Outbox | 稳定 ID、事件顺序、人工批准和版本冲突语义 |
+| SQLite `CanonicalStorePort` | PostgreSQL v1-v6 已完成；RLS、Outbox 待后续任务 | 稳定 ID、事件顺序、人工批准和版本冲突语义 |
 | 本地证据区 | S3 兼容内容寻址对象存储 | SHA-256、来源版本、原文定位和不可变性 |
 | 本地 OS 用户 | OIDC + 应用层角色/Scope | 人工与 AI 身份分离、AI 禁止批准 |
 | 进程内派生 | Outbox/Inbox Worker | 至少一次投递、消费者幂等和权威事务不等待派生层 |

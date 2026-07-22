@@ -32,7 +32,7 @@ class SQLiteImportMixin(SQLiteStoreBase):
         connection = self._connect()
         begun = False
         try:
-            connection.execute("BEGIN IMMEDIATE")
+            self._begin_command_transaction(connection, context, "import_source_batch")
             begun = True
             existing_command = self._find_command(connection, context, "import_source_batch")
             if existing_command is not None:
@@ -330,10 +330,11 @@ class SQLiteImportMixin(SQLiteStoreBase):
                     continue
                 inserted = connection.execute(
                     """
-                    INSERT OR IGNORE INTO source_version_relations(
+                    INSERT INTO source_version_relations(
                         project_id, predecessor_version_id, successor_version_id,
                         relation_type, import_batch_id, created_at
                     ) VALUES (?, ?, ?, 'supersedes', ?, ?)
+                    ON CONFLICT DO NOTHING
                     """,
                     (project_id, predecessor["source_version_id"], version_id, batch_id, now),
                 )

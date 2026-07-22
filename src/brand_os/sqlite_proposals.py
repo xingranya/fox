@@ -329,7 +329,10 @@ class SQLiteProposalMixin(SQLiteStoreBase):
             if lifecycle_updated.rowcount != 1:
                 raise ResourceConflict("Proposal 生命周期已变化")
             connection.executemany(
-                "INSERT OR IGNORE INTO proposal_evidence(proposal_id, evidence_ref) VALUES (?, ?)",
+                """
+                INSERT INTO proposal_evidence(proposal_id, evidence_ref) VALUES (?, ?)
+                ON CONFLICT DO NOTHING
+                """,
                 ((reopen.proposal_id, evidence_ref) for evidence_ref in reopen.evidence_refs),
             )
             self._record_lifecycle_action(

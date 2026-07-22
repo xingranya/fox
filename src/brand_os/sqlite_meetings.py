@@ -31,7 +31,7 @@ class SQLiteMeetingMixin(SQLiteStoreBase):
         connection = self._connect()
         begun = False
         try:
-            connection.execute("BEGIN IMMEDIATE")
+            self._begin_command_transaction(connection, context, "ingest_meeting_batch")
             begun = True
             existing_command = self._find_command(connection, context, "ingest_meeting_batch")
             if existing_command is not None:

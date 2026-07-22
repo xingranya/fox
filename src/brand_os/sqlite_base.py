@@ -105,7 +105,7 @@ class SQLiteStoreBase:
         connection = self._connect()
         begun = False
         try:
-            connection.execute("BEGIN IMMEDIATE")
+            self._begin_command_transaction(connection, context, command_name)
             begun = True
             existing = self._find_command(connection, context, command_name)
             if existing is not None:
@@ -141,6 +141,17 @@ class SQLiteStoreBase:
             raise
         finally:
             connection.close()
+
+    def _begin_command_transaction(
+        self,
+        connection: sqlite3.Connection,
+        context: CommandContext,
+        command_name: str,
+    ) -> None:
+        """开始写事务；其他关系型适配器可在此增加命令级串行化。"""
+
+        del context, command_name
+        connection.execute("BEGIN IMMEDIATE")
 
     def _append_event(
         self,

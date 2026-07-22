@@ -1,0 +1,31 @@
+{
+  "schema_version": "postgresql-authority.v1",
+  "canonical_store_port": "canonical-store-port.v6",
+  "formal_write_store": "postgresql",
+  "migration_versions": [1, 2, 3, 4, 5, 6],
+  "transaction": {
+    "event_approval_projection_atomic": true,
+    "idempotency_key_binds_request_digest": true,
+    "expected_version_required": true,
+    "intermediate_failure_rolls_back": true
+  },
+  "rebuild": {
+    "state_source": "human_approval_events",
+    "proposal_lifecycle_source": "configured_human_reviewer_events"
+  },
+  "authority": {
+    "allowed_human_reviewers": ["Fox"],
+    "agent_may_approve": false,
+    "workflow_may_approve": false,
+    "tool_permission_is_business_approval": false
+  },
+  "dual_write": false,
+  "migrates_hongri_data": false,
+  "deferred": [
+    "object_storage",
+    "oidc_rbac_rls",
+    "outbox",
+    "http_api",
+    "data_cutover"
+  ]
+}

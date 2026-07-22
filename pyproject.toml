@@ -9,6 +9,7 @@ description = "本地优先的品牌项目状态与证据协作核心"
 requires-python = ">=3.11"
 dependencies = [
     "mcp>=1.26,<2",
+    "psycopg[binary]>=3.2,<4",
 ]
 
 [project.scripts]
