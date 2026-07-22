@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://brand-os.local/schema/service-config.v1.json",
+  "title": "Brand Project OS Service 安全配置摘要",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "environment",
+    "public_base_url",
+    "database_pool_size",
+    "object_store_endpoint",
+    "object_store_bucket",
+    "oidc_issuer_url",
+    "oidc_client_id",
+    "dependency_timeout_seconds",
+    "secrets",
+    "valid",
+    "issues"
+  ],
+  "properties": {
+    "schema_version": {"const": "service-config.v1"},
+    "environment": {"enum": ["development", "test", "production"]},
+    "public_base_url": {"type": "string", "minLength": 1},
+    "database_pool_size": {"type": "integer"},
+    "object_store_endpoint": {"type": ["string", "null"]},
+    "object_store_bucket": {"type": ["string", "null"]},
+    "oidc_issuer_url": {"type": ["string", "null"]},
+    "oidc_client_id": {"type": ["string", "null"]},
+    "dependency_timeout_seconds": {"type": "number"},
+    "secrets": {
+      "type": "object",
+      "required": [
+        "database_dsn",
+        "object_store_access_key",
+        "object_store_secret_key",
+        "oidc_client_secret"
+      ],
+      "properties": {
+        "database_dsn": {"$ref": "#/$defs/secretStatus"},
+        "object_store_access_key": {"$ref": "#/$defs/secretStatus"},
+        "object_store_secret_key": {"$ref": "#/$defs/secretStatus"},
+        "oidc_client_secret": {"$ref": "#/$defs/secretStatus"}
+      },
+      "additionalProperties": false
+    },
+    "valid": {"type": "boolean"},
+    "issues": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/configurationIssue"}
+    }
+  },
+  "$defs": {
+    "secretStatus": {
+      "type": "object",
+      "required": ["configured"],
+      "properties": {"configured": {"type": "boolean"}},
+      "additionalProperties": false
+    },
+    "configurationIssue": {
+      "type": "object",
+      "required": ["code", "field", "message"],
+      "properties": {
+        "code": {"type": "string", "minLength": 1},
+        "field": {"type": "string", "minLength": 1},
+        "message": {"type": "string", "minLength": 1}
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

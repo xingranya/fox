@@ -1,8 +1,10 @@
 # 团队服务器架构
 
 > 状态：已批准，按 Phase 2-4 分阶段实施<br>
-> 当前进度：F1.10 已通过，当前执行 F2.1 服务器边界与测试基线<br>
+> 当前进度：F2.1 已通过，当前执行 F2.2 PostgreSQL 权威事件、审批和投影<br>
 > 当前生效决策：[ADR-0005：单一客户端与服务器权威服务](../adr/0005-single-client-server-authority.md)
+
+F2.1 已完成配置优先级、秘密注入、服务器组件职责和健康报告基线。当前只提供可测试契约，不启动服务，不执行 PostgreSQL/S3/OIDC 初始化，也不迁移鸿日正式数据。
 
 旧可视化交付：[可编辑 Draw.io 源文件](../diagrams/team-server-architecture.drawio)；[嵌入源数据的 PNG](../diagrams/team-server-architecture.drawio.png)。旧图包含轻量 Web 等已取消边界，只作历史参考；当前拓扑以本文和 ADR-0005 为准，后续需单独更新图文件。
 
@@ -16,7 +18,7 @@ OpenWork 已被选定为客户端基础。OpenWork Server、Orchestrator 和 Ope
 
 - Phase 1 已用 SQLite、内容寻址本地证据区和本地 CLI/MCP 完成纵切，没有运行本页服务器拓扑。
 - F1.10 已通过；验收数据库、来源 Manifest 和证据哈希作为后续迁移对账基线。
-- 当前从 F2.1 开始，依次完成 PostgreSQL/对象存储、身份权限、一致性、恢复、联网客户端和团队试点。
+- F2.1 已冻结服务器配置、职责和健康基线；当前从 F2.2 开始，依次完成 PostgreSQL/对象存储、身份权限、一致性、恢复、联网客户端和团队试点。
 - Phase 3 使用一次性迁移和冻结本地写入完成权威切换，不提前运行双套可写系统。
 
 ```mermaid
@@ -110,6 +112,7 @@ flowchart TB
 
 ## 健康、监控与告警
 
+- F2.1 已冻结 `live`/`ready` 的语义并提供 `service-health.v1` 报告模型。实现阶段将把它们挂到 HTTP 路由，但 F2.1 不启动路由或依赖探针。
 - `/livez` 只确认进程仍可服务，避免依赖抖动触发重启风暴。
 - `/readyz` 检查 PostgreSQL、Schema 版本和必要配置；Zvec、Dify、Notebook、FlowLong、OpenCode 或 Agent Worker 故障不得让核心 API 整体失去就绪状态。
 - 指标至少覆盖可用率、P95 延迟、5xx、连接池、死锁、版本冲突、Outbox 延迟、Worker 租约/心跳、Agent 队列、运行取消、工具拒绝、备份年龄、WAL、磁盘、证书和外部模型错误率。

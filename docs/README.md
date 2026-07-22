@@ -2,7 +2,7 @@
 
 本目录保存产品、架构、数据治理、测试和执行 SPEC。`Brand Project OS` 是当前项目名，最终发行名可以另定。当前路线由 2026-07-22 的正式 rescope 确定：员工只使用公司定制版 OpenWork；公司服务器服务向 Desktop 和其他 Agent 提供同一业务能力。
 
-当前完成 17/49 项。Phase 0、Phase 1 已完成，活动任务是 F2.1。现在先冻结服务器应用边界、配置、环境和测试基线；远程 MCP/Skills、Dify 和四个开源组件仍按 Phase 3 的顺序接入。
+当前完成 18/49 项。Phase 0、Phase 1 和 F2.1 已完成，活动任务是 F2.2。服务器应用边界、配置、环境和健康测试基线已经冻结；当前开始实现 PostgreSQL 权威事件、审批和投影，远程 MCP/Skills、Dify 和四个开源组件仍按 Phase 3 的顺序接入。
 
 ## 当前结论
 
@@ -72,6 +72,10 @@
 - [F1.7 Task Packet 与 Agent 运行](phase1/task-packet-and-agent-run.md)
 - [F1.8 CLI、stdio MCP 与模型切换](phase1/local-cli-mcp-and-model-switching.md)
 - [F1.9 前置：OpenWork OW-L0](phase1/openwork-ow-l0-evaluation.md)
+
+## Phase 2 已实现
+
+- F2.1 服务器配置、组件职责和健康基线：见[架构与接口契约](plan/architecture-and-contracts.md#f21-服务器基线已完成)与[阶段进度](progress/phase-2-server-authority-foundation.md)。
 
 ## 外部组件
 

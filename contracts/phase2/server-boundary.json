@@ -1,0 +1,108 @@
+{
+  "schema_version": "server-boundary.v1",
+  "service": "Brand Project OS Service",
+  "authority": {
+    "only_application_service_may_advance_formal_state": true,
+    "human_review_requires_interactive_employee_identity": true,
+    "agent_and_service_accounts_may_approve": false,
+    "client_may_access_storage_directly": false,
+    "long_term_dual_write_allowed": false
+  },
+  "components": [
+    {
+      "id": "application_service",
+      "kind": "business_application",
+      "business_operations": ["read", "create_proposal", "human_review"],
+      "forbidden_operations": ["direct_client_storage_access"],
+      "may_advance_formal_state": true,
+      "stores_formal_business_state": false,
+      "stores": [],
+      "replaceable": false,
+      "required_for_core_readiness": true
+    },
+    {
+      "id": "employee_api",
+      "kind": "protocol_adapter",
+      "business_operations": ["read", "create_proposal", "submit_human_review"],
+      "forbidden_operations": ["direct_storage_write"],
+      "may_advance_formal_state": false,
+      "stores_formal_business_state": false,
+      "stores": [],
+      "replaceable": true,
+      "required_for_core_readiness": true
+    },
+    {
+      "id": "mcp_gateway",
+      "kind": "protocol_adapter",
+      "business_operations": ["read", "create_proposal"],
+      "forbidden_operations": ["human_review", "direct_storage_write"],
+      "may_advance_formal_state": false,
+      "stores_formal_business_state": false,
+      "stores": [],
+      "replaceable": true,
+      "required_for_core_readiness": false
+    },
+    {
+      "id": "canonical_store_adapter",
+      "kind": "storage_adapter",
+      "business_operations": [],
+      "forbidden_operations": ["direct_client_access", "direct_agent_access"],
+      "may_advance_formal_state": false,
+      "stores_formal_business_state": true,
+      "stores": ["events", "approvals", "projections", "audit", "outbox"],
+      "replaceable": true,
+      "required_for_core_readiness": true
+    },
+    {
+      "id": "object_store_adapter",
+      "kind": "storage_adapter",
+      "business_operations": [],
+      "forbidden_operations": ["direct_client_access", "direct_agent_access"],
+      "may_advance_formal_state": false,
+      "stores_formal_business_state": false,
+      "stores": ["immutable_evidence_versions"],
+      "replaceable": true,
+      "required_for_core_readiness": true
+    },
+    {
+      "id": "openwork_runtime",
+      "kind": "agent_runtime",
+      "business_operations": ["read", "create_proposal"],
+      "forbidden_operations": ["human_review", "direct_storage_write"],
+      "may_advance_formal_state": false,
+      "stores_formal_business_state": false,
+      "stores": ["session_state", "tool_permissions", "runtime_events"],
+      "replaceable": true,
+      "required_for_core_readiness": false
+    },
+    {
+      "id": "workflow_adapter",
+      "kind": "optional_adapter",
+      "business_operations": ["read", "create_proposal"],
+      "forbidden_operations": ["human_review", "direct_storage_write"],
+      "may_advance_formal_state": false,
+      "stores_formal_business_state": false,
+      "stores": ["workflow_run_state"],
+      "replaceable": true,
+      "required_for_core_readiness": false
+    }
+  ],
+  "readiness": {
+    "required_dependencies": ["postgresql", "schema", "object_storage"],
+    "optional_dependencies": [
+      "openwork_runtime",
+      "dify",
+      "zvec",
+      "open_notebook",
+      "nubase",
+      "flowlong"
+    ]
+  },
+  "deferred_from_f2_1": [
+    "postgresql_schema_and_migrations",
+    "object_upload_state_machine",
+    "oidc_login_flow",
+    "http_and_mcp_routes",
+    "hongri_data_migration"
+  ]
+}

@@ -2,13 +2,33 @@
 
 > 当前生效路线：公司定制 OpenWork 唯一员工客户端 + Brand Project OS Service<br>
 > 权威决策：[ADR-0005](../adr/0005-single-client-server-authority.md)<br>
-> Phase 1：本地 SQLite 纵切，已完成；当前 F2.1；Phase 2-4：服务器权威、联网客户端和团队试点
+> Phase 1：本地 SQLite 纵切，已完成；F2.1 已通过，当前 F2.2；Phase 2-4：服务器权威、联网客户端和团队试点
 
 ## 架构结论
 
 Brand Project OS 是一个产品，包含基于 OpenWork 的唯一员工客户端和公司服务器上的业务服务。第一用户是 Fox，第一项目是鸿日。Phase 1 先完成本地纵切；随后把同一领域语义迁移到服务器权威层。
 
 所有入口调用同一领域应用层。Phase 1 由 SQLite 和本地证据区承载；Phase 3 切换后由 PostgreSQL 和对象存储承载。OpenWork、OpenCode、Codex、Claude、Dify、检索和模型摘要都在端口之后，删除或替换它们不能改变正式状态。
+
+### F2.1 服务器基线（已完成）
+
+F2.1 已冻结 `Brand Project OS Service` 的服务器边界，但没有启动 HTTP、数据库、对象存储或常驻进程。实现位于 `src/brand_os/server_config.py` 和 `src/brand_os/server_baseline.py`，只提供可测试的配置、边界和健康报告模型。
+
+服务器配置按以下顺序取值：显式参数 > 环境变量 > 非敏感 JSON 配置文件 > 默认值。配置文件禁止 DSN、Access Key、Secret Key 和 OIDC Client Secret；秘密只能由显式注入或环境变量提供，健康报告和 `repr` 只报告是否已配置。
+
+| 配置面 | 环境变量 | 规则 |
+|:---|:---|:---|
+| 环境 | `BRAND_OS_SERVER_ENVIRONMENT` | `development`、`test`、`production` |
+| 服务公开地址 | `BRAND_OS_SERVER_PUBLIC_BASE_URL` | 生产必须 HTTPS |
+| PostgreSQL | `BRAND_OS_SERVER_DATABASE_DSN` | 生产必须是 PostgreSQL DSN，不能写入配置文件 |
+| 对象存储 | `BRAND_OS_SERVER_OBJECT_STORE_ENDPOINT`、`BRAND_OS_SERVER_OBJECT_STORE_BUCKET` | 生产端点必须 HTTPS |
+| 对象存储秘密 | `BRAND_OS_SERVER_OBJECT_STORE_ACCESS_KEY`、`BRAND_OS_SERVER_OBJECT_STORE_SECRET_KEY` | 只能环境变量/显式注入，禁止进入日志与序列化 |
+| OIDC | `BRAND_OS_SERVER_OIDC_ISSUER_URL`、`BRAND_OS_SERVER_OIDC_CLIENT_ID` | 生产发行方必须 HTTPS |
+| OIDC 秘密 | `BRAND_OS_SERVER_OIDC_CLIENT_SECRET` | 只能环境变量/显式注入，禁止进入日志与序列化 |
+
+健康语义也已冻结：`live` 只证明进程能响应；`ready` 检查必需配置、PostgreSQL、Schema 和对象存储。OpenWork Runtime、Dify、Zvec、Open Notebook、Nubase 和 FlowLong 属于可选依赖，故障只记录为降级，不能让核心 API 失去就绪状态。F2.1 不实现 `/livez`、`/readyz` 路由，路由和真实探针留给 F2.8/F2.9。
+
+机器契约：`server-boundary.v1`、`service-config.v1`、`service-health.v1`。服务器边界明确只有应用服务可以推进正式状态；Employee API、MCP Gateway、OpenWork Runtime 和工作流只能读取或创建 Proposal，存储适配器不得被客户端或 Agent 直连。
 
 完整边界见：
 
@@ -275,6 +295,9 @@ cancel(run_id)
 | `proposal-create-input.v1` | AI 创建 Proposal 的输入 | 证据、预期版本和幂等键必填；不包含批准动作 |
 | `runtime-adapter.v1` | Codex/Claude stdio MCP 配置 | 两个运行时指向同一 MCP；配置不包含模型提供商凭据 |
 | `tool-permission.v1` | 运行时工具权限 | 运行、工具、参数摘要、路径/网络、时限和决定人完整；不能表达业务批准 |
+| `server-boundary.v1` | 服务器组件职责 | 只有应用服务推进正式状态；OpenWork Runtime 不是业务服务 |
+| `service-config.v1` | 安全配置摘要 | 秘密只报告 `configured`，不提供秘密值 |
+| `service-health.v1` | 存活/就绪报告 | 必需依赖阻断就绪，可选组件只能降级 |
 
 ## 本地 CLI 与 MCP 契约
 
