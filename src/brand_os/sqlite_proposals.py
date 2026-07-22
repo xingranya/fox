@@ -61,8 +61,8 @@ class SQLiteProposalMixin(SQLiteStoreBase):
                     proposal_id, project_id, base_state_version, proposal_kind, subject_id,
                     classification, before_json, after_json, reason, impact_scope,
                     created_event_id, created_at, supersedes_proposal_id,
-                    source_meeting_item_id
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    source_meeting_item_id, valid_from, valid_until
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     proposal.proposal_id,
@@ -79,6 +79,8 @@ class SQLiteProposalMixin(SQLiteStoreBase):
                     now,
                     proposal.supersedes_proposal_id,
                     proposal.source_meeting_item_id,
+                    proposal.valid_from,
+                    proposal.valid_until,
                 ),
             )
             connection.execute(
@@ -431,6 +433,8 @@ class SQLiteProposalMixin(SQLiteStoreBase):
             "item_id": item_id,
             "payload": dict(proposal.after),
             "source_proposal_id": proposal.proposal_id,
+            "valid_from": proposal.valid_from,
+            "valid_until": proposal.valid_until,
         }
 
     def _state_item(self, proposal: sqlite3.Row, after: Mapping[str, object]) -> dict[str, object]:
@@ -442,6 +446,8 @@ class SQLiteProposalMixin(SQLiteStoreBase):
             "item_id": item_id,
             "payload": dict(after),
             "source_proposal_id": proposal["proposal_id"],
+            "valid_from": proposal["valid_from"],
+            "valid_until": proposal["valid_until"],
         }
 
     def _ensure_no_silent_state_overwrite(
@@ -480,7 +486,7 @@ class SQLiteProposalMixin(SQLiteStoreBase):
         state = connection.execute(
             """
             SELECT item_type, item_id, payload_json, source_proposal_id,
-                   updated_event_id, state_version
+                   updated_event_id, state_version, valid_from, valid_until
             FROM state_items WHERE project_id = ? AND source_proposal_id = ?
             """,
             (project_id, predecessor_id),
@@ -504,6 +510,8 @@ class SQLiteProposalMixin(SQLiteStoreBase):
                 "source_proposal_id": state["source_proposal_id"],
                 "updated_event_id": state["updated_event_id"],
                 "state_version": state["state_version"],
+                "valid_from": state["valid_from"],
+                "valid_until": state["valid_until"],
             },
             "successor_state_item": dict(successor_state_item),
         }

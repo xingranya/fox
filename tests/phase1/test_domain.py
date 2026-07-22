@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 import unittest
 
-from brand_os.domain import SourceRecord
+from brand_os.domain import ProposalDraft, SourceRecord
 
 
 class DomainValueTest(unittest.TestCase):
@@ -20,6 +20,27 @@ class DomainValueTest(unittest.TestCase):
                 "../outside.md",
                 "current_work",
                 "P2",
+            )
+
+    def test_proposal_validity_requires_timezone_and_ordered_window(self) -> None:
+        fields = {
+            "proposal_id": "proposal-1",
+            "proposal_kind": "create",
+            "classification": "OPEN",
+            "subject_id": "question-1",
+            "before": None,
+            "after": {"id": "question-1"},
+            "reason": "等待确认",
+            "impact_scope": "本轮",
+            "evidence_refs": ("source-version:SV-1#line:1",),
+        }
+        with self.assertRaises(ValueError):
+            ProposalDraft(**fields, valid_from="2026-07-22T10:00:00")
+        with self.assertRaises(ValueError):
+            ProposalDraft(
+                **fields,
+                valid_from="2026-07-23T10:00:00+08:00",
+                valid_until="2026-07-22T10:00:00+08:00",
             )
 
 

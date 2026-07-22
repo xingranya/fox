@@ -20,7 +20,7 @@ class SQLiteQueryMixin(SQLiteStoreBase):
             rows = connection.execute(
                 """
                 SELECT item_type, item_id, payload_json, source_proposal_id,
-                       updated_event_id, state_version
+                       updated_event_id, state_version, valid_from, valid_until
                 FROM state_items WHERE project_id = ? ORDER BY item_type, item_id
                 """,
                 (project_id,),
@@ -33,6 +33,8 @@ class SQLiteQueryMixin(SQLiteStoreBase):
                 "source_proposal_id": row["source_proposal_id"],
                 "updated_event_id": row["updated_event_id"],
                 "state_version": row["state_version"],
+                "valid_from": row["valid_from"],
+                "valid_until": row["valid_until"],
             }
             for row in rows
         ]

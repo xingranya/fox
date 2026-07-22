@@ -93,3 +93,47 @@ class CanonicalBackupPort(Protocol):
     def create(self) -> str: ...
 
     def restore(self, backup_id: str, destination: Path) -> Path: ...
+
+
+class EvidenceQueryPort(Protocol):
+    """当前决定、开放问题、关系与稳定证据链的只读端口。"""
+
+    def list_decisions(
+        self,
+        project_id: str,
+        *,
+        as_of: str | None = None,
+        include_inactive: bool = False,
+    ) -> Sequence[Mapping[str, object]]: ...
+
+    def list_open_questions(
+        self,
+        project_id: str,
+        *,
+        as_of: str | None = None,
+        include_inactive: bool = False,
+    ) -> Sequence[Mapping[str, object]]: ...
+
+    def get_evidence_chain(
+        self,
+        project_id: str,
+        item_type: str,
+        item_id: str,
+        *,
+        as_of: str | None = None,
+    ) -> Mapping[str, object]: ...
+
+    def resolve_evidence_ref(
+        self, project_id: str, evidence_ref: str
+    ) -> Mapping[str, object]: ...
+
+    def query_relations(
+        self,
+        project_id: str,
+        *,
+        subject_type: str | None = None,
+        subject_id: str | None = None,
+        relation_types: Sequence[str] | None = None,
+        as_of: str | None = None,
+        include_inactive: bool = False,
+    ) -> Sequence[Mapping[str, object]]: ...

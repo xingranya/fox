@@ -202,13 +202,15 @@ class SQLiteStoreBase:
             """
             INSERT INTO state_items(
                 project_id, item_type, item_id, payload_json, source_proposal_id,
-                updated_event_id, state_version
-            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                updated_event_id, state_version, valid_from, valid_until
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(project_id, item_type, item_id) DO UPDATE SET
                 payload_json = excluded.payload_json,
                 source_proposal_id = excluded.source_proposal_id,
                 updated_event_id = excluded.updated_event_id,
-                state_version = excluded.state_version
+                state_version = excluded.state_version,
+                valid_from = excluded.valid_from,
+                valid_until = excluded.valid_until
             """,
             (
                 project_id,
@@ -218,6 +220,8 @@ class SQLiteStoreBase:
                 state_item["source_proposal_id"],
                 event_id,
                 state_version,
+                state_item.get("valid_from"),
+                state_item.get("valid_until"),
             ),
         )
 

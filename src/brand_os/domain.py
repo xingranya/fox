@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import re
 from dataclasses import dataclass
+from datetime import datetime
 from enum import StrEnum
 from pathlib import Path
 from typing import Mapping
@@ -74,6 +75,19 @@ class ReviewAction(StrEnum):
 def _require_text(value: str, field: str) -> None:
     if not value.strip():
         raise ValueError(f"{field} 不能为空")
+
+
+def _parse_timestamp(value: str, field: str) -> datetime:
+    """校验带时区的 ISO 8601 时间，避免有效期依赖本机时区。"""
+
+    _require_text(value, field)
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError as exc:
+        raise ValueError(f"{field} 必须是 ISO 8601 时间") from exc
+    if parsed.tzinfo is None or parsed.utcoffset() is None:
+        raise ValueError(f"{field} 必须包含时区")
+    return parsed
 
 
 def imported_source_version_id(logical_source_id: str, sha256: str) -> str:
@@ -521,6 +535,8 @@ class ProposalDraft:
     evidence_refs: tuple[str, ...]
     supersedes_proposal_id: str | None = None
     source_meeting_item_id: str | None = None
+    valid_from: str | None = None
+    valid_until: str | None = None
 
     def __post_init__(self) -> None:
         for value, field in (
@@ -548,6 +564,18 @@ class ProposalDraft:
         ):
             if value is not None:
                 _require_text(value, field)
+        valid_from = (
+            _parse_timestamp(self.valid_from, "valid_from")
+            if self.valid_from is not None
+            else None
+        )
+        valid_until = (
+            _parse_timestamp(self.valid_until, "valid_until")
+            if self.valid_until is not None
+            else None
+        )
+        if valid_from is not None and valid_until is not None and valid_until <= valid_from:
+            raise ValueError("valid_until 必须晚于 valid_from")
 
 
 @dataclass(frozen=True, slots=True)

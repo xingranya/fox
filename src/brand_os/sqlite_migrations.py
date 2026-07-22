@@ -715,6 +715,17 @@ MIGRATIONS = (
             "CREATE INDEX idx_proposal_lifecycle_actions ON proposal_lifecycle_actions(project_id, proposal_id, acted_at)",
         ),
     ),
+    Migration(
+        6,
+        "state_validity_for_evidence_queries",
+        (
+            "ALTER TABLE proposals ADD COLUMN valid_from TEXT",
+            "ALTER TABLE proposals ADD COLUMN valid_until TEXT",
+            "ALTER TABLE state_items ADD COLUMN valid_from TEXT",
+            "ALTER TABLE state_items ADD COLUMN valid_until TEXT",
+            "CREATE INDEX idx_proposals_project_classification ON proposals(project_id, classification, created_at)",
+        ),
+    ),
 )
 
 

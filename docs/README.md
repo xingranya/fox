@@ -2,7 +2,7 @@
 
 本目录保存 Brand Project OS 的产品、分析、架构、验证和执行 SPEC。2026-07-13 依据[场景化需求澄清与产品反馈](../20260713_品牌AI长期项目协作系统_场景化需求澄清与产品反馈_v0.1(1).md)完成范围重定：当前先用鸿日项目证明 Fox 本地单用户真实提效，再决定是否进入团队服务器化。
 
-当前已有 Phase 1 本地核心。Phase 0 已完成 7/7；Phase 1 已完成 5/10，会议增量、Proposal 生命周期和人工确认已经接到同一套 SQLite 事件与投影上。现在进入 F1.6 的证据关系与稳定回源。未经用户明确要求，不启动桌面应用、Web、数据库、Docker 或其他常驻服务。
+当前已有 Phase 1 本地核心。Phase 0 已完成 7/7；Phase 1 已完成 6/10，当前决定、开放问题、关系有效性和证据回源已经接到同一套 SQLite 事件与投影上。现在进入 F1.7 的 Task Packet 与 Agent 运行留痕。未经用户明确要求，不启动桌面应用、Web、数据库、Docker 或其他常驻服务。
 
 ## 当前结论
 
@@ -52,6 +52,7 @@
 - [F1.3 来源 Manifest、版本、旧 ID、缺口与去重对账](phase1/source-import-and-reconciliation.md)
 - [F1.4 会议增量摄取、保守分类与冲突对账](phase1/meeting-ingest-and-reconciliation.md)
 - [F1.5 Proposal 生命周期、显式替代与历史回放](phase1/proposal-lifecycle-and-history.md)
+- [F1.6 当前决定、开放问题、关系有效性与证据回源](phase1/evidence-query-and-provenance.md)
 
 ## Phase 0 当前证据
 

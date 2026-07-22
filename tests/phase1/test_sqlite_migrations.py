@@ -36,7 +36,7 @@ class SQLiteMigrationTest(unittest.TestCase):
                     apply_migrations(connection, MIGRATIONS), MIGRATIONS[-1].version
                 )
                 versions = [row[0] for row in connection.execute("SELECT version FROM schema_migrations")]
-                self.assertEqual(versions, [1, 2, 3, 4, 5])
+                self.assertEqual(versions, [1, 2, 3, 4, 5, 6])
             finally:
                 connection.close()
 
@@ -166,7 +166,7 @@ class SQLiteMigrationTest(unittest.TestCase):
                     )
                     """
                 )
-                self.assertEqual(apply_migrations(connection, MIGRATIONS), 5)
+                self.assertEqual(apply_migrations(connection, MIGRATIONS[:5]), 5)
                 lifecycle = connection.execute(
                     """
                     SELECT status, revision, last_event_id
@@ -174,6 +174,24 @@ class SQLiteMigrationTest(unittest.TestCase):
                     """
                 ).fetchone()
                 self.assertEqual(lifecycle, ("proposed", 0, "event-proposal"))
+            finally:
+                connection.close()
+
+    def test_v6_upgrade_adds_state_validity_without_changing_existing_rows(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            database = Path(directory) / "project.db"
+            connection = sqlite3.connect(database, isolation_level=None)
+            try:
+                apply_migrations(connection, MIGRATIONS[:5])
+                self.assertEqual(apply_migrations(connection, MIGRATIONS), 6)
+                proposal_columns = {
+                    row[1] for row in connection.execute("PRAGMA table_info(proposals)")
+                }
+                state_columns = {
+                    row[1] for row in connection.execute("PRAGMA table_info(state_items)")
+                }
+                self.assertTrue({"valid_from", "valid_until"}.issubset(proposal_columns))
+                self.assertTrue({"valid_from", "valid_until"}.issubset(state_columns))
             finally:
                 connection.close()
 

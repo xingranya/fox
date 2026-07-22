@@ -1,0 +1,75 @@
+{
+  "schema_version": "evidence-query.v1",
+  "purpose": "查询当前决定、开放问题、业务关系和可稳定回源的证据链",
+  "read_only": true,
+  "queries": [
+    "list_decisions",
+    "list_open_questions",
+    "query_relations",
+    "resolve_evidence_ref",
+    "get_evidence_chain"
+  ],
+  "relation_types": [
+    "sourced_from",
+    "raised_in",
+    "supports",
+    "opposes",
+    "conflicts_with",
+    "applies_to",
+    "approved_by",
+    "supersedes",
+    "depends_on",
+    "answers",
+    "pending_confirmation"
+  ],
+  "validity_statuses": [
+    "current",
+    "superseded",
+    "archived",
+    "expired",
+    "scheduled",
+    "unknown"
+  ],
+  "default_filter": {
+    "decisions_and_open_questions": ["current"],
+    "relations_exclude": ["superseded", "archived", "expired", "scheduled"],
+    "unknown_relations_remain_visible_as_unconfirmed": true
+  },
+  "state_validity": {
+    "valid_from_optional": true,
+    "valid_until_optional": true,
+    "timezone_required": true,
+    "valid_until_must_be_after_valid_from": true,
+    "expiration_does_not_delete_history": true
+  },
+  "evidence_refs": {
+    "meeting_quote": "meeting:<meeting_id>#<segment_id>",
+    "source_excerpt": "source-version:<source_version_id>#<locator>",
+    "stable_open_ref": "evidence://sha256/<sha256>",
+    "unknown_or_legacy_ref": "返回 unconfirmed，不猜测引用对象"
+  },
+  "meeting_evidence_required": [
+    "quote",
+    "speaker",
+    "spoken_at_or_time_range",
+    "meeting_id",
+    "source_version_id",
+    "sha256",
+    "relative_path",
+    "source_verification"
+  ],
+  "conclusion_chain_required": [
+    "human_approval",
+    "impact_scope",
+    "evidence_ref",
+    "source_version_id",
+    "sha256",
+    "stable_open_ref"
+  ],
+  "authority": {
+    "queries_change_current_state": false,
+    "working_relations_are_formal_decisions": false,
+    "unresolved_evidence_becomes": "unconfirmed",
+    "unresolved_evidence_may_be_guessed": false
+  }
+}

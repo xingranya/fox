@@ -18,6 +18,8 @@
     "reason":{"type":"string","minLength":1},
     "impact_scope":{"type":"string","minLength":1},
     "evidence_refs":{"type":"array","minItems":1,"items":{"type":"string","minLength":1}},
+    "valid_from":{"type":["string","null"],"format":"date-time"},
+    "valid_until":{"type":["string","null"],"format":"date-time"},
     "conflicts":{"type":"array","items":{"type":"string"}},
     "generated_by":{"type":"object","required":["kind","runtime_id"],"properties":{"kind":{"enum":["AI","WORKFLOW","HUMAN"]},"runtime_id":{"type":"string","minLength":1}},"additionalProperties":false},
     "created_at":{"type":"string","format":"date-time"}

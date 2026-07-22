@@ -25,6 +25,9 @@
     "same_subject_silent_overwrite_forbidden": true,
     "supersede_removes_predecessor_from_current_projection": true,
     "supersession_relation_and_old_payload_preserved": true,
+    "valid_from_optional": true,
+    "valid_until_optional": true,
+    "expired_state_excluded_by_default_query": true,
     "rebuild_source": "human proposal events"
   },
   "audit": {

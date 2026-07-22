@@ -72,7 +72,7 @@ class SQLiteBackupTest(unittest.TestCase):
         manifest = json.loads(
             (self.layout.backups / backup_id / "manifest.json").read_text(encoding="utf-8")
         )
-        self.assertEqual(manifest["schema_version"], "sqlite-backup.v4")
+        self.assertEqual(manifest["schema_version"], "sqlite-backup.v5")
         self.assertEqual(manifest["proposal_lifecycle_count"], 1)
         self.assertEqual(len(manifest["proposal_digest"]), 64)
         restored_path = self.backups.restore(backup_id, self.base / "restored" / "project.db")
@@ -333,6 +333,7 @@ class SQLiteBackupTest(unittest.TestCase):
             (2, "sqlite-backup.v1"),
             (3, "sqlite-backup.v2"),
             (4, "sqlite-backup.v3"),
+            (5, "sqlite-backup.v4"),
         )
         source_fields = (
             "source_import_batch_count",
@@ -371,6 +372,7 @@ class SQLiteBackupTest(unittest.TestCase):
                     2: (*source_fields, *meeting_fields, *proposal_fields),
                     3: (*meeting_fields, *proposal_fields),
                     4: proposal_fields,
+                    5: (),
                 }
                 fields = fields_by_schema[schema_version]
                 for key in fields:

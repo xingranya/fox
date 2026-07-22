@@ -37,7 +37,7 @@ class SQLiteBackupService:
             metadata = self._database_metadata(backup_database)
             digest, size = sha256_file(backup_database)
             manifest = {
-                "schema_version": "sqlite-backup.v4",
+                "schema_version": "sqlite-backup.v5",
                 "backup_id": backup_id,
                 "created_at": datetime.now(UTC).isoformat(),
                 "database_sha256": digest,
@@ -72,6 +72,7 @@ class SQLiteBackupService:
             "sqlite-backup.v2",
             "sqlite-backup.v3",
             "sqlite-backup.v4",
+            "sqlite-backup.v5",
         } or manifest.get("backup_id") != backup_id:
             raise BackupError("SQLite 备份版本或 ID 不匹配")
         digest, size = sha256_file(source_database)
@@ -159,12 +160,17 @@ class SQLiteBackupService:
                 {"project_id": row[0], "version": row[1]}
                 for row in connection.execute("SELECT project_id, version FROM projects ORDER BY project_id")
             ]
+            state_columns = """
+                project_id, item_type, item_id, payload_json, source_proposal_id,
+                updated_event_id, state_version
+            """
+            if schema_version >= 6:
+                state_columns += ", valid_from, valid_until"
             state_rows = [
                 list(row)
                 for row in connection.execute(
-                    """
-                    SELECT project_id, item_type, item_id, payload_json, source_proposal_id,
-                           updated_event_id, state_version
+                    f"""
+                    SELECT {state_columns}
                     FROM state_items ORDER BY project_id, item_type, item_id
                     """
                 )
@@ -304,6 +310,7 @@ class SQLiteBackupService:
             "sqlite-backup.v2",
             "sqlite-backup.v3",
             "sqlite-backup.v4",
+            "sqlite-backup.v5",
         }:
             metadata.update(
                 {
@@ -314,7 +321,11 @@ class SQLiteBackupService:
                     "source_digest": manifest.get("source_digest"),
                 }
             )
-        if manifest.get("schema_version") in {"sqlite-backup.v3", "sqlite-backup.v4"}:
+        if manifest.get("schema_version") in {
+            "sqlite-backup.v3",
+            "sqlite-backup.v4",
+            "sqlite-backup.v5",
+        }:
             metadata.update(
                 {
                     "meeting_ingest_batch_count": manifest.get("meeting_ingest_batch_count"),
@@ -325,7 +336,7 @@ class SQLiteBackupService:
                     "meeting_digest": manifest.get("meeting_digest"),
                 }
             )
-        if manifest.get("schema_version") == "sqlite-backup.v4":
+        if manifest.get("schema_version") in {"sqlite-backup.v4", "sqlite-backup.v5"}:
             metadata.update(
                 {
                     "proposal_lifecycle_count": manifest.get("proposal_lifecycle_count"),

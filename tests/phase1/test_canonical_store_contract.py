@@ -14,6 +14,7 @@ MEETING_INGEST_CONTRACT_PATH = ROOT / "contracts" / "phase1" / "meeting-ingest.j
 PROPOSAL_LIFECYCLE_CONTRACT_PATH = (
     ROOT / "contracts" / "phase1" / "proposal-lifecycle.json"
 )
+EVIDENCE_QUERY_CONTRACT_PATH = ROOT / "contracts" / "phase1" / "evidence-query.json"
 
 
 class CanonicalStoreContractTest(unittest.TestCase):
@@ -31,9 +32,12 @@ class CanonicalStoreContractTest(unittest.TestCase):
         cls.proposal_lifecycle_contract = json.loads(
             PROPOSAL_LIFECYCLE_CONTRACT_PATH.read_text(encoding="utf-8")
         )
+        cls.evidence_query_contract = json.loads(
+            EVIDENCE_QUERY_CONTRACT_PATH.read_text(encoding="utf-8")
+        )
 
     def test_contract_is_replaceable_and_versioned(self) -> None:
-        self.assertEqual(self.contract["schema_version"], "canonical-store-port.v4")
+        self.assertEqual(self.contract["schema_version"], "canonical-store-port.v5")
         self.assertTrue(self.contract["replaceable"])
         self.assertEqual(self.contract["current_implementation"], "sqlite")
 
@@ -81,7 +85,34 @@ class CanonicalStoreContractTest(unittest.TestCase):
             self.contract["proposal_lifecycle_rebuild_source"],
             "proposal events from configured human reviewers",
         )
-        self.assertEqual(self.contract["backup"]["schema_version"], "sqlite-backup.v4")
+        self.assertEqual(self.contract["backup"]["schema_version"], "sqlite-backup.v5")
+
+    def test_evidence_queries_are_read_only_versioned_and_fail_closed(self) -> None:
+        self.assertEqual(
+            self.evidence_query_contract["schema_version"], "evidence-query.v1"
+        )
+        self.assertTrue(self.evidence_query_contract["read_only"])
+        self.assertEqual(
+            set(self.evidence_query_contract["relation_types"]),
+            {
+                "sourced_from",
+                "raised_in",
+                "supports",
+                "opposes",
+                "conflicts_with",
+                "applies_to",
+                "approved_by",
+                "supersedes",
+                "depends_on",
+                "answers",
+                "pending_confirmation",
+            },
+        )
+        self.assertFalse(
+            self.evidence_query_contract["authority"][
+                "unresolved_evidence_may_be_guessed"
+            ]
+        )
 
     def test_every_write_requires_idempotency_and_expected_version(self) -> None:
         requirements = self.contract["write_requirements"]
