@@ -1,10 +1,10 @@
 # 团队服务器架构
 
 > 状态：已批准，按 Phase 2-4 分阶段实施<br>
-> 当前进度：F2.1-F2.4 已通过，当前执行 F2.5 项目 RBAC、保密级别和 RLS 防线<br>
+> 当前进度：F2.1-F2.5 已通过，当前执行 F2.6 幂等、乐观锁和冲突差异<br>
 > 当前生效决策：[ADR-0005：单一客户端与服务器权威服务](../adr/0005-single-client-server-authority.md)
 
-F2.1 已完成配置优先级、秘密注入、服务器组件职责和健康报告基线。F2.2 已完成 PostgreSQL v1-v6 权威存储，F2.3 已完成 PostgreSQL v7 对象元数据与 S3 原件准入，F2.4 已完成 PostgreSQL v8 员工绑定、OIDC 协议校验和加密会话，并在一次性临时 PostgreSQL 17 与离线 OIDC 测试环境完成验证。当前仍不启动常驻服务，不执行公司 S3/OIDC 初始化，也不迁移鸿日正式数据。
+F2.1 已完成配置优先级、秘密注入、服务器组件职责和健康报告基线。F2.2 已完成 PostgreSQL v1-v6 权威存储，F2.3 已完成 PostgreSQL v7 对象元数据与 S3 原件准入，F2.4 已完成 PostgreSQL v8 员工绑定、OIDC 协议校验和加密会话，F2.5 已完成 PostgreSQL v9 项目授权与强制 RLS，并在一次性临时 PostgreSQL 17 环境完成验证。当前仍不启动常驻服务，不执行公司 S3/OIDC 初始化，也不迁移鸿日正式数据。
 
 旧可视化交付：[可编辑 Draw.io 源文件](../diagrams/team-server-architecture.drawio)；[嵌入源数据的 PNG](../diagrams/team-server-architecture.drawio.png)。旧图包含轻量 Web 等已取消边界，只作历史参考；当前拓扑以本文和 ADR-0005 为准，后续需单独更新图文件。
 
@@ -18,7 +18,7 @@ OpenWork 已被选定为客户端基础。OpenWork Server、Orchestrator 和 Ope
 
 - Phase 1 已用 SQLite、内容寻址本地证据区和本地 CLI/MCP 完成纵切，没有运行本页服务器拓扑。
 - F1.10 已通过；验收数据库、来源 Manifest 和证据哈希作为后续迁移对账基线。
-- F2.1 已冻结服务器配置、职责和健康基线，F2.2-F2.4 已完成 PostgreSQL 权威存储、S3 原件准入和 OIDC 员工会话；当前从 F2.5 开始，依次完成项目权限、一致性、恢复、联网客户端和团队试点。
+- F2.1 已冻结服务器配置、职责和健康基线，F2.2-F2.5 已完成 PostgreSQL 权威存储、S3 原件准入、OIDC 员工会话和项目权限；当前从 F2.6 开始，依次完成冲突处理、恢复、联网客户端和团队试点。
 - Phase 3 使用一次性迁移和冻结本地写入完成权威切换，不提前运行双套可写系统。
 
 ```mermaid

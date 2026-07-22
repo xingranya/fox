@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 from .sqlite_migrations import MIGRATIONS, Migration
 
 
-POSTGRESQL_SCHEMA_VERSION = 8
+POSTGRESQL_SCHEMA_VERSION = 9
 
 
 def _translate_statement(statement: str) -> str:
@@ -248,10 +248,429 @@ POSTGRESQL_OIDC_IDENTITY_MIGRATION = Migration(
 )
 
 
+POSTGRESQL_PROJECT_AUTHORIZATION_MIGRATION = Migration(
+    9,
+    "project_rbac_confidentiality_and_rls",
+    (
+        """
+        CREATE TABLE project_memberships (
+            project_id TEXT NOT NULL,
+            employee_id TEXT NOT NULL,
+            role TEXT NOT NULL CHECK(role IN (
+                'OWNER','MANAGER','EDITOR','REVIEWER','VIEWER'
+            )),
+            confidentiality_ceiling TEXT NOT NULL CHECK(
+                confidentiality_ceiling IN ('P0','P1','P2','P3')
+            ),
+            status TEXT NOT NULL CHECK(status IN ('ACTIVE','REVOKED')),
+            granted_by_kind TEXT NOT NULL CHECK(granted_by_kind = 'EMPLOYEE'),
+            granted_by_id TEXT NOT NULL CHECK(length(granted_by_id) > 0),
+            granted_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            revoked_at TEXT,
+            revoked_by TEXT,
+            revocation_reason TEXT,
+            PRIMARY KEY(project_id, employee_id),
+            FOREIGN KEY(project_id) REFERENCES projects(project_id) ON DELETE RESTRICT,
+            FOREIGN KEY(employee_id) REFERENCES employees(employee_id) ON DELETE RESTRICT
+        )
+        """,
+        """
+        CREATE TABLE service_principals (
+            principal_id TEXT PRIMARY KEY CHECK(length(principal_id) > 0),
+            principal_kind TEXT NOT NULL CHECK(principal_kind IN (
+                'AI','MCP','WORKFLOW','SYSTEM'
+            )),
+            display_name TEXT NOT NULL CHECK(length(display_name) > 0),
+            status TEXT NOT NULL CHECK(status IN ('ACTIVE','DISABLED')),
+            registered_by_employee_id TEXT NOT NULL,
+            registered_at TEXT NOT NULL,
+            disabled_at TEXT,
+            disabled_by TEXT,
+            disable_reason TEXT,
+            FOREIGN KEY(registered_by_employee_id)
+                REFERENCES employees(employee_id) ON DELETE RESTRICT
+        )
+        """,
+        """
+        CREATE TABLE project_service_grants (
+            project_id TEXT NOT NULL,
+            principal_id TEXT NOT NULL,
+            actions TEXT[] NOT NULL CHECK(
+                cardinality(actions) > 0
+                AND actions <@ ARRAY[
+                    'PROJECT_READ','EVIDENCE_READ','EVIDENCE_WRITE','WORKING_WRITE',
+                    'PROPOSAL_CREATE','TASK_READ','RUNTIME_START'
+                ]::TEXT[]
+            ),
+            confidentiality_ceiling TEXT NOT NULL CHECK(
+                confidentiality_ceiling IN ('P0','P1','P2','P3')
+            ),
+            status TEXT NOT NULL CHECK(status IN ('ACTIVE','REVOKED')),
+            granted_by_employee_id TEXT NOT NULL,
+            granted_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            revoked_at TEXT,
+            revoked_by TEXT,
+            revocation_reason TEXT,
+            PRIMARY KEY(project_id, principal_id),
+            FOREIGN KEY(project_id) REFERENCES projects(project_id) ON DELETE RESTRICT,
+            FOREIGN KEY(principal_id)
+                REFERENCES service_principals(principal_id) ON DELETE RESTRICT,
+            FOREIGN KEY(granted_by_employee_id)
+                REFERENCES employees(employee_id) ON DELETE RESTRICT
+        )
+        """,
+        """
+        CREATE TABLE project_authorization_events (
+            global_position BIGSERIAL PRIMARY KEY,
+            event_id TEXT NOT NULL UNIQUE CHECK(length(event_id) > 0),
+            project_id TEXT NOT NULL,
+            target_kind TEXT NOT NULL CHECK(target_kind IN (
+                'EMPLOYEE','AI','MCP','WORKFLOW','SYSTEM'
+            )),
+            target_id TEXT NOT NULL CHECK(length(target_id) > 0),
+            event_type TEXT NOT NULL CHECK(event_type IN (
+                'OWNER_BOOTSTRAPPED','EMPLOYEE_GRANTED','EMPLOYEE_REVOKED',
+                'SERVICE_GRANTED','SERVICE_REVOKED'
+            )),
+            role TEXT CHECK(role IS NULL OR role IN (
+                'OWNER','MANAGER','EDITOR','REVIEWER','VIEWER'
+            )),
+            actions TEXT[],
+            confidentiality_ceiling TEXT CHECK(
+                confidentiality_ceiling IS NULL
+                OR confidentiality_ceiling IN ('P0','P1','P2','P3')
+            ),
+            reason TEXT,
+            actor_kind TEXT NOT NULL CHECK(actor_kind = 'EMPLOYEE'),
+            actor_id TEXT NOT NULL CHECK(length(actor_id) > 0),
+            occurred_at TEXT NOT NULL,
+            FOREIGN KEY(project_id) REFERENCES projects(project_id) ON DELETE RESTRICT
+        )
+        """,
+        "CREATE INDEX idx_project_memberships_employee ON project_memberships(employee_id, status, project_id)",
+        "CREATE INDEX idx_project_service_grants_principal ON project_service_grants(principal_id, status, project_id)",
+        "CREATE INDEX idx_project_authorization_events_project ON project_authorization_events(project_id, global_position)",
+        """
+        CREATE FUNCTION brand_os_confidentiality_rank(value TEXT)
+        RETURNS INTEGER
+        LANGUAGE SQL
+        IMMUTABLE
+        PARALLEL SAFE
+        AS $$
+            SELECT CASE value
+                WHEN 'P0' THEN 0
+                WHEN 'P1' THEN 1
+                WHEN 'P2' THEN 2
+                WHEN 'P3' THEN 3
+                ELSE -1
+            END
+        $$
+        """,
+        """
+        CREATE FUNCTION brand_os_has_project_action(
+            row_project_id TEXT,
+            required_action TEXT,
+            row_confidentiality TEXT DEFAULT 'P0'
+        )
+        RETURNS BOOLEAN
+        LANGUAGE plpgsql
+        STABLE
+        SECURITY DEFINER
+        SET search_path = public, pg_temp
+        AS $$
+        DECLARE
+            principal_kind TEXT := current_setting('brand_os.principal_kind', true);
+            principal_id TEXT := current_setting('brand_os.principal_id', true);
+            selected_project_id TEXT := current_setting('brand_os.project_id', true);
+            employee_role TEXT;
+            allowed_actions TEXT[];
+            ceiling TEXT;
+        BEGIN
+            IF principal_kind IS NULL OR principal_kind = ''
+                OR principal_id IS NULL OR principal_id = ''
+                OR selected_project_id IS NULL OR selected_project_id = ''
+                OR selected_project_id <> row_project_id
+                OR brand_os_confidentiality_rank(row_confidentiality) < 0
+            THEN
+                RETURN FALSE;
+            END IF;
+
+            IF principal_kind = 'EMPLOYEE' THEN
+                SELECT membership.role, membership.confidentiality_ceiling
+                INTO employee_role, ceiling
+                FROM project_memberships AS membership
+                JOIN employees AS employee
+                  ON employee.employee_id = membership.employee_id
+                WHERE membership.project_id = row_project_id
+                  AND membership.employee_id = principal_id
+                  AND membership.status = 'ACTIVE'
+                  AND employee.status = 'ACTIVE';
+
+                IF employee_role IS NULL THEN
+                    RETURN FALSE;
+                END IF;
+                allowed_actions := CASE employee_role
+                    WHEN 'OWNER' THEN ARRAY[
+                        'PROJECT_READ','EVIDENCE_READ','EVIDENCE_WRITE','WORKING_WRITE',
+                        'PROPOSAL_CREATE','PROPOSAL_REVIEW','TASK_READ','RUNTIME_START',
+                        'ACCESS_MANAGE'
+                    ]::TEXT[]
+                    WHEN 'MANAGER' THEN ARRAY[
+                        'PROJECT_READ','EVIDENCE_READ','EVIDENCE_WRITE','WORKING_WRITE',
+                        'PROPOSAL_CREATE','PROPOSAL_REVIEW','TASK_READ','RUNTIME_START'
+                    ]::TEXT[]
+                    WHEN 'EDITOR' THEN ARRAY[
+                        'PROJECT_READ','EVIDENCE_READ','EVIDENCE_WRITE','WORKING_WRITE',
+                        'PROPOSAL_CREATE','TASK_READ','RUNTIME_START'
+                    ]::TEXT[]
+                    WHEN 'REVIEWER' THEN ARRAY[
+                        'PROJECT_READ','EVIDENCE_READ','PROPOSAL_CREATE',
+                        'PROPOSAL_REVIEW','TASK_READ'
+                    ]::TEXT[]
+                    WHEN 'VIEWER' THEN ARRAY[
+                        'PROJECT_READ','EVIDENCE_READ','TASK_READ'
+                    ]::TEXT[]
+                    ELSE ARRAY[]::TEXT[]
+                END;
+            ELSIF principal_kind IN ('AI','MCP','WORKFLOW','SYSTEM') THEN
+                SELECT grant_record.actions, grant_record.confidentiality_ceiling
+                INTO allowed_actions, ceiling
+                FROM project_service_grants AS grant_record
+                JOIN service_principals AS service
+                  ON service.principal_id = grant_record.principal_id
+                WHERE grant_record.project_id = row_project_id
+                  AND grant_record.principal_id = principal_id
+                  AND grant_record.status = 'ACTIVE'
+                  AND service.status = 'ACTIVE'
+                  AND service.principal_kind = principal_kind;
+            ELSE
+                RETURN FALSE;
+            END IF;
+
+            RETURN required_action = ANY(COALESCE(allowed_actions, ARRAY[]::TEXT[]))
+                AND brand_os_confidentiality_rank(row_confidentiality)
+                    <= brand_os_confidentiality_rank(ceiling);
+        END
+        $$
+        """,
+        """
+        CREATE FUNCTION brand_os_current_action_permitted(
+            row_project_id TEXT,
+            row_confidentiality TEXT,
+            table_actions TEXT[]
+        )
+        RETURNS BOOLEAN
+        LANGUAGE SQL
+        STABLE
+        AS $$
+            SELECT current_setting('brand_os.action', true)
+                    = ANY(COALESCE(table_actions, ARRAY[]::TEXT[]))
+               AND brand_os_has_project_action(
+                    row_project_id,
+                    current_setting('brand_os.action', true),
+                    row_confidentiality
+               )
+        $$
+        """,
+        "REVOKE ALL ON FUNCTION brand_os_confidentiality_rank(TEXT) FROM PUBLIC",
+        "REVOKE ALL ON FUNCTION brand_os_has_project_action(TEXT, TEXT, TEXT) FROM PUBLIC",
+        "REVOKE ALL ON FUNCTION brand_os_current_action_permitted(TEXT, TEXT, TEXT[]) FROM PUBLIC",
+        """
+        DO $$
+        DECLARE
+            table_record RECORD;
+            confidentiality_expression TEXT;
+            read_action TEXT;
+            write_actions TEXT;
+        BEGIN
+            FOR table_record IN
+                SELECT table_name
+                FROM information_schema.columns
+                WHERE table_schema = current_schema()
+                  AND column_name = 'project_id'
+                  AND table_name NOT IN (
+                      'project_memberships',
+                      'project_service_grants',
+                      'project_authorization_events'
+                  )
+                ORDER BY table_name
+            LOOP
+                IF EXISTS (
+                    SELECT 1 FROM information_schema.columns
+                    WHERE table_schema = current_schema()
+                      AND table_name = table_record.table_name
+                      AND column_name = 'confidentiality'
+                ) THEN
+                    confidentiality_expression := 'COALESCE(confidentiality, ''P0'')';
+                ELSE
+                    confidentiality_expression := '''P0''';
+                END IF;
+
+                IF table_record.table_name IN (
+                    'sources','source_import_batches','source_contents','logical_sources',
+                    'source_versions','source_aliases','source_version_relations','source_gaps',
+                    'evidence_uploads','evidence_object_versions'
+                ) THEN
+                    read_action := 'EVIDENCE_READ';
+                    write_actions := 'ARRAY[''EVIDENCE_WRITE'']::TEXT[]';
+                ELSIF table_record.table_name IN (
+                    'runtime_commands','runtime_tasks','runtime_mode_switches',
+                    'task_packets','agent_runs'
+                ) THEN
+                    read_action := 'TASK_READ';
+                    write_actions := 'ARRAY[''RUNTIME_START'']::TEXT[]';
+                ELSIF table_record.table_name IN (
+                    'human_actions','state_items','proposal_lifecycle_actions',
+                    'proposal_supersessions'
+                ) THEN
+                    read_action := 'PROJECT_READ';
+                    write_actions := 'ARRAY[''PROPOSAL_REVIEW'']::TEXT[]';
+                ELSIF table_record.table_name IN ('proposals','proposal_lifecycle') THEN
+                    read_action := 'PROJECT_READ';
+                    write_actions := 'ARRAY[''PROPOSAL_CREATE'',''PROPOSAL_REVIEW'']::TEXT[]';
+                ELSIF table_record.table_name IN ('projects','commands','events') THEN
+                    read_action := 'PROJECT_READ';
+                    write_actions := 'ARRAY[
+                        ''EVIDENCE_WRITE'',''WORKING_WRITE'',''PROPOSAL_CREATE'',
+                        ''PROPOSAL_REVIEW'',''RUNTIME_START'',''ACCESS_MANAGE''
+                    ]::TEXT[]';
+                ELSE
+                    read_action := 'PROJECT_READ';
+                    write_actions := 'ARRAY[''WORKING_WRITE'',''PROPOSAL_CREATE'']::TEXT[]';
+                END IF;
+
+                EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', table_record.table_name);
+                EXECUTE format('ALTER TABLE %I FORCE ROW LEVEL SECURITY', table_record.table_name);
+                EXECUTE format(
+                    'CREATE POLICY project_scope_select ON %I FOR SELECT USING '
+                    || '(brand_os_has_project_action(project_id, %L, %s))',
+                    table_record.table_name,
+                    read_action,
+                    confidentiality_expression
+                );
+                EXECUTE format(
+                    'CREATE POLICY project_scope_insert ON %I FOR INSERT WITH CHECK '
+                    || '(brand_os_current_action_permitted(project_id, %s, %s))',
+                    table_record.table_name,
+                    confidentiality_expression,
+                    write_actions
+                );
+                EXECUTE format(
+                    'CREATE POLICY project_scope_update ON %I FOR UPDATE USING '
+                    || '(brand_os_current_action_permitted(project_id, %s, %s)) WITH CHECK '
+                    || '(brand_os_current_action_permitted(project_id, %s, %s))',
+                    table_record.table_name,
+                    confidentiality_expression,
+                    write_actions,
+                    confidentiality_expression,
+                    write_actions
+                );
+                EXECUTE format(
+                    'CREATE POLICY project_scope_delete ON %I FOR DELETE USING '
+                    || '(brand_os_current_action_permitted(project_id, %s, %s))',
+                    table_record.table_name,
+                    confidentiality_expression,
+                    write_actions
+                );
+            END LOOP;
+        END
+        $$
+        """,
+        """
+        ALTER TABLE proposal_evidence ENABLE ROW LEVEL SECURITY;
+        ALTER TABLE proposal_evidence FORCE ROW LEVEL SECURITY;
+        CREATE POLICY proposal_evidence_select ON proposal_evidence FOR SELECT USING (
+            EXISTS (
+                SELECT 1 FROM proposals
+                WHERE proposals.proposal_id = proposal_evidence.proposal_id
+            )
+        );
+        CREATE POLICY proposal_evidence_insert ON proposal_evidence FOR INSERT WITH CHECK (
+            EXISTS (
+                SELECT 1 FROM proposals
+                WHERE proposals.proposal_id = proposal_evidence.proposal_id
+                  AND brand_os_current_action_permitted(
+                      proposals.project_id,
+                      'P0',
+                      ARRAY['PROPOSAL_CREATE','PROPOSAL_REVIEW']::TEXT[]
+                  )
+            )
+        )
+        """,
+        """
+        ALTER TABLE evidence_state_transitions ENABLE ROW LEVEL SECURITY;
+        ALTER TABLE evidence_state_transitions FORCE ROW LEVEL SECURITY;
+        CREATE POLICY evidence_transitions_select ON evidence_state_transitions FOR SELECT USING (
+            EXISTS (
+                SELECT 1 FROM evidence_uploads
+                WHERE evidence_uploads.upload_id = evidence_state_transitions.upload_id
+            )
+        );
+        CREATE POLICY evidence_transitions_insert ON evidence_state_transitions FOR INSERT WITH CHECK (
+            EXISTS (
+                SELECT 1 FROM evidence_uploads
+                WHERE evidence_uploads.upload_id = evidence_state_transitions.upload_id
+                  AND brand_os_current_action_permitted(
+                      evidence_uploads.project_id,
+                      evidence_uploads.confidentiality,
+                      ARRAY['EVIDENCE_WRITE']::TEXT[]
+                  )
+            )
+        )
+        """,
+        """
+        ALTER TABLE evidence_object_tombstones ENABLE ROW LEVEL SECURITY;
+        ALTER TABLE evidence_object_tombstones FORCE ROW LEVEL SECURITY;
+        CREATE POLICY evidence_tombstones_select ON evidence_object_tombstones FOR SELECT USING (
+            EXISTS (
+                SELECT 1 FROM evidence_object_versions
+                WHERE evidence_object_versions.version_id = evidence_object_tombstones.version_id
+            )
+        );
+        CREATE POLICY evidence_tombstones_insert ON evidence_object_tombstones FOR INSERT WITH CHECK (
+            EXISTS (
+                SELECT 1 FROM evidence_object_versions
+                WHERE evidence_object_versions.version_id = evidence_object_tombstones.version_id
+                  AND brand_os_current_action_permitted(
+                      evidence_object_versions.project_id,
+                      evidence_object_versions.confidentiality,
+                      ARRAY['EVIDENCE_WRITE']::TEXT[]
+                  )
+            )
+        );
+        CREATE POLICY evidence_tombstones_update ON evidence_object_tombstones FOR UPDATE USING (
+            EXISTS (
+                SELECT 1 FROM evidence_object_versions
+                WHERE evidence_object_versions.version_id = evidence_object_tombstones.version_id
+                  AND brand_os_current_action_permitted(
+                      evidence_object_versions.project_id,
+                      evidence_object_versions.confidentiality,
+                      ARRAY['EVIDENCE_WRITE']::TEXT[]
+                  )
+            )
+        ) WITH CHECK (
+            EXISTS (
+                SELECT 1 FROM evidence_object_versions
+                WHERE evidence_object_versions.version_id = evidence_object_tombstones.version_id
+                  AND brand_os_current_action_permitted(
+                      evidence_object_versions.project_id,
+                      evidence_object_versions.confidentiality,
+                      ARRAY['EVIDENCE_WRITE']::TEXT[]
+                  )
+            )
+        )
+        """,
+    ),
+)
+
+
 POSTGRESQL_MIGRATIONS = (
     *_SHARED_POSTGRESQL_MIGRATIONS,
     POSTGRESQL_OBJECT_EVIDENCE_MIGRATION,
     POSTGRESQL_OIDC_IDENTITY_MIGRATION,
+    POSTGRESQL_PROJECT_AUTHORIZATION_MIGRATION,
 )
 
 
@@ -322,6 +741,7 @@ __all__ = [
     "POSTGRESQL_MIGRATIONS",
     "POSTGRESQL_OBJECT_EVIDENCE_MIGRATION",
     "POSTGRESQL_OIDC_IDENTITY_MIGRATION",
+    "POSTGRESQL_PROJECT_AUTHORIZATION_MIGRATION",
     "POSTGRESQL_SCHEMA_VERSION",
     "apply_postgresql_migrations",
 ]

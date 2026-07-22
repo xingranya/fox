@@ -10,7 +10,7 @@
 
 ## 当前结论
 
-- 当前活动方案为 5 阶段 49 项：Phase 0 和 Phase 1 已完成，F2.1-F2.4 已通过，当前执行 F2.5 项目 RBAC、保密级别和 RLS 防线；MCP/Skills、工作流接入和团队试点仍按后续阶段过门。
+- 当前活动方案为 5 阶段 49 项：Phase 0 和 Phase 1 已完成，F2.1-F2.5 已通过，当前执行 F2.6 幂等、乐观锁和冲突差异；MCP/Skills、工作流接入和团队试点仍按后续阶段过门。
 - 旧 42 项服务器草案和 32 项本地价值验证方案均保留在 Git 历史中，不再作为当前依赖或完成度来源。
 - 当前主线不是通用项目管理、企业知识库或完整 RAG，而是长期品牌项目的状态与品牌认知协作层。
 - 公司定制版 OpenWork 是唯一员工客户端。Brand Project OS 是当前项目名，最终发行名可以另定；OpenCode Runtime、Sidecar 和本机桥接仍随同一安装包分发。
@@ -45,6 +45,7 @@
 - [F2.2 PostgreSQL 权威事件、审批和投影](../phase2/postgresql-authority-store.md)
 - [F2.3 S3 兼容原件版本、哈希和准入状态机](../phase2/object-evidence-store.md)
 - [F2.4 OIDC 员工身份与服务器会话](../phase2/oidc-identity-and-sessions.md)
+- [F2.5 项目 RBAC、保密级别与 RLS](../phase2/project-authorization-and-rls.md)
 - [BISHENG 接入评估](../analysis/bisheng-integration-evaluation.md)
 - [BISHENG 条件接入 SPEC](../plan/bisheng-integration-spec.md)
 - [ADR-0005：单一客户端与服务器权威服务](../adr/0005-single-client-server-authority.md)
@@ -57,26 +58,26 @@
 |:---|:---|---:|---:|:---|:---|
 | 0 | 边界、协议与黄金测试先行 | 7 | 7 | 100% | 一页边界、鸿日样本、分类标准、品牌 Agent 协议、10-20 黄金用例与 BrandBench |
 | 1 | 单一客户端本地纵向切片 | 10 | 10 | 100% | 本地领域核心、CLI/MCP、OpenWork 单安装包和鸿日桌面闭环 |
-| 2 | 服务器权威基础 | 10 | 4 | 40% | PostgreSQL、对象存储、OIDC/RBAC、一致性、API、审计和恢复 |
+| 2 | 服务器权威基础 | 10 | 5 | 50% | PostgreSQL、对象存储、OIDC/RBAC、一致性、API、审计和恢复 |
 | 3 | 客户端联网与集成 | 13 | 0 | 0% | Desktop 联网、MCP、Skills、Dify、Zvec、Open Notebook、Nubase、FlowLong |
 | 4 | 团队试点与生产准入 | 9 | 0 | 0% | 真实团队工作、并发、故障恢复、安全、SLO、签名分发和 Go/No-Go |
-| **合计** |  | **49** | **21** | **43%** | 当前执行 F2.5，后续阶段依次过门 |
+| **合计** |  | **49** | **22** | **45%** | 当前执行 F2.6，后续阶段依次过门 |
 
 ## 阶段清单
 
 - [x] Phase 0：边界、协议与黄金测试先行（7/7）- [详情](phase-0-boundary-and-bench.md)
 - [x] Phase 1：单一客户端本地纵向切片（10/10）- [详情](phase-1-hongri-local-prototype.md)
-- [ ] Phase 2：服务器权威基础（4/10）- [详情](phase-2-server-authority-foundation.md)
+- [ ] Phase 2：服务器权威基础（5/10）- [详情](phase-2-server-authority-foundation.md)
 - [ ] Phase 3：客户端联网、MCP、Skills 与工作流（0/13）- [详情](phase-3-connected-client-and-integrations.md)
 - [ ] Phase 4：团队试点与生产准入（0/9）- [详情](phase-4-team-pilot-and-production-gate.md)
 
 ## 当前状态
 
 **活动阶段**：Phase 2：服务器权威基础
-**活动任务**：F2.5：实现项目 RBAC、保密级别和 RLS 防线
+**活动任务**：F2.6：实现幂等、乐观锁和冲突差异
 **阻塞项**：当前无业务阻塞；内部 macOS 包尚未签名、公证，仍不可向员工分发
-**后续顺序**：F2.5-F2.10 -> Phase 3 联网与集成 -> Phase 4 团队试点
-**规划检查点**：Phase 0、Phase 1 和 F2.1-F2.4 已通过，当前完成 21/49
+**后续顺序**：F2.6-F2.10 -> Phase 3 联网与集成 -> Phase 4 团队试点
+**规划检查点**：Phase 0、Phase 1 和 F2.1-F2.5 已通过，当前完成 22/49
 
 ## 治理状态
 
@@ -116,7 +117,7 @@
 | threshold_replan | 4 |
 | threshold_rescope | 6 |
 | total_tasks | 10 |
-| completed_tasks | 4 |
+| completed_tasks | 5 |
 | last_updated | 2026-07-23 |
 
 ### 各阶段阈值
@@ -158,6 +159,7 @@
 | F2.2 | XL | XL | 0 | 10/10 | 0 | 1 | 1 |
 | F2.3 | L | L | 0 | 10/10 | +1 | 1 | 1 |
 | F2.4 | L | XL | +1 | 10/10 | 0 | 1 | 1 |
+| F2.5 | L | L | 0 | 10/10 | +1 | 0 | 0 |
 
 ## Rescope 追踪
 
@@ -166,14 +168,14 @@
 | 初始本地草案 | 个人本地 29 项 | 未开始 | 本地知识与 AI 接入 | 被团队服务器方案替代 |
 | 团队服务器方案 | 6 阶段 / 42 项 | 0/42，未开始 | OpenWork Electron + PostgreSQL/S3 团队服务器先行 | 被本次 rescope 替代；逐项映射保留在任务分解 |
 | 本地价值验证方案 | 4 阶段 / 32 项 | 15/32 时 rescope | Fox/鸿日、本地单用户、黄金测试与真实工作先行 | Phase 0 和 F1.1-F1.8 保留；未开始的旧 Phase 2/3 被取代 |
-| 单一客户端 + 服务器权威服务 | 5 阶段 / 49 项 | 21/49，执行中 | OpenWork 唯一客户端、公司服务器权威、MCP/Skills/工作流和团队试点 | 当前活动方案 |
+| 单一客户端 + 服务器权威服务 | 5 阶段 / 49 项 | 22/49，执行中 | OpenWork 唯一客户端、公司服务器权威、MCP/Skills/工作流和团队试点 | 当前活动方案 |
 
 服务器、身份、一致性、恢复、Dify 和四个开源组件已进入正式实施顺序。外部组件仍需逐项证明收益；“拒绝并使用 NoOp”是合法结果。
 
 ## 下一步
 
-1. 用 F2.5 实现项目角色、动作、资源和保密级别的统一授权矩阵。
-2. 应用服务先做显式授权，PostgreSQL RLS 只作纵深防御；员工会话、MCP 和工作流必须走各自身份类型，不能共享人工批准能力。
+1. 用 F2.6 把现有命令幂等、乐观版本和并发错误统一为服务器应用契约，并返回可复核冲突差异。
+2. 保持 F2.5 的应用层授权和事务级 RLS 上下文；冲突重试不得绕过项目、动作或保密级别校验。
 3. 保留 F1.10 的 SQLite、原件哈希和验收副本，供 F3.1 对账；在 F4.8 前不向员工分发未签名包。
 
 ## 会话日志
@@ -212,3 +214,4 @@
 | 2026-07-22 | BISHENG 后续候选规划 | 纳入固定 `v2.6.0@779d8fb8` 的接入评估与 BS0-BS3 条件 SPEC，统一使用 `AIWorkflowPort` 与 Dify/直接 Worker 对比。候选不计入当前 49 项，也不是 F2-F4 依赖；最早在 Phase 4 试点形成结论且 Fox 单独批准 rescope 后启动。BISHENG 不保存正式状态、不承担人工批准，也不形成第二客户端。 |
 | 2026-07-23 | F2.3 S3 原件版本与准入 | 新增 `object-evidence.v1`、PostgreSQL v7 对象元数据、boto3 S3 兼容适配器和可恢复准入编排。分片中断、幂等、同名异内容、SHA-256/大小/MIME/安全拒绝、内容地址复用、非法状态、孤儿清理、对象对账、人工撤销、延迟墓碑和删除/激活竞争均通过临时 PostgreSQL 17 与 Moto S3 HTTP 验证；Phase 2 共 43 项、全量 202 项及 9 组子测试通过。未读取或上传鸿日/鸿喜达正式资料，临时服务已退出。实际工作量 L，SUPER 10/10；boto3/Moto 记 1 项未计划依赖，任务漂移 1，Phase 2 累计漂移 2，已对 F2.4 添加标注级复杂度提醒。当前进入 F2.4。 |
 | 2026-07-23 | F2.4 OIDC 员工身份与会话 | 新增 `oidc-identity.v1`、PostgreSQL v8、Authorization Code + S256 PKCE、Discovery/JWKS/claims 校验、预登记 issuer/subject 绑定、加密令牌、刷新轮换、本地优先撤销和 `IDENTITY_ASSERTED` 审计。Phase 2 共 74 项、全量 233 项及 16 组子测试通过；未连接公司 OIDC，未读取或迁移正式资料。实际工作量 XL，SUPER 10/10；PyJWT/cryptography 与补充安全语义记 1 项未计划依赖，任务漂移 1，Phase 2 累计漂移 3，当前进入 F2.5。 |
+| 2026-07-23 | F2.5 项目授权与 RLS | 新增 `project-authorization.v1`、五角色九动作矩阵、P0-P3 上限、独立服务身份、PostgreSQL v9 授权表和强制 RLS。应用服务先判权，非所有者 `NOBYPASSRLS` 角色再按事务上下文过滤；服务身份不能获授或伪造人工评审。Phase 2 共 83 项、全量 242 项及 16 组子测试通过；未迁移正式资料。实际工作量 L，SUPER 10/10，未计划依赖 0、任务漂移 0，Phase 2 累计漂移保持 3，当前进入 F2.6。 |

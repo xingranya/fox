@@ -80,7 +80,9 @@ class PostgreSQLConnection:
             and self._PROJECT_LOCK_QUERY.fullmatch(translated_normalized)
         ):
             translated = f"{translated.rstrip().rstrip(';')} FOR UPDATE"
-        return self._connection.execute(translated, parameters)
+        if parameters:
+            return self._connection.execute(translated, parameters)
+        return self._connection.execute(translated)
 
     def executemany(self, statement: str, parameters):
         return self._connection.cursor().executemany(

@@ -267,8 +267,8 @@ class OidcIdentityStoreTest(unittest.TestCase):
             now=now or self.now,
         )
 
-    def test_schema_v8_and_repository_quick_check(self) -> None:
-        self.assertEqual(self.repository.schema_version, 8)
+    def test_latest_schema_and_repository_quick_check(self) -> None:
+        self.assertEqual(self.repository.schema_version, 9)
         self.assertTrue(self.repository.quick_check())
 
     def test_login_creates_interactive_human_principal_and_one_time_state(self) -> None:

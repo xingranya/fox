@@ -1,0 +1,50 @@
+{
+  "schema_version": "project-authorization.v1",
+  "principal_kinds": ["EMPLOYEE", "AI", "MCP", "WORKFLOW", "SYSTEM"],
+  "employee_roles": ["OWNER", "MANAGER", "EDITOR", "REVIEWER", "VIEWER"],
+  "actions": [
+    "PROJECT_READ",
+    "EVIDENCE_READ",
+    "EVIDENCE_WRITE",
+    "WORKING_WRITE",
+    "PROPOSAL_CREATE",
+    "PROPOSAL_REVIEW",
+    "TASK_READ",
+    "RUNTIME_START",
+    "ACCESS_MANAGE"
+  ],
+  "confidentiality_order": ["P0", "P1", "P2", "P3"],
+  "authority": {
+    "application_authorization_required": true,
+    "rls_is_defense_in_depth": true,
+    "interactive_employee_requires_oidc_session": true,
+    "service_identity_may_be_employee": false,
+    "service_may_review_proposal": false,
+    "service_may_manage_access": false,
+    "tool_permission_is_business_approval": false,
+    "last_owner_may_be_removed": false
+  },
+  "rls": {
+    "enabled": true,
+    "forced_on_project_tables": true,
+    "context_scope": "transaction_local",
+    "context_keys": [
+      "brand_os.principal_kind",
+      "brand_os.principal_id",
+      "brand_os.project_id",
+      "brand_os.action",
+      "brand_os.confidentiality_ceiling"
+    ],
+    "runtime_role_may_bypass_rls": false,
+    "runtime_role_owns_tables": false,
+    "authorization_tables_exposed_to_runtime_role": false
+  },
+  "storage": {
+    "postgresql_schema_version": 9,
+    "membership_key": ["project_id", "employee_id"],
+    "service_grant_key": ["project_id", "principal_id"],
+    "authorization_events_append_only": true
+  },
+  "deferred": ["http_routes", "openwork_login_ui", "outbox", "workspace_multitenancy"],
+  "migrates_hongri_data": false
+}

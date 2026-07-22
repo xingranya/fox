@@ -1,12 +1,14 @@
 {
-  "schema_version": "server-boundary.v2",
+  "schema_version": "server-boundary.v3",
   "service": "Brand Project OS Service",
   "authority": {
     "only_application_service_may_advance_formal_state": true,
     "human_review_requires_interactive_employee_identity": true,
     "agent_and_service_accounts_may_approve": false,
     "client_may_access_storage_directly": false,
-    "long_term_dual_write_allowed": false
+    "long_term_dual_write_allowed": false,
+    "project_authorization_precedes_storage": true,
+    "rls_is_defense_in_depth": true
   },
   "components": [
     {
@@ -57,6 +59,17 @@
         "session_audit"
       ],
       "replaceable": true,
+      "required_for_core_readiness": true
+    },
+    {
+      "id": "project_authorization_service",
+      "kind": "business_authorization",
+      "business_operations": ["authorize_project_action"],
+      "forbidden_operations": ["authenticate_employee", "human_review"],
+      "may_advance_formal_state": false,
+      "stores_formal_business_state": false,
+      "stores": [],
+      "replaceable": false,
       "required_for_core_readiness": true
     },
     {
@@ -127,7 +140,6 @@
     ]
   },
   "deferred_from_f2_1": [
-    "rbac_rls",
     "http_and_mcp_routes",
     "hongri_data_migration"
   ]

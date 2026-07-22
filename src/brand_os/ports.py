@@ -38,6 +38,14 @@ from .identity import (
     SensitiveValue,
     VerifiedIdentity,
 )
+from .authorization import (
+    ConfidentialityLevel,
+    EmployeeProjectGrant,
+    ProjectAction,
+    ProjectPrincipal,
+    ProjectRole,
+    ServiceProjectGrant,
+)
 
 
 class CanonicalStorePort(Protocol):
@@ -393,6 +401,78 @@ class IdentityRepositoryPort(Protocol):
         project_id: str,
         command_name: str,
         idempotency_key: str,
+        occurred_at: datetime,
+    ) -> None: ...
+
+
+class ProjectAuthorizationRepositoryPort(Protocol):
+    """项目成员、服务身份和最小授权的持久化端口。"""
+
+    def get_employee_grant(
+        self, project_id: str, employee_id: str
+    ) -> EmployeeProjectGrant | None: ...
+
+    def get_service_grant(
+        self, project_id: str, principal: ProjectPrincipal
+    ) -> ServiceProjectGrant | None: ...
+
+    def bootstrap_owner(
+        self,
+        *,
+        project_id: str,
+        employee_id: str,
+        confidentiality_ceiling: ConfidentialityLevel,
+        occurred_at: datetime,
+    ) -> EmployeeProjectGrant: ...
+
+    def upsert_employee_grant(
+        self,
+        *,
+        project_id: str,
+        employee_id: str,
+        role: ProjectRole,
+        confidentiality_ceiling: ConfidentialityLevel,
+        granted_by: ProjectPrincipal,
+        occurred_at: datetime,
+    ) -> EmployeeProjectGrant: ...
+
+    def register_service_principal(
+        self,
+        principal: ProjectPrincipal,
+        *,
+        display_name: str,
+        registered_by: ProjectPrincipal,
+        occurred_at: datetime,
+    ) -> None: ...
+
+    def upsert_service_grant(
+        self,
+        *,
+        project_id: str,
+        principal: ProjectPrincipal,
+        actions: frozenset[ProjectAction],
+        confidentiality_ceiling: ConfidentialityLevel,
+        granted_by: ProjectPrincipal,
+        occurred_at: datetime,
+    ) -> ServiceProjectGrant: ...
+
+    def revoke_employee_grant(
+        self,
+        *,
+        project_id: str,
+        employee_id: str,
+        reason: str,
+        revoked_by: ProjectPrincipal,
+        occurred_at: datetime,
+    ) -> None: ...
+
+    def revoke_service_grant(
+        self,
+        *,
+        project_id: str,
+        principal: ProjectPrincipal,
+        reason: str,
+        revoked_by: ProjectPrincipal,
         occurred_at: datetime,
     ) -> None: ...
 

@@ -9,7 +9,7 @@ from .server_config import ServerSettings
 
 
 SERVER_BOUNDARY: dict[str, object] = {
-    "schema_version": "server-boundary.v2",
+    "schema_version": "server-boundary.v3",
     "service": "Brand Project OS Service",
     "authority": {
         "only_application_service_may_advance_formal_state": True,
@@ -17,6 +17,8 @@ SERVER_BOUNDARY: dict[str, object] = {
         "agent_and_service_accounts_may_approve": False,
         "client_may_access_storage_directly": False,
         "long_term_dual_write_allowed": False,
+        "project_authorization_precedes_storage": True,
+        "rls_is_defense_in_depth": True,
     },
     "components": [
         {
@@ -67,6 +69,17 @@ SERVER_BOUNDARY: dict[str, object] = {
                 "session_audit",
             ],
             "replaceable": True,
+            "required_for_core_readiness": True,
+        },
+        {
+            "id": "project_authorization_service",
+            "kind": "business_authorization",
+            "business_operations": ["authorize_project_action"],
+            "forbidden_operations": ["authenticate_employee", "human_review"],
+            "may_advance_formal_state": False,
+            "stores_formal_business_state": False,
+            "stores": [],
+            "replaceable": False,
             "required_for_core_readiness": True,
         },
         {
@@ -137,7 +150,6 @@ SERVER_BOUNDARY: dict[str, object] = {
         ],
     },
     "deferred_from_f2_1": [
-        "rbac_rls",
         "http_and_mcp_routes",
         "hongri_data_migration",
     ],
@@ -262,7 +274,7 @@ def validate_server_boundary(document: Mapping[str, object]) -> tuple[str, ...]:
     """检查组件职责契约的一票否决项。"""
 
     errors: list[str] = []
-    if document.get("schema_version") != "server-boundary.v2":
+    if document.get("schema_version") != "server-boundary.v3":
         errors.append("服务器边界 Schema 版本不正确")
     components = document.get("components")
     if not isinstance(components, list):
@@ -305,12 +317,26 @@ def validate_server_boundary(document: Mapping[str, object]) -> tuple[str, ...]:
         or identity.get("may_advance_formal_state") is not False
     ):
         errors.append("OIDC 只能认证员工，不能执行人工审批")
+    authorization = by_id.get("project_authorization_service")
+    if authorization is None:
+        errors.append("缺少组件：project_authorization_service")
+    elif (
+        authorization.get("business_operations") != ["authorize_project_action"]
+        or "human_review" not in authorization.get("forbidden_operations", [])
+        or authorization.get("required_for_core_readiness") is not True
+    ):
+        errors.append("项目授权必须先于存储访问且不能执行人工审批")
     readiness = document.get("readiness")
     if not isinstance(readiness, dict) or "oidc" not in readiness.get(
         "required_dependencies", []
     ):
         errors.append("OIDC 必须属于服务器就绪依赖")
     authority = document.get("authority")
-    if not isinstance(authority, dict) or authority.get("client_may_access_storage_directly") is not False:
+    if (
+        not isinstance(authority, dict)
+        or authority.get("client_may_access_storage_directly") is not False
+        or authority.get("project_authorization_precedes_storage") is not True
+        or authority.get("rls_is_defense_in_depth") is not True
+    ):
         errors.append("客户端不得直连权威存储")
     return tuple(errors)

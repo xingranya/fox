@@ -23,7 +23,7 @@ class ServerBoundaryContractTest(unittest.TestCase):
     def test_machine_contract_matches_runtime_boundary(self) -> None:
         self.assertEqual(self.contract, SERVER_BOUNDARY)
         self.assertEqual(validate_server_boundary(self.contract), ())
-        self.assertEqual(self.contract["schema_version"], "server-boundary.v2")
+        self.assertEqual(self.contract["schema_version"], "server-boundary.v3")
 
     def test_only_application_service_may_advance_formal_state(self) -> None:
         advancing = [
@@ -73,6 +73,20 @@ class ServerBoundaryContractTest(unittest.TestCase):
         self.assertFalse(identity["may_advance_formal_state"])
         self.assertIn("oidc", self.contract["readiness"]["required_dependencies"])
 
+    def test_project_authorization_is_required_before_storage(self) -> None:
+        authorization = next(
+            component
+            for component in self.contract["components"]
+            if component["id"] == "project_authorization_service"
+        )
+
+        self.assertTrue(
+            self.contract["authority"]["project_authorization_precedes_storage"]
+        )
+        self.assertTrue(self.contract["authority"]["rls_is_defense_in_depth"])
+        self.assertTrue(authorization["required_for_core_readiness"])
+        self.assertIn("human_review", authorization["forbidden_operations"])
+
     def test_storage_and_optional_adapters_are_replaceable(self) -> None:
         adapters = [
             component
@@ -88,7 +102,6 @@ class ServerBoundaryContractTest(unittest.TestCase):
         self.assertEqual(
             set(self.contract["deferred_from_f2_1"]),
             {
-                "rbac_rls",
                 "http_and_mcp_routes",
                 "hongri_data_migration",
             },

@@ -1,10 +1,11 @@
 {
-  "schema_version": "postgresql-authority.v3",
+  "schema_version": "postgresql-authority.v4",
   "canonical_store_port": "canonical-store-port.v6",
   "object_evidence_contract": "object-evidence.v1",
   "oidc_identity_contract": "oidc-identity.v1",
+  "project_authorization_contract": "project-authorization.v1",
   "formal_write_store": "postgresql",
-  "migration_versions": [1, 2, 3, 4, 5, 6, 7, 8],
+  "migration_versions": [1, 2, 3, 4, 5, 6, 7, 8, 9],
   "transaction": {
     "event_approval_projection_atomic": true,
     "idempotency_key_binds_request_digest": true,
@@ -16,7 +17,7 @@
     "proposal_lifecycle_source": "configured_human_reviewer_events"
   },
   "authority": {
-    "allowed_human_reviewers": ["Fox"],
+    "project_role_required_for_human_review": true,
     "agent_may_approve": false,
     "workflow_may_approve": false,
     "tool_permission_is_business_approval": false
@@ -24,7 +25,6 @@
   "dual_write": false,
   "migrates_hongri_data": false,
   "deferred": [
-    "rbac_rls",
     "outbox",
     "http_api",
     "data_cutover"
