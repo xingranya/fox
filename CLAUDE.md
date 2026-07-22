@@ -9,6 +9,7 @@
 - 只能创建状态变化 Proposal，不得批准事实、决定、约束、负责人、截止时间或提交版本；证据不足时必须明确说“未确认”。
 - 新会议只生成增量变化、冲突和待确认项，不重写完整项目历史。
 - OpenWork/OpenCode 会话和 Tool Permission 仅属于 Agent Runtime，不是业务真相或正式批准。
-- 当前本地接口尚未实现；实现后只通过版本化 API、MCP 或 CLI 读取状态、回源和提交 Proposal，不直接修改底层存储。
+- 当前可通过 `brand-os` CLI 或本地 stdio MCP 读取状态、Task Packet、证据和提交 Proposal；项目在 MCP 启动时固定，不直接修改底层存储，也没有批准、任意 SQL、原件硬删除或模式切换工具。
+- Claude 的提供商登录由 Claude Code 自己管理，不得把密钥写入 Brand Project OS 配置、Task Packet、Skill 或日志。
 - 不重复维护共享工程规则；跨代理规则统一写入 `AGENTS.md`，运行时品牌行为写入独立协议。
 - 当前没有获准的仓库内 Memory 文件，不得自行创建。

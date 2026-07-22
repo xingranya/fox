@@ -2,7 +2,7 @@
 
 本目录保存 Brand Project OS 的产品、分析、架构、验证和执行 SPEC。2026-07-13 依据[场景化需求澄清与产品反馈](../20260713_品牌AI长期项目协作系统_场景化需求澄清与产品反馈_v0.1(1).md)完成范围重定：当前先用鸿日项目证明 Fox 本地单用户真实提效，再决定是否进入团队服务器化。
 
-当前已有 Phase 1 本地核心。Phase 0 已完成 7/7；Phase 1 已完成 7/10，Task Packet 已能按任务装配当前状态和证据，每次 Agent 运行会绑定状态、协议、运行时和模型版本。现在进入 F1.8 的本地 CLI/MCP 与多模型统一入口。未经用户明确要求，不启动桌面应用、Web、数据库、Docker 或其他常驻服务。
+当前已有 Phase 1 本地核心。Phase 0 已完成 7/7；Phase 1 已完成 8/10。Codex 和 Claude 已能通过同一个本地 stdio MCP 读取状态、Task Packet 和证据，并创建等待 Fox 确认的 Proposal。下一步先完成 OpenWork `OW-L0` 选型门，再进入 F1.9 本地界面纵切。未经用户明确要求，不启动桌面应用、Web、数据库、Docker 或其他常驻服务。
 
 ## 当前结论
 
@@ -54,6 +54,7 @@
 - [F1.5 Proposal 生命周期、显式替代与历史回放](phase1/proposal-lifecycle-and-history.md)
 - [F1.6 当前决定、开放问题、关系有效性与证据回源](phase1/evidence-query-and-provenance.md)
 - [F1.7 Task Packet、品牌角色/模式与 Agent 运行留痕](phase1/task-packet-and-agent-run.md)
+- [F1.8 本地 CLI、stdio MCP、Codex/Claude 适配与模型切换](phase1/local-cli-mcp-and-model-switching.md)
 
 ## Phase 0 当前证据
 

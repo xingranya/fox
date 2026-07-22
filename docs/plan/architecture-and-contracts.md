@@ -107,7 +107,8 @@ fox/
 
 /Users/fox/work/
 └─ .fox/
-   ├─ project.db                # SQLite 权威库
+   ├─ state/
+   │  └─ project.db             # SQLite 权威库
    ├─ evidence/sha256/          # 只读内容寻址快照
    ├─ backups/                  # 原子数据库与清单备份
    └─ runtime/                  # 可删除的会话、缓存和临时产物
@@ -230,7 +231,7 @@ health(runtime_id)
 
 首版可以通过本地 CLI/子进程调用 Codex、Claude 或 OpenCode。OpenWork 只是可选 UI/控制面适配器。Tool Permission 控制文件、命令、网络和工具，不得复用 Proposal 人工确认 Schema。`publish_artifact` 只能登记产物或创建 `proposed` 状态的 Proposal。
 
-F1.7 已实现 `runtime-run.v1` 的起始留痕：角色和模式从不可变 Task Packet 复制，记录 Packet 哈希、状态版本、任务版本、协议、运行时和模型版本。流式事件、取消、工具授权、产物和运行完成状态在 F1.8 的运行时入口继续实现。
+F1.7 已实现 `runtime-run.v1` 的起始留痕：角色和模式从不可变 Task Packet 复制，记录 Packet 哈希、状态版本、任务版本、协议、运行时和模型版本。F1.8 已增加本地工具调用的超时和取消传播，以及 Codex/Claude 使用同一 Packet 的运行登记。模型流式事件、产物和运行完成状态尚未实现，不能把一次 `created` 留痕解释成模型已经完成任务。
 
 ## 检索与模型端口
 
@@ -271,21 +272,27 @@ cancel(run_id)
 | `domain-event.v1` | 只追加事件 | 项目序号、聚合版本、Schema 版本、因果链和操作者完整 |
 | `task-packet.v2` | 分层任务上下文 | 角色、模式、L0-L4、批准/工作层、证据、禁区、状态版本和 Packet 哈希完整 |
 | `runtime-run.v1` | 模型/Agent 运行 | Task Packet、运行时、模型、规则、工具决策、成本和结果哈希完整 |
+| `local-ai-access.v1` | CLI/MCP 本地访问面 | 项目启动时固定、工具白名单、封闭输入 Schema、只允许读取和创建 Proposal |
+| `proposal-create-input.v1` | AI 创建 Proposal 的输入 | 证据、预期版本和幂等键必填；不包含批准动作 |
+| `runtime-adapter.v1` | Codex/Claude stdio MCP 配置 | 两个运行时指向同一 MCP；配置不包含模型提供商凭据 |
 | `tool-permission.v1` | 运行时工具权限 | 运行、工具、参数摘要、路径/网络、时限和决定人完整；不能表达业务批准 |
 
 ## 本地 CLI 与 MCP 契约
 
-首批读取与 Proposal 工具：
+当前由 `LocalAIService` 同时承接 CLI 和官方 Python MCP SDK 的 stdio Server。项目在进程启动时固定，工具参数不能覆盖项目；所有 MCP 输入 Schema 均拒绝未声明字段。机器契约为 `local-ai-access.v1`。
+
+当前已实现的读取与 Proposal 工具：
 
 - `project_get_state`
 - `task_get_packet`
-- `meeting_list`、`meeting_get`、`meeting_interpret`
-- `evidence_search`、`evidence_get`
-- `decision_list`、`open_question_list`、`action_list`
+- `evidence_get`
+- `decision_list`、`open_question_list`
 - `proposal_create`、`proposal_get`
 - `system_doctor`、`project_verify`
 
-禁止向 AI 暴露批准、驳回、直接 SQL、证据硬删除、无边界文件访问和工作模式强制切换。CLI 中若提供人工批准，必须进入独立的交互式 Fox 确认流程，且不能被 Agent 非交互调用。
+会议列表/解释、全文搜索和行动项仍待对应应用端口稳定后再加入，不能用任意 SQL 或文件读取临时替代。禁止向 AI 暴露批准、驳回、直接 SQL、证据硬删除、无边界文件访问和工作模式强制切换。CLI 中若以后提供人工批准，必须进入独立的交互式 Fox 确认流程，且不能被 Agent 非交互调用。
+
+Codex 与 Claude 的 `runtime-adapter.v1` 配置只指向同一个本地 stdio MCP。提供商登录与凭据由各自运行时管理；Brand Project OS 不读取凭据，也不把凭据写入配置、日志或 Task Packet。模型切换必须复用既有 Packet，且 `model_id` 必须在 Packet 的允许列表中。
 
 ## 未来服务器实现配置
 

@@ -70,14 +70,14 @@
   - 验收：只装配本轮目标、当前状态、开放项、相关证据、模式、角色、禁区和版本；运行绑定协议/模型/状态版本，AI 不能自行切换模式。
   - 备注：2026-07-22 完成。新增 `task-packet.v2`、`task-packet-assembly.v1`、`runtime-mode-switch.v2`、独立 `TaskPacketPort` 和 `runtime-run.v1`。Fox 先登记任务、品牌角色和模式；AI 不能登记任务或执行模式切换。装配器只读取任务显式引用的当前内容，过期、缺失和未确认证据进入缺口，L3 原件与 L4 历史默认不加载。Packet 以内容哈希保存为不可变快照，模式切换生成新任务版本并保留旧 Packet。每次运行从 Packet 复制角色、模式、状态版本和协议版本，再记录运行时与模型版本。SQLite 升级到 v7，备份清单升级到 v6 并兼容 v1-v5。133 项全量测试、5 组旧 Schema 子测试、`ruff`、编译和 JSON 校验通过。真实鸿日数据库副本从 v3 迁移到 v7 并通过 `quick_check`，项目版本、事件、正式状态和 Proposal 计数未变，运行表为空；没有写入测试业务事实。任务漂移 0，Phase 1 累计漂移保持 2。
 
-- [ ] **F1.8：实现本地 CLI/MCP 统一入口及 Codex/Claude 适配与模型切换**
+- [x] **F1.8：实现本地 CLI/MCP 统一入口及 Codex/Claude 适配与模型切换**
   - 优先级 / 工作量 / Lane：P0 / L / C
   - 依赖：F1.7
   - S.U.P.E.R：P、E、R
   - 测试期望：CLI/MCP 契约、stdio、超时、取消、模型替换、凭据缺失、同 Task Packet 一致性和越权测试。
   - 治理影响：固化 AI 入口、工具允许列表与模型无私有真相规则。
   - 验收：开放状态、Task Packet、证据和 Proposal，不开放批准/任意 SQL/硬删除；Codex/Claude 使用同一 Schema；切换模型不重讲背景。
-  - 备注：无。
+  - 备注：2026-07-22 完成。新增 `LocalAIService`、`brand-os` CLI、官方 MCP Python SDK 的低层 stdio Server，以及 `local-ai-access.v1`、`proposal-create-input.v1`、`runtime-adapter.v1`。Codex 与 Claude 指向同一项目、数据库和 Task Packet，模型必须位于 Packet 允许列表；Brand Project OS 不读取模型提供商凭据。MCP 只开放 9 个白名单工具，项目范围在启动时固定，输入拒绝额外字段；没有审批、模式切换、任意 SQL、硬删除、密钥或任意文件读取。工具默认 10 秒、最高 60 秒超时，支持取消传播。148 项全量测试、5 组旧备份 Schema 子测试、`ruff`、编译、JSON、锁文件和差异检查通过；真实鸿日 v3 数据库副本迁移到 v7 后项目版本与业务计数未变。任务漂移 0，Phase 1 累计漂移保持 2。
 
 - [ ] **F1.9：实现本地轻量查看与确认界面/Brand OS Desktop 最小纵切**
   - 优先级 / 工作量 / Lane：P0 / L / D

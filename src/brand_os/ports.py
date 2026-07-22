@@ -52,6 +52,10 @@ class CanonicalStorePort(Protocol):
 
     def get_current_state(self, project_id: str) -> Sequence[Mapping[str, object]]: ...
 
+    def list_proposals(
+        self, project_id: str, status: str | None = None
+    ) -> Sequence[Mapping[str, object]]: ...
+
     def get_source(self, project_id: str, source_id: str) -> Mapping[str, object]: ...
 
     def get_source_import_report(
@@ -87,6 +91,11 @@ class CanonicalStorePort(Protocol):
     def rebuild_state_projection(self, project_id: str) -> int: ...
 
     def rebuild_proposal_lifecycle(self, project_id: str) -> int: ...
+
+    @property
+    def schema_version(self) -> int: ...
+
+    def quick_check(self) -> bool: ...
 
 
 class CanonicalBackupPort(Protocol):
@@ -184,3 +193,7 @@ class TaskPacketPort(Protocol):
     ) -> Mapping[str, object]: ...
 
     def get_agent_run(self, project_id: str, run_id: str) -> Mapping[str, object]: ...
+
+
+class LocalAccessStorePort(CanonicalStorePort, EvidenceQueryPort, TaskPacketPort, Protocol):
+    """本地 CLI/MCP 应用层所需的最小组合端口。"""

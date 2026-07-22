@@ -1,0 +1,72 @@
+{
+  "schema_version": "local-ai-access.v1",
+  "implementation": {
+    "application_service": "LocalAIService",
+    "cli": "brand-os-cli.v1",
+    "mcp_server": "local-mcp.v1",
+    "mcp_transport": "stdio",
+    "mcp_sdk": "official-python-sdk",
+    "remote_server_required": false
+  },
+  "scope": {
+    "project_bound_at_process_start": true,
+    "tool_arguments_may_override_project": false,
+    "workspace_file_access_exposed": false,
+    "database_path_returned_to_agent": false
+  },
+  "tools": [
+    {"name": "project_get_state", "mode": "read", "changes_current_state": false},
+    {"name": "task_get_packet", "mode": "read", "changes_current_state": false},
+    {"name": "evidence_get", "mode": "read", "changes_current_state": false},
+    {"name": "decision_list", "mode": "read", "changes_current_state": false},
+    {"name": "open_question_list", "mode": "read", "changes_current_state": false},
+    {"name": "proposal_create", "mode": "proposal_write", "changes_current_state": false},
+    {"name": "proposal_get", "mode": "read", "changes_current_state": false},
+    {"name": "system_doctor", "mode": "read", "changes_current_state": false},
+    {"name": "project_verify", "mode": "read", "changes_current_state": false}
+  ],
+  "forbidden_operations": [
+    "proposal_approve",
+    "proposal_modify_and_approve",
+    "proposal_reject",
+    "proposal_reopen",
+    "task_switch_mode",
+    "direct_sql",
+    "source_hard_delete",
+    "secret_read",
+    "workspace_file_read"
+  ],
+  "schema_policy": {
+    "input_additional_properties": false,
+    "proposal_input_schema": "proposal-create-input.v1",
+    "sdk_input_validation": true,
+    "unknown_tool": "error"
+  },
+  "execution_policy": {
+    "default_timeout_seconds": 10,
+    "maximum_timeout_seconds": 60,
+    "client_cancellation_propagated": true,
+    "write_timeout_retry_uses_same_idempotency_key": true
+  },
+  "runtime_adapters": [
+    {
+      "name": "codex",
+      "runtime_id": "codex-cli",
+      "schema_version": "runtime-adapter.v1",
+      "credential_policy": "runtime_managed"
+    },
+    {
+      "name": "claude",
+      "runtime_id": "claude-code",
+      "schema_version": "runtime-adapter.v1",
+      "credential_policy": "runtime_managed"
+    }
+  ],
+  "model_switching": {
+    "same_packet_required": true,
+    "model_must_be_in_packet_allowlist": true,
+    "runtime_and_model_versions_recorded": true,
+    "private_runtime_context_is_canonical": false,
+    "brand_os_reads_provider_credentials": false
+  }
+}

@@ -29,6 +29,8 @@
 - 新资料和新会议只生成增量 Proposal；未经人工确认不得静默覆盖当前状态。
 - 开始任务时按“当前状态 -> 当前阶段与任务 -> 已批准决定 -> 开放问题 -> 相关证据 -> 必要原文”装配上下文，历史废案默认不进入当前上下文。
 - Task Packet 必须是不可变派生快照；任务角色和工作模式由 Fox 登记，AI 只能建议模式切换。每次 Agent 运行必须绑定 Packet 哈希、状态版本、任务版本、协议、运行时和模型版本。
+- 本地 CLI 与 MCP 必须调用同一应用服务。非交互入口不得声明为 Fox 人工身份；MCP 项目范围在启动时固定，输入 Schema 拒绝额外字段，只能开放白名单工具。
+- Codex、Claude 等模型运行时自行管理提供商登录。Brand Project OS 不读取、转存或记录模型 API Key；模型切换必须复用已保存的 Task Packet，并受 Packet 模型允许列表约束。
 - 探索协议与执行规格必须显式分离和切换；AI 不得在探索中强行收口，也不得在执行中重写已批准战略。
 - 领域核心不得直接依赖 OpenWork、OpenCode、Zvec、Nubase、Open Notebook、FlowLong、Dify 或具体模型 SDK；必须通过版本化端口和 Schema 调用。
 - 所有外部组件必须可禁用、可替换；检索索引必须可从权威数据完整重建。
@@ -57,12 +59,12 @@
 - 每完成一个任务，先记录执行遥测，再更新对应阶段文件和 `docs/progress/MASTER.md`。
 - 若任务产生稳定规则或架构不变量，更新本文件和相应 ADR；未经用户明确批准，不创建仓库内 Memory 文件。
 
-## 规划中的验证入口
+## 验证入口
 
 - `uv run pytest`
-- `pnpm --dir apps/web test`
-- `pnpm --dir apps/web exec playwright test`
 - `uv run brand-os doctor`
 - `uv run brand-os verify hongri`
+- `pnpm --dir apps/web test`（F1.9 界面实现后启用）
+- `pnpm --dir apps/web exec playwright test`（F1.9 界面实现后启用）
 
-这些是计划中的实现后入口，不表示当前规格仓库已有可运行应用。OpenWork 独立客户端 fork 的类型检查、桌面测试和发布校验只在 Phase 1 选型门通过后确定。
+本地核心、CLI 和 stdio MCP 已有可运行入口；Web/桌面入口仍未实现。OpenWork 独立客户端 fork 的类型检查、桌面测试和发布校验只在 Phase 1 选型门通过后确定。
