@@ -135,6 +135,16 @@ Codex / Claude / Dify / 其他 Agent
 | F4.8 | 完成客户端签名、内部更新、灰度和回滚 | P0 | L | F3.13、F4.6 | D | P、E、R | 签名、公证、更新、降级、坏版本回滚 | 员工只维护一个客户端；更新失败可恢复到上一内部版本 |
 | F4.9 | 完成团队生产 Go/延长/No-Go 与归档 | P0 | M | F4.1-F4.8 | Gate | U、P、R | 报告重算、链接、门禁和回归校验 | Fox 明确批准范围、SLO、责任人和已知限制；未通过则延长或停止，不虚报上线 |
 
+## 当前 49 项之后的候选池
+
+以下内容是未来规划，不计入当前 49 项、阶段完成度或 F2.10/F3.13/F4.9 阶段门：
+
+- [BISHENG 接入评估](../analysis/bisheng-integration-evaluation.md)：固定 `v2.6.0`，定位为可视化工作流、人工介入、文档处理和派生知识候选，不是正式状态源。
+- [BISHENG 条件接入 SPEC](bisheng-integration-spec.md)：建议通过 `AIWorkflowPort` 适配，与 Dify/直接 Worker 做同一输入对比；OpenWork 只展示运行状态、输入和 Artifact。
+- 启动条件：Phase 4 真实团队试点形成结论后，Fox 单独批准候选 POC；必须先完成一次正式 rescope，不能因为文档已存在就视为已批准。
+- 候选任务：BS0 固定版本与安全边界、BS1 适配器与模拟测试、BS2 隔离服务器 POC、BS3 OpenWork 展示与 Go/No-Go。合法结果包括采用、延长评估或拒绝。
+- 硬边界：不直连 BISHENG 数据库，不迁移正式批准，不把 BISHENG 前端嵌成第二客户端；BISHENG 停机时 Brand Project OS 核心旅程仍必须可用。
+
 ## 依赖与并行 Lane
 
 | 阶段 | 可并行 Lane | 合并风险 |

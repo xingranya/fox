@@ -36,6 +36,7 @@
 - [部署拓扑评估](analysis/deployment-topology-evaluation.md)
 - [开源组件评估](analysis/open-source-evaluation.md)
 - [OpenWork 唯一客户端评估](analysis/openwork-client-evaluation.md)
+- [BISHENG 后续接入评估](analysis/bisheng-integration-evaluation.md)
 - [OpenWork OW-L0 技术选型记录](phase1/openwork-ow-l0-evaluation.md)
 
 ## 活动计划
@@ -48,6 +49,7 @@
 - [数据一致性与可靠性](plan/data-consistency-and-reliability.md)
 - [客户端与 AI 访问](plan/frontend-and-ai-access.md)
 - [OpenWork 深度集成](plan/openwork-deep-integration.md)
+- [BISHENG 条件接入 SPEC（当前 49 项之后）](plan/bisheng-integration-spec.md)
 - [安全与验收](plan/security-and-verification.md)
 - [Phase 0 黄金测试集](plan/phase-0-golden-test-set.md)
 - [运行时品牌 Agent 与会议解释协议](plan/runtime-brand-agent-and-meeting-protocol.md)
@@ -87,6 +89,7 @@
 | Open Notebook | `ContentProcessingPort` | F3.10，可拒绝 | 原件、正式状态 |
 | Nubase | `MemoryPort` | F3.11，可拒绝 | 当前状态、批准 |
 | FlowLong | `ApprovalWorkflowPort` | F3.12，先过许可门 | 最终批准、AI 推理 |
+| BISHENG | `AIWorkflowPort` 候选实现 | Phase 4 试点后单独评审 | 正式状态、人工批准、第二客户端 |
 
 ## 治理
 

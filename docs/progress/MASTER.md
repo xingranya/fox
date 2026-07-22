@@ -18,6 +18,7 @@
 - MCP Gateway、Skills 和 Dify/外部组件适配都调用同一应用服务。MCP 是 AI 接口，不是数据库；AI 和服务账号无人工批准权。
 - Phase 1 SQLite 在迁移前继续承载本地验证；Phase 3 一次性切换后退出正式写入，不形成双主。
 - 七项一票否决适用于所有模型/协议/版本；任何一项出现即阻断阶段门。
+- BISHENG 评估与条件接入 SPEC 已进入当前 49 项之后的候选池；它不影响 F2.2-F4.9 完成度，只有 Phase 4 试点结论和 Fox 单独批准后才能正式 rescope。
 
 ## 参考文档
 
@@ -41,6 +42,8 @@
 - [开源项目评估](../analysis/open-source-evaluation.md)
 - [OpenWork 唯一客户端评估](../analysis/openwork-client-evaluation.md)
 - [OpenWork 深度集成计划](../plan/openwork-deep-integration.md)
+- [BISHENG 接入评估](../analysis/bisheng-integration-evaluation.md)
+- [BISHENG 条件接入 SPEC](../plan/bisheng-integration-spec.md)
 - [ADR-0005：单一客户端与服务器权威服务](../adr/0005-single-client-server-authority.md)
 
 服务器架构、数据一致性、安全和 OpenWork 集成文档均按 ADR-0005 执行。历史分析中的 `future-candidate`、`not-approved-for-current-mvp` 和 `review-after-hongri-pilot` 只描述旧方案，不再决定当前实施顺序。
@@ -199,3 +202,4 @@
 | 2026-07-22 | F1.9 单一客户端离线收口 | OpenWork fork 用 9 个独立提交完成默认关闭遥测、Cloud、模型目录和更新，统一公司工作名、Bundle ID、协议与数据目录，并收紧 Electron 导航、IPC、网络和打包边界。`Brand Project OS.app` 构建成功；8 帧 fraimz 全部通过，实际包无 PostHog Key、未含鸿日资料，未登记旧上游地址被默认配置和网络策略拒绝。App 370 项通过；Desktop 100 项通过、1 项平台条件跳过；App、Desktop、Server、Orchestrator 类型检查通过。最终提交 `7cf9b229` 已推送；包尚未签名和公证。任务漂移 1，Phase 1 累计漂移 3，F1.10 保持复杂度提醒。 |
 | 2026-07-22 | F1.10 鸿日桌面纵切与 Phase 1 完成 | 公司定制 OpenWork 已接入当前状态、证据、Proposal、Task Packet 和 AI 任务入口。使用 Codex/ChatGPT 内置 macOS 控制检查真实 Electron 窗口，12 帧 fraimz、12 段旁白全部通过，0 失败、0 跳过；临时 Electron、Vite、Sidecar 和保活进程均已关闭。Fox 159 项及 5 组子测试、OpenWork App 370 项、共置契约 6 项、Desktop 105 项通过且 1 项平台条件跳过，两端类型检查通过。权威鸿日数据库 SHA-256 保持 `cd9ff29827e7bec2fb3db50c54958ada89c76705fc1df6ab7e549251ed7801e3`。实际工作量 XL，SUPER 10/10；初始草稿消费和加载态截图竞态记为 2 项未计划依赖，任务漂移 1，Phase 1 最终漂移 4。阶段已经通过，不返工已验收范围；F2.1 继续固化桥接契约和可观测加载状态。内部包尚未签名、公证。 |
 | 2026-07-22 | F2.1 服务器边界与测试基线 | 新增独立服务器配置与健康模型，冻结 `server-boundary.v1`、`service-config.v1` 和 `service-health.v1`。配置采用显式参数、环境变量、非敏感文件、默认值的优先级，秘密不会进入配置文件、`repr` 或健康报告；OpenWork Runtime、MCP 和工作流没有人工批准权。179 项测试及 5 组子测试通过，未启动服务、数据库或迁移正式数据。实际工作量 M，SUPER 10/10，未计划依赖 0，任务漂移 0。当前进入 F2.2。 |
+| 2026-07-22 | BISHENG 后续候选规划 | 纳入固定 `v2.6.0@779d8fb8` 的接入评估与 BS0-BS3 条件 SPEC，统一使用 `AIWorkflowPort` 与 Dify/直接 Worker 对比。候选不计入当前 49 项，也不是 F2-F4 依赖；最早在 Phase 4 试点形成结论且 Fox 单独批准 rescope 后启动。BISHENG 不保存正式状态、不承担人工批准，也不形成第二客户端。 |
