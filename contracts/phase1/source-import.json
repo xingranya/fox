@@ -1,0 +1,56 @@
+{
+  "schema_version": "source-import.v1",
+  "purpose": "来源 Manifest 的幂等导入、版本、旧 ID、缺口与去重对账",
+  "supported_input_schemas": [
+    "source-import.v1",
+    "sample-manifest.v1",
+    "remote-source-manifest.v1"
+  ],
+  "supplemental_gap_schema": "source-gaps.v1",
+  "identity": {
+    "manifest_sha256": "原始 Manifest 字节的 SHA-256",
+    "import_digest": "标准化记录、缺口和 manifest_sha256 的 SHA-256",
+    "logical_source_id": "同一来源跨内容版本保持稳定",
+    "source_version_id": "logical_source_id 与内容 SHA-256 的确定性摘要"
+  },
+  "record": {
+    "required": [
+      "logical_source_id",
+      "sha256",
+      "relative_path",
+      "source_role"
+    ],
+    "nullable": [
+      "confidentiality",
+      "size_bytes",
+      "media_type",
+      "version_label"
+    ],
+    "collections": {
+      "aliases": {
+        "alias_kind": ["legacy_id", "reserved_id", "path"],
+        "status": ["active", "deprecated", "reserved"]
+      },
+      "supersedes_sha256": "必须引用同一逻辑来源中已经存在的内容版本"
+    }
+  },
+  "gap": {
+    "required": ["gap_id", "status", "description", "scope", "evidence_ref"],
+    "status": ["KNOWN_SOURCE_GAP", "PARTIALLY_RESOLVED", "RESOLVED"],
+    "missing_content_must_not_be_fabricated": true
+  },
+  "reconciliation": {
+    "same_import_digest_adds_no_batch_event_or_source_object": true,
+    "same_logical_source_and_sha256_adds_no_version": true,
+    "same_sha256_across_logical_sources_reuses_content": true,
+    "changed_sha256_creates_new_version": true,
+    "previous_content_is_immutable": true,
+    "hash_change_creates_supersedes_relation": true,
+    "whole_batch_is_atomic": true
+  },
+  "authority": {
+    "changes_current_business_state": false,
+    "imports_decisions_as_approved": false,
+    "allowed_actor_kinds": ["HUMAN", "SYSTEM"]
+  }
+}

@@ -9,6 +9,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).parents[2]
 CONTRACT_PATH = ROOT / "contracts" / "phase1" / "canonical-store.json"
+SOURCE_IMPORT_CONTRACT_PATH = ROOT / "contracts" / "phase1" / "source-import.json"
 
 
 class CanonicalStoreContractTest(unittest.TestCase):
@@ -17,9 +18,12 @@ class CanonicalStoreContractTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.contract = json.loads(CONTRACT_PATH.read_text(encoding="utf-8"))
+        cls.source_import_contract = json.loads(
+            SOURCE_IMPORT_CONTRACT_PATH.read_text(encoding="utf-8")
+        )
 
     def test_contract_is_replaceable_and_versioned(self) -> None:
-        self.assertEqual(self.contract["schema_version"], "canonical-store-port.v1")
+        self.assertEqual(self.contract["schema_version"], "canonical-store-port.v2")
         self.assertTrue(self.contract["replaceable"])
         self.assertEqual(self.contract["current_implementation"], "sqlite")
 
@@ -41,6 +45,22 @@ class CanonicalStoreContractTest(unittest.TestCase):
         self.assertTrue(requirements["idempotency_key"])
         self.assertTrue(requirements["expected_version"])
         self.assertTrue(requirements["single_transaction_event_and_projection"])
+
+    def test_source_import_is_versioned_and_cannot_approve_business_state(self) -> None:
+        command = next(
+            command for command in self.contract["commands"] if command["name"] == "import_source_batch"
+        )
+        self.assertEqual(command["request_schema"], "source-import.v1")
+        self.assertEqual(command["allowed_actor_kinds"], ["HUMAN", "SYSTEM"])
+        self.assertFalse(command["changes_current_state"])
+        self.assertFalse(
+            self.source_import_contract["authority"]["imports_decisions_as_approved"]
+        )
+        self.assertTrue(
+            self.source_import_contract["reconciliation"][
+                "same_import_digest_adds_no_batch_event_or_source_object"
+            ]
+        )
 
 
 if __name__ == "__main__":

@@ -11,10 +11,11 @@ from .sqlite_base import (
     VersionConflict,
 )
 from .sqlite_commands import SQLiteCommandMixin
+from .sqlite_imports import SQLiteImportMixin
 from .sqlite_queries import SQLiteQueryMixin
 
 
-class SQLiteCanonicalStore(SQLiteCommandMixin, SQLiteQueryMixin):
+class SQLiteCanonicalStore(SQLiteImportMixin, SQLiteCommandMixin, SQLiteQueryMixin):
     """本地单用户 SQLite 适配器。"""
 
 

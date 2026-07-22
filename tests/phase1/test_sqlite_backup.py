@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -17,6 +18,7 @@ from brand_os.domain import (
     ProposalReview,
     ReviewAction,
 )
+from brand_os.manifest_import import load_source_manifest
 from brand_os.sqlite_backup import SQLiteBackupService
 from brand_os.sqlite_store import SQLiteCanonicalStore
 from brand_os.workspace import initialize_workspace
@@ -69,6 +71,39 @@ class SQLiteBackupTest(unittest.TestCase):
         self.assertEqual(restored.list_human_actions("hongri"), self.store.list_human_actions("hongri"))
         self.assertTrue(restored.quick_check())
 
+    def test_online_backup_reconciles_imported_source_versions(self) -> None:
+        manifest_path = self.base / "source-import.json"
+        manifest_path.write_text(
+            """{
+              "schema_version": "source-import.v1",
+              "records": [{
+                "logical_source_id": "SRC-1",
+                "sha256": "3bfc269594ef649228e9a74bab00f042efc91d5acc6fbee31a382e80d42388fe",
+                "relative_path": "资料/总控.md",
+                "source_role": "project_control"
+              }],
+              "gaps": [{
+                "gap_id": "GAP-1",
+                "status": "KNOWN_SOURCE_GAP",
+                "description": "未取得全量目录。",
+                "scope": "source_root",
+                "evidence_ref": "manifest:gap"
+              }]
+            }""",
+            encoding="utf-8",
+        )
+        result = self.store.import_source_batch(
+            CommandContext("hongri", self.fox, "source-import", 2),
+            load_source_manifest(manifest_path),
+        )
+        backup_id = self.backups.create()
+        restored_path = self.backups.restore(backup_id, self.base / "source-restored.db")
+        restored = SQLiteCanonicalStore(restored_path)
+        self.assertEqual(
+            restored.get_source_import_report("hongri", result.resource_id),
+            self.store.get_source_import_report("hongri", result.resource_id),
+        )
+
     def test_tampered_backup_is_rejected_before_restore(self) -> None:
         backup_id = self.backups.create()
         backup_database = self.layout.backups / backup_id / "project.db"
@@ -76,6 +111,25 @@ class SQLiteBackupTest(unittest.TestCase):
             stream.write(b"tampered")
         with self.assertRaises(BackupError):
             self.backups.restore(backup_id, self.base / "restored.db")
+
+    def test_legacy_v1_manifest_remains_restorable(self) -> None:
+        backup_id = self.backups.create()
+        manifest_path = self.layout.backups / backup_id / "manifest.json"
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        manifest["schema_version"] = "sqlite-backup.v1"
+        for key in (
+            "source_import_batch_count",
+            "logical_source_count",
+            "source_version_count",
+            "source_gap_count",
+            "source_digest",
+        ):
+            manifest.pop(key)
+        manifest_path.write_text(
+            json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+        )
+        restored_path = self.backups.restore(backup_id, self.base / "legacy-restored.db")
+        self.assertTrue(SQLiteCanonicalStore(restored_path).quick_check())
 
 
 if __name__ == "__main__":

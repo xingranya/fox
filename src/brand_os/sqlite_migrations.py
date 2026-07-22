@@ -213,6 +213,174 @@ MIGRATIONS = (
             "CREATE INDEX idx_relations_project_to ON relations(project_id, to_type, to_id)",
         ),
     ),
+    Migration(
+        3,
+        "versioned_source_imports",
+        (
+            """
+            CREATE TABLE source_import_batches (
+                project_id TEXT NOT NULL,
+                batch_id TEXT NOT NULL,
+                manifest_sha256 TEXT NOT NULL CHECK(length(manifest_sha256) = 64),
+                import_digest TEXT NOT NULL CHECK(length(import_digest) = 64),
+                manifest_schema_version TEXT NOT NULL,
+                origin_ref TEXT NOT NULL,
+                snapshot_at TEXT,
+                input_record_count INTEGER NOT NULL CHECK(input_record_count >= 0),
+                input_gap_count INTEGER NOT NULL CHECK(input_gap_count >= 0),
+                new_logical_source_count INTEGER NOT NULL DEFAULT 0 CHECK(new_logical_source_count >= 0),
+                new_content_count INTEGER NOT NULL DEFAULT 0 CHECK(new_content_count >= 0),
+                enriched_content_count INTEGER NOT NULL DEFAULT 0 CHECK(enriched_content_count >= 0),
+                new_version_count INTEGER NOT NULL DEFAULT 0 CHECK(new_version_count >= 0),
+                duplicate_record_count INTEGER NOT NULL DEFAULT 0 CHECK(duplicate_record_count >= 0),
+                new_alias_count INTEGER NOT NULL DEFAULT 0 CHECK(new_alias_count >= 0),
+                updated_alias_count INTEGER NOT NULL DEFAULT 0 CHECK(updated_alias_count >= 0),
+                new_supersession_count INTEGER NOT NULL DEFAULT 0 CHECK(new_supersession_count >= 0),
+                gap_observation_count INTEGER NOT NULL DEFAULT 0 CHECK(gap_observation_count >= 0),
+                imported_event_id TEXT NOT NULL UNIQUE,
+                created_at TEXT NOT NULL,
+                PRIMARY KEY(project_id, batch_id),
+                UNIQUE(project_id, import_digest),
+                FOREIGN KEY(project_id) REFERENCES projects(project_id) ON DELETE RESTRICT,
+                FOREIGN KEY(imported_event_id) REFERENCES events(event_id) ON DELETE RESTRICT
+            )
+            """,
+            """
+            CREATE TABLE source_contents (
+                project_id TEXT NOT NULL,
+                sha256 TEXT NOT NULL CHECK(length(sha256) = 64),
+                size_bytes INTEGER CHECK(size_bytes IS NULL OR size_bytes >= 0),
+                media_type TEXT,
+                first_batch_id TEXT,
+                created_at TEXT NOT NULL,
+                PRIMARY KEY(project_id, sha256),
+                FOREIGN KEY(project_id) REFERENCES projects(project_id) ON DELETE RESTRICT,
+                FOREIGN KEY(project_id, first_batch_id)
+                    REFERENCES source_import_batches(project_id, batch_id) ON DELETE RESTRICT
+            )
+            """,
+            """
+            CREATE TABLE logical_sources (
+                project_id TEXT NOT NULL,
+                logical_source_id TEXT NOT NULL,
+                source_role TEXT NOT NULL,
+                confidentiality TEXT CHECK(confidentiality IS NULL OR confidentiality IN ('P0','P1','P2','P3')),
+                status TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                PRIMARY KEY(project_id, logical_source_id),
+                FOREIGN KEY(project_id) REFERENCES projects(project_id) ON DELETE RESTRICT
+            )
+            """,
+            """
+            CREATE TABLE source_versions (
+                project_id TEXT NOT NULL,
+                source_version_id TEXT NOT NULL,
+                logical_source_id TEXT NOT NULL,
+                sha256 TEXT NOT NULL CHECK(length(sha256) = 64),
+                relative_path TEXT NOT NULL,
+                source_role TEXT NOT NULL,
+                confidentiality TEXT CHECK(confidentiality IS NULL OR confidentiality IN ('P0','P1','P2','P3')),
+                status TEXT NOT NULL,
+                version_label TEXT,
+                observed_at TEXT,
+                import_batch_id TEXT,
+                registered_event_id TEXT NOT NULL,
+                is_current INTEGER NOT NULL CHECK(is_current IN (0,1)),
+                created_at TEXT NOT NULL,
+                PRIMARY KEY(project_id, source_version_id),
+                UNIQUE(project_id, logical_source_id, sha256),
+                FOREIGN KEY(project_id, logical_source_id)
+                    REFERENCES logical_sources(project_id, logical_source_id) ON DELETE RESTRICT,
+                FOREIGN KEY(project_id, sha256)
+                    REFERENCES source_contents(project_id, sha256) ON DELETE RESTRICT,
+                FOREIGN KEY(project_id, import_batch_id)
+                    REFERENCES source_import_batches(project_id, batch_id) ON DELETE RESTRICT,
+                FOREIGN KEY(registered_event_id) REFERENCES events(event_id) ON DELETE RESTRICT
+            )
+            """,
+            """
+            CREATE TABLE source_aliases (
+                project_id TEXT NOT NULL,
+                alias_id TEXT NOT NULL,
+                logical_source_id TEXT NOT NULL,
+                alias_kind TEXT NOT NULL CHECK(alias_kind IN ('legacy_id','reserved_id','path')),
+                status TEXT NOT NULL CHECK(status IN ('active','deprecated','reserved')),
+                first_batch_id TEXT NOT NULL,
+                last_batch_id TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                PRIMARY KEY(project_id, alias_id),
+                FOREIGN KEY(project_id, logical_source_id)
+                    REFERENCES logical_sources(project_id, logical_source_id) ON DELETE RESTRICT,
+                FOREIGN KEY(project_id, first_batch_id)
+                    REFERENCES source_import_batches(project_id, batch_id) ON DELETE RESTRICT,
+                FOREIGN KEY(project_id, last_batch_id)
+                    REFERENCES source_import_batches(project_id, batch_id) ON DELETE RESTRICT
+            )
+            """,
+            """
+            CREATE TABLE source_version_relations (
+                project_id TEXT NOT NULL,
+                predecessor_version_id TEXT NOT NULL,
+                successor_version_id TEXT NOT NULL,
+                relation_type TEXT NOT NULL CHECK(relation_type = 'supersedes'),
+                import_batch_id TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                PRIMARY KEY(project_id, predecessor_version_id, successor_version_id),
+                CHECK(predecessor_version_id <> successor_version_id),
+                FOREIGN KEY(project_id, predecessor_version_id)
+                    REFERENCES source_versions(project_id, source_version_id) ON DELETE RESTRICT,
+                FOREIGN KEY(project_id, successor_version_id)
+                    REFERENCES source_versions(project_id, source_version_id) ON DELETE RESTRICT,
+                FOREIGN KEY(project_id, import_batch_id)
+                    REFERENCES source_import_batches(project_id, batch_id) ON DELETE RESTRICT
+            )
+            """,
+            """
+            CREATE TABLE source_gaps (
+                project_id TEXT NOT NULL,
+                gap_id TEXT NOT NULL,
+                import_batch_id TEXT NOT NULL,
+                status TEXT NOT NULL CHECK(status IN ('KNOWN_SOURCE_GAP','PARTIALLY_RESOLVED','RESOLVED')),
+                description TEXT NOT NULL,
+                scope TEXT NOT NULL,
+                evidence_ref TEXT NOT NULL,
+                observed_at TEXT NOT NULL,
+                PRIMARY KEY(project_id, gap_id, import_batch_id),
+                FOREIGN KEY(project_id, import_batch_id)
+                    REFERENCES source_import_batches(project_id, batch_id) ON DELETE RESTRICT
+            )
+            """,
+            "CREATE UNIQUE INDEX idx_source_versions_one_current ON source_versions(project_id, logical_source_id) WHERE is_current = 1",
+            "CREATE INDEX idx_source_versions_hash ON source_versions(project_id, sha256)",
+            "CREATE INDEX idx_source_aliases_source ON source_aliases(project_id, logical_source_id)",
+            "CREATE INDEX idx_source_gaps_latest ON source_gaps(project_id, gap_id, observed_at)",
+            "CREATE INDEX idx_source_import_manifest ON source_import_batches(project_id, manifest_sha256)",
+            """
+            INSERT INTO source_contents(project_id, sha256, size_bytes, media_type, first_batch_id, created_at)
+            SELECT project_id, sha256, size, NULL, NULL, created_at FROM sources
+            """,
+            """
+            INSERT INTO logical_sources(
+                project_id, logical_source_id, source_role, confidentiality, status, created_at, updated_at
+            )
+            SELECT project_id, source_id, source_role, confidentiality, status, created_at, created_at
+            FROM sources
+            """,
+            """
+            INSERT INTO source_versions(
+                project_id, source_version_id, logical_source_id, sha256, relative_path,
+                source_role, confidentiality, status, version_label, observed_at,
+                import_batch_id, registered_event_id, is_current, created_at
+            )
+            SELECT project_id, 'LEGACY-' || source_id || '@' || substr(sha256, 1, 16),
+                   source_id, sha256, relative_path, source_role, confidentiality, status,
+                   NULL, created_at, NULL, registered_event_id, 1, created_at
+            FROM sources
+            """,
+        ),
+    ),
 )
 
 

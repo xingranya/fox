@@ -49,6 +49,101 @@ class SQLiteQueryMixin(SQLiteStoreBase):
             raise ProjectNotFound(f"未找到来源 {source_id}")
         return dict(row)
 
+    def get_source_import_report(self, project_id: str, batch_id: str) -> Mapping[str, object]:
+        """返回单批导入差异和导入后的来源库存计数。"""
+
+        with self._connect() as connection:
+            batch = connection.execute(
+                """
+                SELECT * FROM source_import_batches
+                WHERE project_id = ? AND batch_id = ?
+                """,
+                (project_id, batch_id),
+            ).fetchone()
+            if batch is None:
+                raise ProjectNotFound(f"未找到来源导入批次 {batch_id}")
+            inventory = {
+                "logical_source_count": connection.execute(
+                    "SELECT COUNT(*) FROM logical_sources WHERE project_id = ?", (project_id,)
+                ).fetchone()[0],
+                "content_count": connection.execute(
+                    "SELECT COUNT(*) FROM source_contents WHERE project_id = ?", (project_id,)
+                ).fetchone()[0],
+                "source_version_count": connection.execute(
+                    "SELECT COUNT(*) FROM source_versions WHERE project_id = ?", (project_id,)
+                ).fetchone()[0],
+                "current_version_count": connection.execute(
+                    "SELECT COUNT(*) FROM source_versions WHERE project_id = ? AND is_current = 1",
+                    (project_id,),
+                ).fetchone()[0],
+                "alias_count": connection.execute(
+                    "SELECT COUNT(*) FROM source_aliases WHERE project_id = ?", (project_id,)
+                ).fetchone()[0],
+                "supersession_count": connection.execute(
+                    "SELECT COUNT(*) FROM source_version_relations WHERE project_id = ?",
+                    (project_id,),
+                ).fetchone()[0],
+                "gap_observation_count": connection.execute(
+                    "SELECT COUNT(*) FROM source_gaps WHERE project_id = ?", (project_id,)
+                ).fetchone()[0],
+            }
+            gaps = connection.execute(
+                """
+                SELECT gap_id, status, description, scope, evidence_ref, observed_at
+                FROM source_gaps WHERE project_id = ? AND import_batch_id = ?
+                ORDER BY gap_id
+                """,
+                (project_id, batch_id),
+            ).fetchall()
+        return {
+            "batch": dict(batch),
+            "inventory": inventory,
+            "gaps": [dict(row) for row in gaps],
+        }
+
+    def list_source_versions(
+        self, project_id: str, logical_source_id: str | None = None, *, current_only: bool = False
+    ) -> list[Mapping[str, object]]:
+        """按逻辑来源读取不可变内容版本。"""
+
+        query = "SELECT * FROM source_versions WHERE project_id = ?"
+        parameters: list[object] = [project_id]
+        if logical_source_id is not None:
+            query += " AND logical_source_id = ?"
+            parameters.append(logical_source_id)
+        if current_only:
+            query += " AND is_current = 1"
+        query += " ORDER BY logical_source_id, created_at, source_version_id"
+        with self._connect() as connection:
+            rows = connection.execute(query, parameters).fetchall()
+        return [dict(row) for row in rows]
+
+    def list_source_aliases(self, project_id: str) -> list[Mapping[str, object]]:
+        """读取旧 ID、废弃保号和路径别名。"""
+
+        with self._connect() as connection:
+            rows = connection.execute(
+                """
+                SELECT * FROM source_aliases WHERE project_id = ?
+                ORDER BY alias_id
+                """,
+                (project_id,),
+            ).fetchall()
+        return [dict(row) for row in rows]
+
+    def list_source_gaps(self, project_id: str) -> list[Mapping[str, object]]:
+        """读取每个导入批次留下的资料缺口观察。"""
+
+        with self._connect() as connection:
+            rows = connection.execute(
+                """
+                SELECT * FROM source_gaps WHERE project_id = ?
+                ORDER BY observed_at, gap_id
+                """,
+                (project_id,),
+            ).fetchall()
+        return [dict(row) for row in rows]
+
     def list_candidates(self, project_id: str) -> list[Mapping[str, object]]:
         """读取仍处于 proposed 的分类候选。"""
 

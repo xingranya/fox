@@ -13,6 +13,7 @@ from .domain import (
     ProposalReview,
     RelationDraft,
     SourceRecord,
+    SourceImportBatch,
 )
 
 
@@ -22,6 +23,10 @@ class CanonicalStorePort(Protocol):
     def create_project(self, context: CommandContext, name: str) -> CommandResult: ...
 
     def register_source(self, context: CommandContext, source: SourceRecord) -> CommandResult: ...
+
+    def import_source_batch(
+        self, context: CommandContext, batch: SourceImportBatch
+    ) -> CommandResult: ...
 
     def record_candidate(
         self, context: CommandContext, candidate: ClassificationCandidate
@@ -38,6 +43,18 @@ class CanonicalStorePort(Protocol):
     def get_current_state(self, project_id: str) -> Sequence[Mapping[str, object]]: ...
 
     def get_source(self, project_id: str, source_id: str) -> Mapping[str, object]: ...
+
+    def get_source_import_report(
+        self, project_id: str, batch_id: str
+    ) -> Mapping[str, object]: ...
+
+    def list_source_versions(
+        self, project_id: str, logical_source_id: str | None = None, *, current_only: bool = False
+    ) -> Sequence[Mapping[str, object]]: ...
+
+    def list_source_aliases(self, project_id: str) -> Sequence[Mapping[str, object]]: ...
+
+    def list_source_gaps(self, project_id: str) -> Sequence[Mapping[str, object]]: ...
 
     def list_candidates(self, project_id: str) -> Sequence[Mapping[str, object]]: ...
 

@@ -1,5 +1,5 @@
 {
-  "schema_version": "canonical-store-port.v1",
+  "schema_version": "canonical-store-port.v2",
   "authority": "human_confirmed_events",
   "current_implementation": "sqlite",
   "replaceable": true,
@@ -18,6 +18,12 @@
       "name": "register_source",
       "allowed_actor_kinds": ["HUMAN", "SYSTEM"],
       "changes_current_state": false
+    },
+    {
+      "name": "import_source_batch",
+      "allowed_actor_kinds": ["HUMAN", "SYSTEM"],
+      "changes_current_state": false,
+      "request_schema": "source-import.v1"
     },
     {
       "name": "record_candidate",
@@ -40,6 +46,12 @@
       "allowed_actor_ids": ["Fox"],
       "changes_current_state": true
     }
+  ],
+  "query_capabilities": [
+    "source_import_report",
+    "source_versions",
+    "source_aliases",
+    "source_gaps"
   ],
   "forbidden_agent_operations": [
     "approve",

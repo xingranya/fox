@@ -18,6 +18,7 @@ from .domain import (
     RelationDraft,
     ReviewAction,
     SourceRecord,
+    legacy_source_version_id,
 )
 from .sqlite_base import (
     APPROVED_TYPE_MAP,
@@ -123,6 +124,53 @@ class SQLiteCommandMixin(SQLiteStoreBase):
                     source.source_role,
                     source.confidentiality,
                     source.status,
+                    event_id,
+                    utc_now(),
+                ),
+            )
+            connection.execute(
+                """
+                INSERT INTO source_contents(
+                    project_id, sha256, size_bytes, media_type, first_batch_id, created_at
+                ) VALUES (?, ?, ?, NULL, NULL, ?)
+                """,
+                (context.project_id, source.sha256, source.size, utc_now()),
+            )
+            connection.execute(
+                """
+                INSERT INTO logical_sources(
+                    project_id, logical_source_id, source_role, confidentiality,
+                    status, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    context.project_id,
+                    source.source_id,
+                    source.source_role,
+                    source.confidentiality,
+                    source.status,
+                    utc_now(),
+                    utc_now(),
+                ),
+            )
+            connection.execute(
+                """
+                INSERT INTO source_versions(
+                    project_id, source_version_id, logical_source_id, sha256, relative_path,
+                    source_role, confidentiality, status, version_label, observed_at,
+                    import_batch_id, registered_event_id, is_current, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, NULL, ?, 1, ?)
+                """,
+                (
+                    context.project_id,
+                    legacy_source_version_id(source.source_id, source.sha256),
+                    source.source_id,
+                    source.sha256,
+                    source.relative_path,
+                    source.source_role,
+                    source.confidentiality,
+                    source.status,
+                    utc_now(),
                     event_id,
                     utc_now(),
                 ),

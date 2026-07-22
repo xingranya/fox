@@ -37,7 +37,7 @@ class SQLiteBackupService:
             metadata = self._database_metadata(backup_database)
             digest, size = sha256_file(backup_database)
             manifest = {
-                "schema_version": "sqlite-backup.v1",
+                "schema_version": "sqlite-backup.v2",
                 "backup_id": backup_id,
                 "created_at": datetime.now(UTC).isoformat(),
                 "database_sha256": digest,
@@ -66,12 +66,15 @@ class SQLiteBackupService:
             manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError) as exc:
             raise BackupError("SQLite 备份清单缺失或损坏") from exc
-        if manifest.get("schema_version") != "sqlite-backup.v1" or manifest.get("backup_id") != backup_id:
+        backup_schema = manifest.get("schema_version")
+        if backup_schema not in {"sqlite-backup.v1", "sqlite-backup.v2"} or manifest.get(
+            "backup_id"
+        ) != backup_id:
             raise BackupError("SQLite 备份版本或 ID 不匹配")
         digest, size = sha256_file(source_database)
         if digest != manifest.get("database_sha256") or size != manifest.get("database_size"):
             raise BackupError("SQLite 备份文件哈希不匹配")
-        if self._database_metadata(source_database) != self._manifest_metadata(manifest):
+        if self._comparable_metadata(source_database, manifest) != self._manifest_metadata(manifest):
             raise BackupError("SQLite 备份内容与清单不一致")
 
         expanded_destination = destination.expanduser()
@@ -89,7 +92,7 @@ class SQLiteBackupService:
         try:
             with sqlite3.connect(source_database) as source, sqlite3.connect(temporary) as target:
                 source.backup(target)
-            if self._database_metadata(temporary) != self._manifest_metadata(manifest):
+            if self._comparable_metadata(temporary, manifest) != self._manifest_metadata(manifest):
                 raise BackupError("SQLite 恢复结果与备份清单不一致")
             temporary.chmod(0o600)
             os.replace(temporary, destination)
@@ -111,6 +114,16 @@ class SQLiteBackupService:
             event_count = int(connection.execute("SELECT COUNT(*) FROM events").fetchone()[0])
             proposal_count = int(connection.execute("SELECT COUNT(*) FROM proposals").fetchone()[0])
             human_action_count = int(connection.execute("SELECT COUNT(*) FROM human_actions").fetchone()[0])
+            source_import_batch_count = int(
+                connection.execute("SELECT COUNT(*) FROM source_import_batches").fetchone()[0]
+            )
+            logical_source_count = int(
+                connection.execute("SELECT COUNT(*) FROM logical_sources").fetchone()[0]
+            )
+            source_version_count = int(
+                connection.execute("SELECT COUNT(*) FROM source_versions").fetchone()[0]
+            )
+            source_gap_count = int(connection.execute("SELECT COUNT(*) FROM source_gaps").fetchone()[0])
             project_versions = [
                 {"project_id": row[0], "version": row[1]}
                 for row in connection.execute("SELECT project_id, version FROM projects ORDER BY project_id")
@@ -128,17 +141,36 @@ class SQLiteBackupService:
             state_digest = hashlib.sha256(
                 json.dumps(state_rows, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
             ).hexdigest()
+            source_rows = [
+                list(row)
+                for row in connection.execute(
+                    """
+                    SELECT project_id, logical_source_id, sha256, relative_path,
+                           status, version_label, is_current
+                    FROM source_versions
+                    ORDER BY project_id, logical_source_id, created_at, source_version_id
+                    """
+                )
+            ]
+            source_digest = hashlib.sha256(
+                json.dumps(source_rows, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+            ).hexdigest()
         return {
             "store_schema_version": schema_version,
             "event_count": event_count,
             "proposal_count": proposal_count,
             "human_action_count": human_action_count,
+            "source_import_batch_count": source_import_batch_count,
+            "logical_source_count": logical_source_count,
+            "source_version_count": source_version_count,
+            "source_gap_count": source_gap_count,
             "project_versions": project_versions,
             "state_digest": state_digest,
+            "source_digest": source_digest,
         }
 
     def _manifest_metadata(self, manifest: dict[str, object]) -> dict[str, object]:
-        return {
+        metadata = {
             "store_schema_version": manifest.get("store_schema_version"),
             "event_count": manifest.get("event_count"),
             "proposal_count": manifest.get("proposal_count"),
@@ -146,3 +178,31 @@ class SQLiteBackupService:
             "project_versions": manifest.get("project_versions"),
             "state_digest": manifest.get("state_digest"),
         }
+        if manifest.get("schema_version") == "sqlite-backup.v2":
+            metadata.update(
+                {
+                    "source_import_batch_count": manifest.get("source_import_batch_count"),
+                    "logical_source_count": manifest.get("logical_source_count"),
+                    "source_version_count": manifest.get("source_version_count"),
+                    "source_gap_count": manifest.get("source_gap_count"),
+                    "source_digest": manifest.get("source_digest"),
+                }
+            )
+        return metadata
+
+    def _comparable_metadata(
+        self, database_path: Path, manifest: dict[str, object]
+    ) -> dict[str, object]:
+        """按备份清单版本选择对账字段，兼容已生成的 v1 快照。"""
+
+        metadata = self._database_metadata(database_path)
+        if manifest.get("schema_version") == "sqlite-backup.v1":
+            for key in (
+                "source_import_batch_count",
+                "logical_source_count",
+                "source_version_count",
+                "source_gap_count",
+                "source_digest",
+            ):
+                metadata.pop(key)
+        return metadata

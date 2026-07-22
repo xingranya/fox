@@ -2,7 +2,7 @@
 
 ## 当前结果
 
-本地核心已经能保存项目、来源版本、分类候选、Proposal、关系、人工动作、只追加事件和当前状态投影。SQLite 是当前适配器，不是领域规则本身；稳定命令边界见 `contracts/phase1/canonical-store.json` 和 `CanonicalStorePort`。
+本地核心已经能保存项目、来源版本、分类候选、Proposal、关系、人工动作、只追加事件和当前状态投影。SQLite 是当前适配器，不是领域规则本身；稳定命令边界见 `contracts/phase1/canonical-store.json` 和 `CanonicalStorePort`。F1.3 已把端口向后兼容升级为 `canonical-store-port.v2`。
 
 ## 什么能改变当前状态
 
@@ -26,6 +26,9 @@ AI、工作流和系统可以登记候选、Proposal 与工作层关系，但这
 | `commands` | 幂等键、请求摘要和原结果 | 防重复写与同键异义 |
 | `events` | 只追加领域事件 | 正式状态形成记录 |
 | `sources` | 来源 ID、SHA-256、路径、角色、保密与状态 | 原件版本索引，不保存无来源正文 |
+| `source_import_batches` | Manifest、导入指纹、事件与差异计数 | 来源导入审计 |
+| `source_contents` / `logical_sources` / `source_versions` | 去重内容、稳定来源 ID 与不可变版本 | 来源版本索引 |
+| `source_aliases` / `source_version_relations` / `source_gaps` | 旧 ID、版本替代和资料缺口 | 对账记录，不是业务批准 |
 | `classification_candidates` | 带来源哈希和定位的分类候选 | 工作层 |
 | `proposals` / `proposal_evidence` | 变化建议与证据 | 未确认前不权威 |
 | `relations` | 带证据的工作层关系 | 未确认关系 |
@@ -45,7 +48,7 @@ AI、工作流和系统可以登记候选、Proposal 与工作层关系，但这
 
 ## 迁移
 
-当前 Schema 版本为 2：版本 1 建表和约束，版本 2 建读取索引。每版迁移保存 SHA-256；已应用迁移内容发生变化时程序拒绝启动。单版迁移中任一 SQL 失败，整版回滚。
+当前 Schema 版本为 3：版本 1 建基础表和约束，版本 2 建读取索引，版本 3 增加来源批次、内容、逻辑来源、版本、旧 ID、替代关系和缺口。v3 会把已有 `sources` 复制进版本表，不改原事件和来源 ID。每版迁移保存 SHA-256；已应用迁移内容发生变化时程序拒绝启动。单版迁移中任一 SQL 失败，整版回滚。
 
 当前不提供破坏性降级迁移。以后需要改变既有表语义时新增迁移版本，并先完成在线备份；不能改写已经登记的迁移。
 
@@ -60,14 +63,14 @@ AI、工作流和系统可以登记候选、Proposal 与工作层关系，但这
 - 数据库 SHA-256 与大小；
 - Schema 版本；
 - 事件、Proposal 和人工动作数量；
+- 来源批次、逻辑来源、版本和缺口数量；
 - 各项目版本；
-- 当前投影摘要。
+- 当前投影和来源版本摘要。
 
-恢复前验证快照哈希和 `quick_check`，恢复到新数据库后再次对账清单。普通目录备份一旦遇到 `.db`、WAL 或 SHM 文件会直接停止。
+新备份使用 `sqlite-backup.v2`，旧 v1 备份仍可恢复。恢复前验证快照哈希和 `quick_check`，恢复到新数据库后再次对账清单。普通目录备份一旦遇到 `.db`、WAL 或 SHM 文件会直接停止。
 
 ## 当前没有做的事
 
-- F1.3 的鸿喜达 Manifest 幂等导入与旧 ID 对账；
 - F1.4 的会议增量解释；
 - F1.5 的替代、重开和完整 Proposal 生命周期；
 - F1.8 的 CLI/MCP；
