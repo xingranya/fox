@@ -4,14 +4,10 @@ from __future__ import annotations
 
 import hashlib
 import stat
-import sys
 import tempfile
 import unittest
 from pathlib import Path
 
-
-ROOT = Path(__file__).parents[2]
-sys.path.insert(0, str(ROOT / "src"))
 
 from brand_os.config import WorkspaceSettings
 from brand_os.evidence import EvidenceIntegrityError, LocalEvidenceStore, SourceBoundaryError

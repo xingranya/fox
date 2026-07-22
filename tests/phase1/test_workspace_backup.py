@@ -3,14 +3,10 @@
 from __future__ import annotations
 
 import json
-import sys
 import tempfile
 import unittest
 from pathlib import Path
 
-
-ROOT = Path(__file__).parents[2]
-sys.path.insert(0, str(ROOT / "src"))
 
 from brand_os.backup import BackupError, StateBackupService
 from brand_os.config import WorkspaceSettings
@@ -57,6 +53,11 @@ class WorkspaceBackupTest(unittest.TestCase):
         outside = self.base / "outside.json"
         outside.write_text("{}", encoding="utf-8")
         (self.layout.state / "link.json").symlink_to(outside)
+        with self.assertRaises(BackupError):
+            self.service.create()
+
+    def test_directory_backup_rejects_sqlite_database(self) -> None:
+        (self.layout.state / "project.db").write_bytes(b"not a live copy")
         with self.assertRaises(BackupError):
             self.service.create()
 

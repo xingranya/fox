@@ -1,0 +1,148 @@
+"""使用 SQLite 在线备份 API 创建和恢复权威库快照。"""
+
+from __future__ import annotations
+
+import json
+import hashlib
+import os
+import shutil
+import sqlite3
+import tempfile
+from datetime import UTC, datetime
+from pathlib import Path
+from uuid import uuid4
+
+from .backup import BACKUP_ID_PATTERN, BackupError
+from .hashing import sha256_file
+from .workspace import WorkspaceLayout
+
+
+class SQLiteBackupService:
+    """在线备份 SQLite，清单只记录可复算的数据库状态。"""
+
+    def __init__(self, layout: WorkspaceLayout, database_path: Path) -> None:
+        self.layout = layout
+        self.database_path = database_path.expanduser().resolve(strict=True)
+
+    def create(self) -> str:
+        """通过 SQLite backup API 生成一致快照并原子提交。"""
+
+        backup_id = f"{datetime.now(UTC).strftime('%Y%m%dT%H%M%SZ')}-{uuid4().hex[:12]}"
+        destination = self.layout.backups / backup_id
+        temporary = Path(tempfile.mkdtemp(prefix="sqlite-backup-", dir=self.layout.backups))
+        backup_database = temporary / "project.db"
+        try:
+            with sqlite3.connect(self.database_path) as source, sqlite3.connect(backup_database) as target:
+                source.backup(target)
+            metadata = self._database_metadata(backup_database)
+            digest, size = sha256_file(backup_database)
+            manifest = {
+                "schema_version": "sqlite-backup.v1",
+                "backup_id": backup_id,
+                "created_at": datetime.now(UTC).isoformat(),
+                "database_sha256": digest,
+                "database_size": size,
+                **metadata,
+            }
+            (temporary / "manifest.json").write_text(
+                json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+            )
+            backup_database.chmod(0o600)
+            os.replace(temporary, destination)
+            return backup_id
+        except Exception:
+            shutil.rmtree(temporary, ignore_errors=True)
+            raise
+
+    def restore(self, backup_id: str, destination: Path) -> Path:
+        """校验快照后通过 SQLite backup API 恢复到新数据库。"""
+
+        if not BACKUP_ID_PATTERN.fullmatch(backup_id):
+            raise BackupError("备份 ID 格式无效")
+        source_directory = self.layout.backups / backup_id
+        source_database = source_directory / "project.db"
+        manifest_path = source_directory / "manifest.json"
+        try:
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            raise BackupError("SQLite 备份清单缺失或损坏") from exc
+        if manifest.get("schema_version") != "sqlite-backup.v1" or manifest.get("backup_id") != backup_id:
+            raise BackupError("SQLite 备份版本或 ID 不匹配")
+        digest, size = sha256_file(source_database)
+        if digest != manifest.get("database_sha256") or size != manifest.get("database_size"):
+            raise BackupError("SQLite 备份文件哈希不匹配")
+        if self._database_metadata(source_database) != self._manifest_metadata(manifest):
+            raise BackupError("SQLite 备份内容与清单不一致")
+
+        expanded_destination = destination.expanduser()
+        if expanded_destination.is_symlink():
+            raise BackupError("恢复目标不能是符号链接")
+        destination = expanded_destination.resolve(strict=False)
+        if destination.exists() or destination.is_symlink():
+            raise BackupError("恢复目标必须尚不存在")
+        destination.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+        descriptor, temporary_name = tempfile.mkstemp(
+            prefix="sqlite-restore-", suffix=".db", dir=destination.parent
+        )
+        os.close(descriptor)
+        temporary = Path(temporary_name)
+        try:
+            with sqlite3.connect(source_database) as source, sqlite3.connect(temporary) as target:
+                source.backup(target)
+            if self._database_metadata(temporary) != self._manifest_metadata(manifest):
+                raise BackupError("SQLite 恢复结果与备份清单不一致")
+            temporary.chmod(0o600)
+            os.replace(temporary, destination)
+            return destination
+        except Exception:
+            temporary.unlink(missing_ok=True)
+            raise
+
+    def _database_metadata(self, database_path: Path) -> dict[str, object]:
+        """读取可用于备份恢复对账的最小状态。"""
+
+        uri = f"file:{database_path.as_posix()}?mode=ro"
+        with sqlite3.connect(uri, uri=True) as connection:
+            if connection.execute("PRAGMA quick_check").fetchone()[0] != "ok":
+                raise BackupError("SQLite 快照未通过 quick_check")
+            schema_version = int(
+                connection.execute("SELECT COALESCE(MAX(version), 0) FROM schema_migrations").fetchone()[0]
+            )
+            event_count = int(connection.execute("SELECT COUNT(*) FROM events").fetchone()[0])
+            proposal_count = int(connection.execute("SELECT COUNT(*) FROM proposals").fetchone()[0])
+            human_action_count = int(connection.execute("SELECT COUNT(*) FROM human_actions").fetchone()[0])
+            project_versions = [
+                {"project_id": row[0], "version": row[1]}
+                for row in connection.execute("SELECT project_id, version FROM projects ORDER BY project_id")
+            ]
+            state_rows = [
+                list(row)
+                for row in connection.execute(
+                    """
+                    SELECT project_id, item_type, item_id, payload_json, source_proposal_id,
+                           updated_event_id, state_version
+                    FROM state_items ORDER BY project_id, item_type, item_id
+                    """
+                )
+            ]
+            state_digest = hashlib.sha256(
+                json.dumps(state_rows, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+            ).hexdigest()
+        return {
+            "store_schema_version": schema_version,
+            "event_count": event_count,
+            "proposal_count": proposal_count,
+            "human_action_count": human_action_count,
+            "project_versions": project_versions,
+            "state_digest": state_digest,
+        }
+
+    def _manifest_metadata(self, manifest: dict[str, object]) -> dict[str, object]:
+        return {
+            "store_schema_version": manifest.get("store_schema_version"),
+            "event_count": manifest.get("event_count"),
+            "proposal_count": manifest.get("proposal_count"),
+            "human_action_count": manifest.get("human_action_count"),
+            "project_versions": manifest.get("project_versions"),
+            "state_digest": manifest.get("state_digest"),
+        }

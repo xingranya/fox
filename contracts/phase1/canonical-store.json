@@ -1,0 +1,65 @@
+{
+  "schema_version": "canonical-store-port.v1",
+  "authority": "human_confirmed_events",
+  "current_implementation": "sqlite",
+  "replaceable": true,
+  "write_requirements": {
+    "idempotency_key": true,
+    "expected_version": true,
+    "single_transaction_event_and_projection": true
+  },
+  "commands": [
+    {
+      "name": "create_project",
+      "allowed_actor_kinds": ["HUMAN", "SYSTEM"],
+      "changes_current_state": false
+    },
+    {
+      "name": "register_source",
+      "allowed_actor_kinds": ["HUMAN", "SYSTEM"],
+      "changes_current_state": false
+    },
+    {
+      "name": "record_candidate",
+      "allowed_actor_kinds": ["HUMAN", "AI", "WORKFLOW", "SYSTEM"],
+      "changes_current_state": false
+    },
+    {
+      "name": "create_proposal",
+      "allowed_actor_kinds": ["HUMAN", "AI", "WORKFLOW", "SYSTEM"],
+      "changes_current_state": false
+    },
+    {
+      "name": "add_relation",
+      "allowed_actor_kinds": ["HUMAN", "AI", "WORKFLOW", "SYSTEM"],
+      "changes_current_state": false
+    },
+    {
+      "name": "review_proposal",
+      "allowed_actor_kinds": ["HUMAN"],
+      "allowed_actor_ids": ["Fox"],
+      "changes_current_state": true
+    }
+  ],
+  "forbidden_agent_operations": [
+    "approve",
+    "modify_and_approve",
+    "reject",
+    "direct_sql"
+  ],
+  "projection_rebuild_source": "PROPOSAL_APPROVED events from configured human reviewers",
+  "backup": {
+    "method": "sqlite_online_backup_api",
+    "direct_live_file_copy_forbidden": true,
+    "restore_checks": [
+      "database_sha256",
+      "quick_check",
+      "store_schema_version",
+      "event_count",
+      "proposal_count",
+      "human_action_count",
+      "project_versions",
+      "state_digest"
+    ]
+  }
+}

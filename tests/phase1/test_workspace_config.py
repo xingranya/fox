@@ -4,14 +4,10 @@ from __future__ import annotations
 
 import json
 import stat
-import sys
 import tempfile
 import unittest
 from pathlib import Path
 
-
-ROOT = Path(__file__).parents[2]
-sys.path.insert(0, str(ROOT / "src"))
 
 from brand_os.config import ConfigurationError, load_workspace_settings
 from brand_os.workspace import initialize_workspace

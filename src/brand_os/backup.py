@@ -43,6 +43,8 @@ class StateBackupService:
                     raise BackupError(f"状态目录不能包含符号链接：{source}")
                 if not source.is_file():
                     continue
+                if source.suffix in {".db", ".sqlite", ".sqlite3"} or source.name.endswith(("-wal", "-shm")):
+                    raise BackupError("SQLite 文件必须使用 SQLiteBackupService 在线备份")
                 relative = source.relative_to(self.layout.state)
                 target = data_dir / relative
                 target.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
@@ -85,7 +87,10 @@ class StateBackupService:
             raise BackupError("备份清单缺失或损坏") from exc
         if manifest.get("schema_version") != "state-backup.v1" or manifest.get("backup_id") != backup_id:
             raise BackupError("备份清单版本或 ID 不匹配")
-        destination = destination.expanduser().resolve(strict=False)
+        expanded_destination = destination.expanduser()
+        if expanded_destination.is_symlink():
+            raise BackupError("恢复目标不能是符号链接")
+        destination = expanded_destination.resolve(strict=False)
         if destination.exists():
             raise BackupError("恢复目标必须尚不存在")
         destination.parent.mkdir(parents=True, exist_ok=True)
