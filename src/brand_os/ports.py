@@ -9,6 +9,7 @@ from .domain import (
     ClassificationCandidate,
     CommandContext,
     CommandResult,
+    MeetingIngestBatch,
     ProposalDraft,
     ProposalReview,
     RelationDraft,
@@ -28,6 +29,10 @@ class CanonicalStorePort(Protocol):
         self, context: CommandContext, batch: SourceImportBatch
     ) -> CommandResult: ...
 
+    def ingest_meeting_batch(
+        self, context: CommandContext, batch: MeetingIngestBatch
+    ) -> CommandResult: ...
+
     def record_candidate(
         self, context: CommandContext, candidate: ClassificationCandidate
     ) -> CommandResult: ...
@@ -45,6 +50,10 @@ class CanonicalStorePort(Protocol):
     def get_source(self, project_id: str, source_id: str) -> Mapping[str, object]: ...
 
     def get_source_import_report(
+        self, project_id: str, batch_id: str
+    ) -> Mapping[str, object]: ...
+
+    def get_meeting_ingest_report(
         self, project_id: str, batch_id: str
     ) -> Mapping[str, object]: ...
 

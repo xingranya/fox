@@ -32,9 +32,9 @@ class SQLiteMigrationTest(unittest.TestCase):
             connection = sqlite3.connect(database, isolation_level=None)
             try:
                 self.assertEqual(apply_migrations(connection, MIGRATIONS[:1]), 1)
-                self.assertEqual(apply_migrations(connection, MIGRATIONS), 3)
+                self.assertEqual(apply_migrations(connection, MIGRATIONS), 4)
                 versions = [row[0] for row in connection.execute("SELECT version FROM schema_migrations")]
-                self.assertEqual(versions, [1, 2, 3])
+                self.assertEqual(versions, [1, 2, 3, 4])
             finally:
                 connection.close()
 
@@ -62,7 +62,7 @@ class SQLiteMigrationTest(unittest.TestCase):
             finally:
                 connection.close()
 
-    def test_v3_upgrade_copies_existing_source_into_version_tables(self) -> None:
+    def test_v4_upgrade_copies_existing_source_into_version_tables(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             database = Path(directory) / "project.db"
             connection = sqlite3.connect(database, isolation_level=None)
@@ -101,7 +101,7 @@ class SQLiteMigrationTest(unittest.TestCase):
                     """,
                     (digest,),
                 )
-                self.assertEqual(apply_migrations(connection, MIGRATIONS), 3)
+                self.assertEqual(apply_migrations(connection, MIGRATIONS), 4)
                 version = connection.execute(
                     "SELECT logical_source_id, sha256, is_current FROM source_versions"
                 ).fetchone()

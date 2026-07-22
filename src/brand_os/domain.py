@@ -42,6 +42,16 @@ CONFIDENTIALITY_LEVELS = {"P0", "P1", "P2", "P3"}
 SOURCE_ALIAS_KINDS = {"legacy_id", "reserved_id", "path"}
 SOURCE_ALIAS_STATUSES = {"active", "deprecated", "reserved"}
 SOURCE_GAP_STATUSES = {"KNOWN_SOURCE_GAP", "PARTIALLY_RESOLVED", "RESOLVED"}
+MEETING_MODES = {"EXPLORATION", "EVALUATION", "DECISION", "SYNC", "MIXED", "UNKNOWN"}
+MEETING_ITEM_STATUSES = {"working", "preferred", "tentative", "proposed", "verified"}
+DATE_KINDS = {
+    "EXTERNAL_DEADLINE",
+    "INTERNAL_TARGET",
+    "REVIEW_CHECKPOINT",
+    "TENTATIVE_DATE",
+    "UNKNOWN",
+}
+SOURCE_VERIFICATION_STATUSES = {"verified", "unverified", "fixture_only"}
 
 
 class ActorKind(StrEnum):
@@ -251,6 +261,222 @@ class SourceImportBatch:
         gap_ids = [gap.gap_id for gap in self.gaps]
         if len(gap_ids) != len(set(gap_ids)):
             raise ValueError("同一批次不能重复登记 gap_id")
+
+
+@dataclass(frozen=True, slots=True)
+class MeetingSegment:
+    """保存会议原话、定位和转写质量，不把摘要当原话。"""
+
+    segment_id: str
+    locator: str
+    quote: str
+    mode: str
+    mode_confidence: float
+    speaker: str | None = None
+    spoken_at: str | None = None
+    start_ms: int | None = None
+    end_ms: int | None = None
+    context: str | None = None
+    transcript_confidence: float | None = None
+
+    def __post_init__(self) -> None:
+        for value, field in (
+            (self.segment_id, "segment_id"),
+            (self.locator, "locator"),
+            (self.quote, "quote"),
+        ):
+            _require_text(value, field)
+        if self.mode not in MEETING_MODES:
+            raise ValueError("segment mode 不在冻结词表中")
+        if not 0 <= self.mode_confidence <= 1:
+            raise ValueError("mode_confidence 必须位于 0-1")
+        for value, field in (
+            (self.speaker, "speaker"),
+            (self.spoken_at, "spoken_at"),
+            (self.context, "context"),
+        ):
+            if value is not None:
+                _require_text(value, field)
+        if (self.start_ms is None) != (self.end_ms is None):
+            raise ValueError("start_ms 与 end_ms 必须同时提供或同时省略")
+        if self.start_ms is not None and (
+            self.start_ms < 0 or self.end_ms is None or self.end_ms < self.start_ms
+        ):
+            raise ValueError("会议片段时间范围无效")
+        if self.transcript_confidence is not None and not 0 <= self.transcript_confidence <= 1:
+            raise ValueError("transcript_confidence 必须位于 0-1")
+
+    @property
+    def has_time_position(self) -> bool:
+        """判断片段是否具有可复核的发言时间位置。"""
+
+        return self.spoken_at is not None or self.start_ms is not None
+
+
+@dataclass(frozen=True, slots=True)
+class MeetingInterpretationItem:
+    """保存模型建议类型和经过规则保护后的工作层分类。"""
+
+    item_id: str
+    suggested_type: str
+    classification: str
+    status: str
+    summary: str
+    scope: str
+    evidence_segment_ids: tuple[str, ...]
+    confidence: float
+    reason: str
+    date_kind: str | None = None
+    decision_actor: str | None = None
+    decision_verb: str | None = None
+    state_difference: str | None = None
+    normalization_reason: str | None = None
+    requires_human_confirmation: bool = True
+
+    def __post_init__(self) -> None:
+        for value, field in (
+            (self.item_id, "item_id"),
+            (self.summary, "summary"),
+            (self.scope, "scope"),
+            (self.reason, "reason"),
+        ):
+            _require_text(value, field)
+        if self.suggested_type not in INFORMATION_TYPES:
+            raise ValueError("suggested_type 不在 Phase 0 冻结词表中")
+        if self.classification not in INFORMATION_TYPES:
+            raise ValueError("classification 不在 Phase 0 冻结词表中")
+        if self.status not in MEETING_ITEM_STATUSES:
+            raise ValueError("会议解释状态无效")
+        if not self.evidence_segment_ids or any(
+            not segment_id.strip() for segment_id in self.evidence_segment_ids
+        ):
+            raise ValueError("会议解释项必须引用至少一个原话片段")
+        if len(self.evidence_segment_ids) != len(set(self.evidence_segment_ids)):
+            raise ValueError("会议解释项不能重复引用同一片段")
+        if not 0 <= self.confidence <= 1:
+            raise ValueError("confidence 必须位于 0-1")
+        if not self.requires_human_confirmation:
+            raise ValueError("会议解释项必须等待人工确认")
+        if self.classification == "TARGET_DATE" and self.date_kind not in DATE_KINDS:
+            raise ValueError("TARGET_DATE 必须包含 date_kind")
+        if self.date_kind is not None and self.date_kind not in DATE_KINDS:
+            raise ValueError("date_kind 无效")
+        if self.classification == "DECISION_CANDIDATE":
+            if self.decision_actor is None or self.decision_verb is None:
+                raise ValueError("DECISION_CANDIDATE 必须包含决定人和决定动词")
+            if self.state_difference is None:
+                raise ValueError("DECISION_CANDIDATE 必须说明与当前状态的差异")
+        for value, field in (
+            (self.decision_actor, "decision_actor"),
+            (self.decision_verb, "decision_verb"),
+            (self.state_difference, "state_difference"),
+            (self.normalization_reason, "normalization_reason"),
+        ):
+            if value is not None:
+                _require_text(value, field)
+
+
+@dataclass(frozen=True, slots=True)
+class MeetingConflictCandidate:
+    """描述会议候选与某条人工确认状态之间的待确认冲突。"""
+
+    conflict_id: str
+    item_id: str
+    state_item_type: str
+    state_item_id: str
+    reason: str
+    evidence_segment_ids: tuple[str, ...]
+
+    def __post_init__(self) -> None:
+        for value, field in (
+            (self.conflict_id, "conflict_id"),
+            (self.item_id, "item_id"),
+            (self.state_item_type, "state_item_type"),
+            (self.state_item_id, "state_item_id"),
+            (self.reason, "reason"),
+        ):
+            _require_text(value, field)
+        if not self.evidence_segment_ids or any(
+            not segment_id.strip() for segment_id in self.evidence_segment_ids
+        ):
+            raise ValueError("冲突候选必须引用至少一个会议片段")
+
+
+@dataclass(frozen=True, slots=True)
+class MeetingIngestBatch:
+    """一个与来源版本及基础状态绑定的会议增量批次。"""
+
+    meeting_id: str
+    title: str
+    occurred_at: str | None
+    participants: tuple[str, ...]
+    logical_source_id: str
+    source_version_id: str
+    source_sha256: str
+    source_verification: str
+    base_state_version: int
+    meeting_mode: str
+    mode_confidence: float
+    content_sha256: str
+    ingest_digest: str
+    segments: tuple[MeetingSegment, ...]
+    items: tuple[MeetingInterpretationItem, ...]
+    conflicts: tuple[MeetingConflictCandidate, ...] = ()
+
+    def __post_init__(self) -> None:
+        for value, field in (
+            (self.meeting_id, "meeting_id"),
+            (self.title, "title"),
+            (self.logical_source_id, "logical_source_id"),
+            (self.source_version_id, "source_version_id"),
+        ):
+            _require_text(value, field)
+        if self.occurred_at is not None:
+            _require_text(self.occurred_at, "occurred_at")
+        if any(not participant.strip() for participant in self.participants):
+            raise ValueError("participants 不能包含空值")
+        if len(self.participants) != len(set(self.participants)):
+            raise ValueError("participants 不能重复")
+        if not SHA256_PATTERN.fullmatch(self.source_sha256):
+            raise ValueError("source_sha256 必须是完整的小写 SHA-256")
+        if not SHA256_PATTERN.fullmatch(self.content_sha256):
+            raise ValueError("content_sha256 必须是完整的小写 SHA-256")
+        if not SHA256_PATTERN.fullmatch(self.ingest_digest):
+            raise ValueError("ingest_digest 必须是完整的小写 SHA-256")
+        if self.source_verification not in SOURCE_VERIFICATION_STATUSES:
+            raise ValueError("source_verification 无效")
+        if self.base_state_version < 0:
+            raise ValueError("base_state_version 不能小于 0")
+        if self.meeting_mode not in MEETING_MODES:
+            raise ValueError("meeting_mode 不在冻结词表中")
+        if not 0 <= self.mode_confidence <= 1:
+            raise ValueError("mode_confidence 必须位于 0-1")
+        if not self.segments:
+            raise ValueError("会议批次必须包含至少一个原话片段")
+
+        segment_ids = {segment.segment_id for segment in self.segments}
+        if len(segment_ids) != len(self.segments):
+            raise ValueError("同一会议不能重复 segment_id")
+        known_modes = {segment.mode for segment in self.segments if segment.mode != "UNKNOWN"}
+        if len(known_modes) > 1 and self.meeting_mode != "MIXED":
+            raise ValueError("包含多种片段模式的会议必须标记为 MIXED")
+        if len(known_modes) == 1 and self.meeting_mode not in {*known_modes, "MIXED", "UNKNOWN"}:
+            raise ValueError("会议模式与片段模式不一致")
+
+        item_ids = {item.item_id for item in self.items}
+        if len(item_ids) != len(self.items):
+            raise ValueError("同一会议不能重复 item_id")
+        for item in self.items:
+            if not set(item.evidence_segment_ids).issubset(segment_ids):
+                raise ValueError("会议解释项引用了不存在的片段")
+        conflict_ids = {conflict.conflict_id for conflict in self.conflicts}
+        if len(conflict_ids) != len(self.conflicts):
+            raise ValueError("同一批次不能重复 conflict_id")
+        for conflict in self.conflicts:
+            if conflict.item_id not in item_ids:
+                raise ValueError("冲突候选引用了不存在的会议解释项")
+            if not set(conflict.evidence_segment_ids).issubset(segment_ids):
+                raise ValueError("冲突候选引用了不存在的片段")
 
 
 @dataclass(frozen=True, slots=True)

@@ -1,0 +1,92 @@
+{
+  "schema_version": "meeting-ingest.v1",
+  "purpose": "把已登记来源中的新会议保存为可回源、可去重、待人工确认的增量解释",
+  "source_is_data": true,
+  "meeting_modes": ["EXPLORATION", "EVALUATION", "DECISION", "SYNC", "MIXED", "UNKNOWN"],
+  "working_types": [
+    "FACT",
+    "VIEW",
+    "PREFERENCE",
+    "HYPOTHESIS",
+    "OPTION",
+    "TENDENCY",
+    "TARGET_DATE",
+    "DECISION_CANDIDATE",
+    "CONSTRAINT_CANDIDATE",
+    "ACTION_CANDIDATE",
+    "OPEN"
+  ],
+  "forbidden_output_types": ["DECISION", "CONSTRAINT", "ACTION", "DEADLINE"],
+  "date_kinds": [
+    "EXTERNAL_DEADLINE",
+    "INTERNAL_TARGET",
+    "REVIEW_CHECKPOINT",
+    "TENTATIVE_DATE",
+    "UNKNOWN"
+  ],
+  "source_verification": ["verified", "unverified", "fixture_only"],
+  "required_payload": [
+    "schema_version",
+    "source_is_data",
+    "base_state_version",
+    "meeting",
+    "segments",
+    "items"
+  ],
+  "meeting": {
+    "required": ["meeting_id", "title", "mode", "mode_confidence", "source"],
+    "source_required": ["logical_source_id", "source_version_id", "sha256", "verification"]
+  },
+  "segment": {
+    "required": ["segment_id", "locator", "quote", "mode", "mode_confidence"],
+    "nullable": ["speaker", "spoken_at", "start_ms", "end_ms", "context", "transcript_confidence"],
+    "missing_speaker_or_time_is_explicit": true
+  },
+  "interpretation_item": {
+    "required": [
+      "item_id",
+      "type",
+      "summary",
+      "scope",
+      "evidence_segment_ids",
+      "confidence",
+      "reason",
+      "requires_human_confirmation"
+    ],
+    "requires_human_confirmation": true,
+    "decision_candidate_requires": [
+      "decision_actor",
+      "decision_verb",
+      "state_difference",
+      "meeting_time",
+      "speaker",
+      "time_position",
+      "verified_source"
+    ],
+    "incomplete_decision_candidate_becomes": "OPEN",
+    "target_date_without_date_kind_becomes": "TARGET_DATE:UNKNOWN"
+  },
+  "conflict": {
+    "required": [
+      "conflict_id",
+      "item_id",
+      "state_item_type",
+      "state_item_id",
+      "reason",
+      "evidence_segment_ids"
+    ],
+    "must_reference_existing_human_confirmed_state": true,
+    "overwrites_state": false
+  },
+  "reconciliation": {
+    "same_ingest_digest_adds_no_event_or_row": true,
+    "same_meeting_content_is_not_duplicated": true,
+    "same_quote_candidate_is_not_duplicated": true,
+    "whole_batch_is_atomic": true
+  },
+  "authority": {
+    "changes_current_business_state": false,
+    "imports_decisions_as_approved": false,
+    "allowed_actor_kinds": ["HUMAN", "AI", "WORKFLOW", "SYSTEM"]
+  }
+}

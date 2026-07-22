@@ -10,6 +10,7 @@ from pathlib import Path
 ROOT = Path(__file__).parents[2]
 CONTRACT_PATH = ROOT / "contracts" / "phase1" / "canonical-store.json"
 SOURCE_IMPORT_CONTRACT_PATH = ROOT / "contracts" / "phase1" / "source-import.json"
+MEETING_INGEST_CONTRACT_PATH = ROOT / "contracts" / "phase1" / "meeting-ingest.json"
 
 
 class CanonicalStoreContractTest(unittest.TestCase):
@@ -21,9 +22,12 @@ class CanonicalStoreContractTest(unittest.TestCase):
         cls.source_import_contract = json.loads(
             SOURCE_IMPORT_CONTRACT_PATH.read_text(encoding="utf-8")
         )
+        cls.meeting_ingest_contract = json.loads(
+            MEETING_INGEST_CONTRACT_PATH.read_text(encoding="utf-8")
+        )
 
     def test_contract_is_replaceable_and_versioned(self) -> None:
-        self.assertEqual(self.contract["schema_version"], "canonical-store-port.v2")
+        self.assertEqual(self.contract["schema_version"], "canonical-store-port.v3")
         self.assertTrue(self.contract["replaceable"])
         self.assertEqual(self.contract["current_implementation"], "sqlite")
 
@@ -60,6 +64,21 @@ class CanonicalStoreContractTest(unittest.TestCase):
             self.source_import_contract["reconciliation"][
                 "same_import_digest_adds_no_batch_event_or_source_object"
             ]
+        )
+
+    def test_meeting_ingest_only_creates_working_layer_candidates(self) -> None:
+        command = next(
+            command for command in self.contract["commands"]
+            if command["name"] == "ingest_meeting_batch"
+        )
+        self.assertEqual(command["request_schema"], "meeting-ingest.v1")
+        self.assertFalse(command["changes_current_state"])
+        self.assertFalse(
+            self.meeting_ingest_contract["authority"]["imports_decisions_as_approved"]
+        )
+        self.assertEqual(
+            set(self.meeting_ingest_contract["forbidden_output_types"]),
+            {"DECISION", "CONSTRAINT", "ACTION", "DEADLINE"},
         )
 
 

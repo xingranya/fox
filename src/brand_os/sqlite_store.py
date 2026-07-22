@@ -12,10 +12,13 @@ from .sqlite_base import (
 )
 from .sqlite_commands import SQLiteCommandMixin
 from .sqlite_imports import SQLiteImportMixin
+from .sqlite_meetings import SQLiteMeetingMixin
 from .sqlite_queries import SQLiteQueryMixin
 
 
-class SQLiteCanonicalStore(SQLiteImportMixin, SQLiteCommandMixin, SQLiteQueryMixin):
+class SQLiteCanonicalStore(
+    SQLiteMeetingMixin, SQLiteImportMixin, SQLiteCommandMixin, SQLiteQueryMixin
+):
     """本地单用户 SQLite 适配器。"""
 
 

@@ -101,6 +101,127 @@ class SQLiteQueryMixin(SQLiteStoreBase):
             "gaps": [dict(row) for row in gaps],
         }
 
+    def get_meeting_ingest_report(self, project_id: str, batch_id: str) -> Mapping[str, object]:
+        """返回一次会议摄取的增量候选、冲突和工作层库存。"""
+
+        with self._connect() as connection:
+            batch = connection.execute(
+                """
+                SELECT * FROM meeting_ingest_batches
+                WHERE project_id = ? AND batch_id = ?
+                """,
+                (project_id, batch_id),
+            ).fetchone()
+            if batch is None:
+                raise ProjectNotFound(f"未找到会议摄取批次 {batch_id}")
+            meeting = connection.execute(
+                "SELECT * FROM meetings WHERE project_id = ? AND meeting_id = ?",
+                (project_id, batch["meeting_id"]),
+            ).fetchone()
+            segments = connection.execute(
+                """
+                SELECT segment.* FROM meeting_segments AS segment
+                JOIN meeting_batch_segments AS link
+                  ON link.project_id = segment.project_id AND link.segment_id = segment.segment_id
+                WHERE link.project_id = ? AND link.batch_id = ?
+                ORDER BY segment.locator, segment.segment_id
+                """,
+                (project_id, batch_id),
+            ).fetchall()
+            items = connection.execute(
+                """
+                SELECT item.* FROM meeting_interpretation_items AS item
+                JOIN meeting_batch_items AS link
+                  ON link.project_id = item.project_id AND link.item_id = item.item_id
+                WHERE link.project_id = ? AND link.batch_id = ?
+                ORDER BY item.created_at, item.item_id
+                """,
+                (project_id, batch_id),
+            ).fetchall()
+            conflicts = connection.execute(
+                """
+                SELECT conflict.* FROM meeting_conflict_candidates AS conflict
+                JOIN meeting_batch_conflicts AS link
+                  ON link.project_id = conflict.project_id
+                 AND link.conflict_id = conflict.conflict_id
+                WHERE link.project_id = ? AND link.batch_id = ?
+                ORDER BY conflict.created_at, conflict.conflict_id
+                """,
+                (project_id, batch_id),
+            ).fetchall()
+            evidence_by_item = {
+                row["item_id"]: [] for row in items
+            }
+            for row in connection.execute(
+                """
+                SELECT evidence.item_id, evidence.segment_id
+                FROM meeting_item_evidence AS evidence
+                JOIN meeting_batch_items AS link
+                  ON link.project_id = evidence.project_id AND link.item_id = evidence.item_id
+                WHERE link.project_id = ? AND link.batch_id = ?
+                ORDER BY evidence.item_id, evidence.segment_id
+                """,
+                (project_id, batch_id),
+            ):
+                evidence_by_item[row["item_id"]].append(row["segment_id"])
+            evidence_by_conflict = {
+                row["conflict_id"]: [] for row in conflicts
+            }
+            for row in connection.execute(
+                """
+                SELECT evidence.conflict_id, evidence.segment_id
+                FROM meeting_conflict_evidence AS evidence
+                JOIN meeting_batch_conflicts AS link
+                  ON link.project_id = evidence.project_id
+                 AND link.conflict_id = evidence.conflict_id
+                WHERE link.project_id = ? AND link.batch_id = ?
+                ORDER BY evidence.conflict_id, evidence.segment_id
+                """,
+                (project_id, batch_id),
+            ):
+                evidence_by_conflict[row["conflict_id"]].append(row["segment_id"])
+            inventory = {
+                "meeting_count": connection.execute(
+                    "SELECT COUNT(*) FROM meetings WHERE project_id = ?", (project_id,)
+                ).fetchone()[0],
+                "segment_count": connection.execute(
+                    "SELECT COUNT(*) FROM meeting_segments WHERE project_id = ?", (project_id,)
+                ).fetchone()[0],
+                "interpretation_item_count": connection.execute(
+                    "SELECT COUNT(*) FROM meeting_interpretation_items WHERE project_id = ?",
+                    (project_id,),
+                ).fetchone()[0],
+                "conflict_candidate_count": connection.execute(
+                    "SELECT COUNT(*) FROM meeting_conflict_candidates WHERE project_id = ?",
+                    (project_id,),
+                ).fetchone()[0],
+                "current_business_state_count": connection.execute(
+                    "SELECT COUNT(*) FROM state_items WHERE project_id = ?", (project_id,)
+                ).fetchone()[0],
+            }
+        meeting_data = dict(meeting)
+        meeting_data["participants"] = json.loads(meeting_data.pop("participants_json"))
+        item_data = []
+        for row in items:
+            value = dict(row)
+            value["evidence_segment_ids"] = evidence_by_item[row["item_id"]]
+            value["requires_human_confirmation"] = bool(value["requires_human_confirmation"])
+            item_data.append(value)
+        conflict_data = []
+        for row in conflicts:
+            value = dict(row)
+            value["state_payload"] = json.loads(value.pop("state_payload_json"))
+            value["evidence_segment_ids"] = evidence_by_conflict[row["conflict_id"]]
+            conflict_data.append(value)
+        return {
+            "batch": dict(batch),
+            "meeting": meeting_data,
+            "segments": [dict(row) for row in segments],
+            "items": item_data,
+            "conflicts": conflict_data,
+            "inventory": inventory,
+        }
+
     def list_source_versions(
         self, project_id: str, logical_source_id: str | None = None, *, current_only: bool = False
     ) -> list[Mapping[str, object]]:

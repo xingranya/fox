@@ -37,7 +37,7 @@ class SQLiteBackupService:
             metadata = self._database_metadata(backup_database)
             digest, size = sha256_file(backup_database)
             manifest = {
-                "schema_version": "sqlite-backup.v2",
+                "schema_version": "sqlite-backup.v3",
                 "backup_id": backup_id,
                 "created_at": datetime.now(UTC).isoformat(),
                 "database_sha256": digest,
@@ -67,9 +67,11 @@ class SQLiteBackupService:
         except (OSError, json.JSONDecodeError) as exc:
             raise BackupError("SQLite 备份清单缺失或损坏") from exc
         backup_schema = manifest.get("schema_version")
-        if backup_schema not in {"sqlite-backup.v1", "sqlite-backup.v2"} or manifest.get(
-            "backup_id"
-        ) != backup_id:
+        if backup_schema not in {
+            "sqlite-backup.v1",
+            "sqlite-backup.v2",
+            "sqlite-backup.v3",
+        } or manifest.get("backup_id") != backup_id:
             raise BackupError("SQLite 备份版本或 ID 不匹配")
         digest, size = sha256_file(source_database)
         if digest != manifest.get("database_sha256") or size != manifest.get("database_size"):
@@ -114,16 +116,44 @@ class SQLiteBackupService:
             event_count = int(connection.execute("SELECT COUNT(*) FROM events").fetchone()[0])
             proposal_count = int(connection.execute("SELECT COUNT(*) FROM proposals").fetchone()[0])
             human_action_count = int(connection.execute("SELECT COUNT(*) FROM human_actions").fetchone()[0])
-            source_import_batch_count = int(
-                connection.execute("SELECT COUNT(*) FROM source_import_batches").fetchone()[0]
-            )
-            logical_source_count = int(
-                connection.execute("SELECT COUNT(*) FROM logical_sources").fetchone()[0]
-            )
-            source_version_count = int(
-                connection.execute("SELECT COUNT(*) FROM source_versions").fetchone()[0]
-            )
-            source_gap_count = int(connection.execute("SELECT COUNT(*) FROM source_gaps").fetchone()[0])
+            source_import_batch_count = 0
+            logical_source_count = 0
+            source_version_count = 0
+            source_gap_count = 0
+            if schema_version >= 3:
+                source_import_batch_count = int(
+                    connection.execute("SELECT COUNT(*) FROM source_import_batches").fetchone()[0]
+                )
+                logical_source_count = int(
+                    connection.execute("SELECT COUNT(*) FROM logical_sources").fetchone()[0]
+                )
+                source_version_count = int(
+                    connection.execute("SELECT COUNT(*) FROM source_versions").fetchone()[0]
+                )
+                source_gap_count = int(
+                    connection.execute("SELECT COUNT(*) FROM source_gaps").fetchone()[0]
+                )
+            meeting_ingest_batch_count = 0
+            meeting_count = 0
+            meeting_segment_count = 0
+            meeting_item_count = 0
+            meeting_conflict_count = 0
+            if schema_version >= 4:
+                meeting_ingest_batch_count = int(
+                    connection.execute("SELECT COUNT(*) FROM meeting_ingest_batches").fetchone()[0]
+                )
+                meeting_count = int(
+                    connection.execute("SELECT COUNT(*) FROM meetings").fetchone()[0]
+                )
+                meeting_segment_count = int(
+                    connection.execute("SELECT COUNT(*) FROM meeting_segments").fetchone()[0]
+                )
+                meeting_item_count = int(
+                    connection.execute("SELECT COUNT(*) FROM meeting_interpretation_items").fetchone()[0]
+                )
+                meeting_conflict_count = int(
+                    connection.execute("SELECT COUNT(*) FROM meeting_conflict_candidates").fetchone()[0]
+                )
             project_versions = [
                 {"project_id": row[0], "version": row[1]}
                 for row in connection.execute("SELECT project_id, version FROM projects ORDER BY project_id")
@@ -141,19 +171,49 @@ class SQLiteBackupService:
             state_digest = hashlib.sha256(
                 json.dumps(state_rows, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
             ).hexdigest()
-            source_rows = [
-                list(row)
-                for row in connection.execute(
-                    """
-                    SELECT project_id, logical_source_id, sha256, relative_path,
-                           status, version_label, is_current
-                    FROM source_versions
-                    ORDER BY project_id, logical_source_id, created_at, source_version_id
-                    """
-                )
-            ]
+            source_rows = []
+            if schema_version >= 3:
+                source_rows = [
+                    list(row)
+                    for row in connection.execute(
+                        """
+                        SELECT project_id, logical_source_id, sha256, relative_path,
+                               status, version_label, is_current
+                        FROM source_versions
+                        ORDER BY project_id, logical_source_id, created_at, source_version_id
+                        """
+                    )
+                ]
             source_digest = hashlib.sha256(
                 json.dumps(source_rows, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+            ).hexdigest()
+            meeting_rows = {}
+            if schema_version >= 4:
+                meeting_rows = {
+                    table: [
+                        list(row)
+                        for row in connection.execute(f"SELECT * FROM {table} ORDER BY rowid")
+                    ]
+                    for table in (
+                        "meetings",
+                        "meeting_ingest_batches",
+                        "meeting_segments",
+                        "meeting_interpretation_items",
+                        "meeting_item_evidence",
+                        "meeting_conflict_candidates",
+                        "meeting_conflict_evidence",
+                        "meeting_batch_segments",
+                        "meeting_batch_items",
+                        "meeting_batch_conflicts",
+                    )
+                }
+            meeting_digest = hashlib.sha256(
+                json.dumps(
+                    meeting_rows,
+                    ensure_ascii=False,
+                    sort_keys=True,
+                    separators=(",", ":"),
+                ).encode("utf-8")
             ).hexdigest()
         return {
             "store_schema_version": schema_version,
@@ -164,9 +224,15 @@ class SQLiteBackupService:
             "logical_source_count": logical_source_count,
             "source_version_count": source_version_count,
             "source_gap_count": source_gap_count,
+            "meeting_ingest_batch_count": meeting_ingest_batch_count,
+            "meeting_count": meeting_count,
+            "meeting_segment_count": meeting_segment_count,
+            "meeting_item_count": meeting_item_count,
+            "meeting_conflict_count": meeting_conflict_count,
             "project_versions": project_versions,
             "state_digest": state_digest,
             "source_digest": source_digest,
+            "meeting_digest": meeting_digest,
         }
 
     def _manifest_metadata(self, manifest: dict[str, object]) -> dict[str, object]:
@@ -178,7 +244,7 @@ class SQLiteBackupService:
             "project_versions": manifest.get("project_versions"),
             "state_digest": manifest.get("state_digest"),
         }
-        if manifest.get("schema_version") == "sqlite-backup.v2":
+        if manifest.get("schema_version") in {"sqlite-backup.v2", "sqlite-backup.v3"}:
             metadata.update(
                 {
                     "source_import_batch_count": manifest.get("source_import_batch_count"),
@@ -186,6 +252,17 @@ class SQLiteBackupService:
                     "source_version_count": manifest.get("source_version_count"),
                     "source_gap_count": manifest.get("source_gap_count"),
                     "source_digest": manifest.get("source_digest"),
+                }
+            )
+        if manifest.get("schema_version") == "sqlite-backup.v3":
+            metadata.update(
+                {
+                    "meeting_ingest_batch_count": manifest.get("meeting_ingest_batch_count"),
+                    "meeting_count": manifest.get("meeting_count"),
+                    "meeting_segment_count": manifest.get("meeting_segment_count"),
+                    "meeting_item_count": manifest.get("meeting_item_count"),
+                    "meeting_conflict_count": manifest.get("meeting_conflict_count"),
+                    "meeting_digest": manifest.get("meeting_digest"),
                 }
             )
         return metadata
@@ -203,6 +280,16 @@ class SQLiteBackupService:
                 "source_version_count",
                 "source_gap_count",
                 "source_digest",
+            ):
+                metadata.pop(key)
+        if manifest.get("schema_version") in {"sqlite-backup.v1", "sqlite-backup.v2"}:
+            for key in (
+                "meeting_ingest_batch_count",
+                "meeting_count",
+                "meeting_segment_count",
+                "meeting_item_count",
+                "meeting_conflict_count",
+                "meeting_digest",
             ):
                 metadata.pop(key)
         return metadata

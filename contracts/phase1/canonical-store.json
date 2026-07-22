@@ -1,5 +1,5 @@
 {
-  "schema_version": "canonical-store-port.v2",
+  "schema_version": "canonical-store-port.v3",
   "authority": "human_confirmed_events",
   "current_implementation": "sqlite",
   "replaceable": true,
@@ -24,6 +24,12 @@
       "allowed_actor_kinds": ["HUMAN", "SYSTEM"],
       "changes_current_state": false,
       "request_schema": "source-import.v1"
+    },
+    {
+      "name": "ingest_meeting_batch",
+      "allowed_actor_kinds": ["HUMAN", "AI", "WORKFLOW", "SYSTEM"],
+      "changes_current_state": false,
+      "request_schema": "meeting-ingest.v1"
     },
     {
       "name": "record_candidate",
@@ -51,7 +57,8 @@
     "source_import_report",
     "source_versions",
     "source_aliases",
-    "source_gaps"
+    "source_gaps",
+    "meeting_ingest_report"
   ],
   "forbidden_agent_operations": [
     "approve",
@@ -70,8 +77,14 @@
       "event_count",
       "proposal_count",
       "human_action_count",
+      "meeting_ingest_batch_count",
+      "meeting_count",
+      "meeting_segment_count",
+      "meeting_item_count",
+      "meeting_conflict_count",
       "project_versions",
-      "state_digest"
+      "state_digest",
+      "meeting_digest"
     ]
   }
 }

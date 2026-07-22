@@ -381,6 +381,245 @@ MIGRATIONS = (
             """,
         ),
     ),
+    Migration(
+        4,
+        "meeting_incremental_ingest",
+        (
+            """
+            CREATE TABLE meetings (
+                project_id TEXT NOT NULL,
+                meeting_id TEXT NOT NULL,
+                title TEXT NOT NULL,
+                occurred_at TEXT,
+                participants_json TEXT NOT NULL,
+                logical_source_id TEXT NOT NULL,
+                source_version_id TEXT NOT NULL,
+                source_sha256 TEXT NOT NULL CHECK(length(source_sha256) = 64),
+                source_verification TEXT NOT NULL CHECK(source_verification IN (
+                    'verified','unverified','fixture_only'
+                )),
+                content_sha256 TEXT NOT NULL CHECK(length(content_sha256) = 64),
+                first_recorded_event_id TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                PRIMARY KEY(project_id, meeting_id),
+                UNIQUE(project_id, content_sha256),
+                FOREIGN KEY(project_id) REFERENCES projects(project_id) ON DELETE RESTRICT,
+                FOREIGN KEY(project_id, logical_source_id)
+                    REFERENCES logical_sources(project_id, logical_source_id) ON DELETE RESTRICT,
+                FOREIGN KEY(project_id, source_version_id)
+                    REFERENCES source_versions(project_id, source_version_id) ON DELETE RESTRICT,
+                FOREIGN KEY(first_recorded_event_id) REFERENCES events(event_id) ON DELETE RESTRICT
+            )
+            """,
+            """
+            CREATE TABLE meeting_ingest_batches (
+                project_id TEXT NOT NULL,
+                batch_id TEXT NOT NULL,
+                ingest_digest TEXT NOT NULL CHECK(length(ingest_digest) = 64),
+                meeting_id TEXT NOT NULL,
+                base_state_version INTEGER NOT NULL CHECK(base_state_version >= 0),
+                source_verification TEXT NOT NULL CHECK(source_verification IN (
+                    'verified','unverified','fixture_only'
+                )),
+                meeting_mode TEXT NOT NULL CHECK(meeting_mode IN (
+                    'EXPLORATION','EVALUATION','DECISION','SYNC','MIXED','UNKNOWN'
+                )),
+                mode_confidence REAL NOT NULL CHECK(mode_confidence >= 0 AND mode_confidence <= 1),
+                input_segment_count INTEGER NOT NULL CHECK(input_segment_count >= 0),
+                input_item_count INTEGER NOT NULL CHECK(input_item_count >= 0),
+                input_conflict_count INTEGER NOT NULL CHECK(input_conflict_count >= 0),
+                new_segment_count INTEGER NOT NULL DEFAULT 0 CHECK(new_segment_count >= 0),
+                duplicate_segment_count INTEGER NOT NULL DEFAULT 0 CHECK(duplicate_segment_count >= 0),
+                new_item_count INTEGER NOT NULL DEFAULT 0 CHECK(new_item_count >= 0),
+                duplicate_item_count INTEGER NOT NULL DEFAULT 0 CHECK(duplicate_item_count >= 0),
+                new_conflict_count INTEGER NOT NULL DEFAULT 0 CHECK(new_conflict_count >= 0),
+                duplicate_conflict_count INTEGER NOT NULL DEFAULT 0 CHECK(duplicate_conflict_count >= 0),
+                recorded_event_id TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                PRIMARY KEY(project_id, batch_id),
+                UNIQUE(project_id, ingest_digest),
+                FOREIGN KEY(project_id, meeting_id)
+                    REFERENCES meetings(project_id, meeting_id) ON DELETE RESTRICT,
+                FOREIGN KEY(recorded_event_id) REFERENCES events(event_id) ON DELETE RESTRICT
+            )
+            """,
+            """
+            CREATE TABLE meeting_segments (
+                project_id TEXT NOT NULL,
+                segment_id TEXT NOT NULL,
+                meeting_id TEXT NOT NULL,
+                segment_digest TEXT NOT NULL CHECK(length(segment_digest) = 64),
+                locator TEXT NOT NULL,
+                quote TEXT NOT NULL,
+                speaker TEXT,
+                spoken_at TEXT,
+                start_ms INTEGER CHECK(start_ms IS NULL OR start_ms >= 0),
+                end_ms INTEGER CHECK(end_ms IS NULL OR end_ms >= start_ms),
+                context TEXT,
+                transcript_confidence REAL CHECK(
+                    transcript_confidence IS NULL OR
+                    (transcript_confidence >= 0 AND transcript_confidence <= 1)
+                ),
+                mode TEXT NOT NULL CHECK(mode IN (
+                    'EXPLORATION','EVALUATION','DECISION','SYNC','MIXED','UNKNOWN'
+                )),
+                mode_confidence REAL NOT NULL CHECK(mode_confidence >= 0 AND mode_confidence <= 1),
+                first_batch_id TEXT NOT NULL,
+                recorded_event_id TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                PRIMARY KEY(project_id, segment_id),
+                UNIQUE(project_id, meeting_id, segment_digest),
+                CHECK((start_ms IS NULL AND end_ms IS NULL) OR (start_ms IS NOT NULL AND end_ms IS NOT NULL)),
+                FOREIGN KEY(project_id, meeting_id)
+                    REFERENCES meetings(project_id, meeting_id) ON DELETE RESTRICT,
+                FOREIGN KEY(project_id, first_batch_id)
+                    REFERENCES meeting_ingest_batches(project_id, batch_id) ON DELETE RESTRICT,
+                FOREIGN KEY(recorded_event_id) REFERENCES events(event_id) ON DELETE RESTRICT
+            )
+            """,
+            """
+            CREATE TABLE meeting_interpretation_items (
+                project_id TEXT NOT NULL,
+                item_id TEXT NOT NULL,
+                meeting_id TEXT NOT NULL,
+                candidate_digest TEXT NOT NULL CHECK(length(candidate_digest) = 64),
+                suggested_type TEXT NOT NULL CHECK(suggested_type IN (
+                    'FACT','VIEW','PREFERENCE','HYPOTHESIS','OPTION','TENDENCY','TARGET_DATE',
+                    'DECISION_CANDIDATE','CONSTRAINT_CANDIDATE','ACTION_CANDIDATE','OPEN'
+                )),
+                classification TEXT NOT NULL CHECK(classification IN (
+                    'FACT','VIEW','PREFERENCE','HYPOTHESIS','OPTION','TENDENCY','TARGET_DATE',
+                    'DECISION_CANDIDATE','CONSTRAINT_CANDIDATE','ACTION_CANDIDATE','OPEN'
+                )),
+                status TEXT NOT NULL CHECK(status IN (
+                    'working','preferred','tentative','proposed','verified'
+                )),
+                summary TEXT NOT NULL,
+                scope TEXT NOT NULL,
+                date_kind TEXT CHECK(date_kind IS NULL OR date_kind IN (
+                    'EXTERNAL_DEADLINE','INTERNAL_TARGET','REVIEW_CHECKPOINT','TENTATIVE_DATE','UNKNOWN'
+                )),
+                decision_actor TEXT,
+                decision_verb TEXT,
+                state_difference TEXT,
+                confidence REAL NOT NULL CHECK(confidence >= 0 AND confidence <= 1),
+                reason TEXT NOT NULL,
+                normalization_reason TEXT,
+                requires_human_confirmation INTEGER NOT NULL CHECK(requires_human_confirmation = 1),
+                first_batch_id TEXT NOT NULL,
+                recorded_event_id TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                PRIMARY KEY(project_id, item_id),
+                UNIQUE(project_id, meeting_id, candidate_digest),
+                CHECK(classification <> 'TARGET_DATE' OR date_kind IS NOT NULL),
+                CHECK(
+                    classification <> 'DECISION_CANDIDATE' OR
+                    (decision_actor IS NOT NULL AND decision_verb IS NOT NULL AND state_difference IS NOT NULL)
+                ),
+                FOREIGN KEY(project_id, meeting_id)
+                    REFERENCES meetings(project_id, meeting_id) ON DELETE RESTRICT,
+                FOREIGN KEY(project_id, first_batch_id)
+                    REFERENCES meeting_ingest_batches(project_id, batch_id) ON DELETE RESTRICT,
+                FOREIGN KEY(recorded_event_id) REFERENCES events(event_id) ON DELETE RESTRICT
+            )
+            """,
+            """
+            CREATE TABLE meeting_item_evidence (
+                project_id TEXT NOT NULL,
+                item_id TEXT NOT NULL,
+                segment_id TEXT NOT NULL,
+                PRIMARY KEY(project_id, item_id, segment_id),
+                FOREIGN KEY(project_id, item_id)
+                    REFERENCES meeting_interpretation_items(project_id, item_id) ON DELETE CASCADE,
+                FOREIGN KEY(project_id, segment_id)
+                    REFERENCES meeting_segments(project_id, segment_id) ON DELETE RESTRICT
+            )
+            """,
+            """
+            CREATE TABLE meeting_conflict_candidates (
+                project_id TEXT NOT NULL,
+                conflict_id TEXT NOT NULL,
+                meeting_id TEXT NOT NULL,
+                item_id TEXT NOT NULL,
+                state_item_type TEXT NOT NULL,
+                state_item_id TEXT NOT NULL,
+                conflict_digest TEXT NOT NULL CHECK(length(conflict_digest) = 64),
+                reason TEXT NOT NULL,
+                state_payload_json TEXT NOT NULL,
+                state_updated_event_id TEXT NOT NULL,
+                state_version INTEGER NOT NULL CHECK(state_version > 0),
+                status TEXT NOT NULL DEFAULT 'proposed' CHECK(status = 'proposed'),
+                first_batch_id TEXT NOT NULL,
+                recorded_event_id TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                PRIMARY KEY(project_id, conflict_id),
+                UNIQUE(project_id, meeting_id, conflict_digest),
+                FOREIGN KEY(project_id, meeting_id)
+                    REFERENCES meetings(project_id, meeting_id) ON DELETE RESTRICT,
+                FOREIGN KEY(project_id, item_id)
+                    REFERENCES meeting_interpretation_items(project_id, item_id) ON DELETE RESTRICT,
+                FOREIGN KEY(project_id, state_item_type, state_item_id)
+                    REFERENCES state_items(project_id, item_type, item_id) ON DELETE RESTRICT,
+                FOREIGN KEY(project_id, first_batch_id)
+                    REFERENCES meeting_ingest_batches(project_id, batch_id) ON DELETE RESTRICT,
+                FOREIGN KEY(recorded_event_id) REFERENCES events(event_id) ON DELETE RESTRICT
+            )
+            """,
+            """
+            CREATE TABLE meeting_conflict_evidence (
+                project_id TEXT NOT NULL,
+                conflict_id TEXT NOT NULL,
+                segment_id TEXT NOT NULL,
+                PRIMARY KEY(project_id, conflict_id, segment_id),
+                FOREIGN KEY(project_id, conflict_id)
+                    REFERENCES meeting_conflict_candidates(project_id, conflict_id) ON DELETE CASCADE,
+                FOREIGN KEY(project_id, segment_id)
+                    REFERENCES meeting_segments(project_id, segment_id) ON DELETE RESTRICT
+            )
+            """,
+            """
+            CREATE TABLE meeting_batch_segments (
+                project_id TEXT NOT NULL,
+                batch_id TEXT NOT NULL,
+                segment_id TEXT NOT NULL,
+                PRIMARY KEY(project_id, batch_id, segment_id),
+                FOREIGN KEY(project_id, batch_id)
+                    REFERENCES meeting_ingest_batches(project_id, batch_id) ON DELETE CASCADE,
+                FOREIGN KEY(project_id, segment_id)
+                    REFERENCES meeting_segments(project_id, segment_id) ON DELETE RESTRICT
+            )
+            """,
+            """
+            CREATE TABLE meeting_batch_items (
+                project_id TEXT NOT NULL,
+                batch_id TEXT NOT NULL,
+                item_id TEXT NOT NULL,
+                PRIMARY KEY(project_id, batch_id, item_id),
+                FOREIGN KEY(project_id, batch_id)
+                    REFERENCES meeting_ingest_batches(project_id, batch_id) ON DELETE CASCADE,
+                FOREIGN KEY(project_id, item_id)
+                    REFERENCES meeting_interpretation_items(project_id, item_id) ON DELETE RESTRICT
+            )
+            """,
+            """
+            CREATE TABLE meeting_batch_conflicts (
+                project_id TEXT NOT NULL,
+                batch_id TEXT NOT NULL,
+                conflict_id TEXT NOT NULL,
+                PRIMARY KEY(project_id, batch_id, conflict_id),
+                FOREIGN KEY(project_id, batch_id)
+                    REFERENCES meeting_ingest_batches(project_id, batch_id) ON DELETE CASCADE,
+                FOREIGN KEY(project_id, conflict_id)
+                    REFERENCES meeting_conflict_candidates(project_id, conflict_id) ON DELETE RESTRICT
+            )
+            """,
+            "CREATE INDEX idx_meetings_source ON meetings(project_id, source_version_id)",
+            "CREATE INDEX idx_meeting_batches_meeting ON meeting_ingest_batches(project_id, meeting_id, created_at)",
+            "CREATE INDEX idx_meeting_segments_meeting ON meeting_segments(project_id, meeting_id, locator)",
+            "CREATE INDEX idx_meeting_items_meeting ON meeting_interpretation_items(project_id, meeting_id, created_at)",
+            "CREATE INDEX idx_meeting_conflicts_state ON meeting_conflict_candidates(project_id, state_item_type, state_item_id)",
+        ),
+    ),
 )
 
 
