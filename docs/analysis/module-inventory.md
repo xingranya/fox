@@ -4,7 +4,7 @@
 
 ## 范围说明
 
-M00-M09 是 Phase 0-1 的领域与本地纵切模块，其中 F1.1-F1.9 已实现。后续活动模块包括服务器权威存储、对象存储、身份权限、并发一致性、HTTP API、远程 MCP/Skills、OpenWork 联网适配和团队试点。
+M00-M09 是 Phase 0-1 的领域与本地纵切模块，F1.1-F1.10 均已实现并通过阶段门。后续活动模块包括服务器权威存储、对象存储、身份权限、并发一致性、HTTP API、远程 MCP/Skills、OpenWork 联网适配和团队试点。
 
 Zvec、Open Notebook、Nubase、Dify 和 FlowLong 已进入 Phase 3 的独立适配任务，但仍不得成为 M00-M09 或核心联网旅程的必需依赖。
 
@@ -149,4 +149,4 @@ Phase 4: 团队并发、稳定性、安全、容量和分发
 
 ## S.U.P.E.R 结论
 
-Phase 1 当前准备度为 `S绿 U绿 P绿 E黄 R绿`。F1.1-F1.9 已落地本地状态、证据、Proposal、Task Packet、MCP 契约以及单安装包与安全收口；当前缺口只剩 F1.10 鸿日桌面旅程。服务器模块仍按 Phase 2-4 实施，不能反向成为 F1.10 的运行前置。
+Phase 1 最终结果为 `S绿 U绿 P绿 E黄 R绿`。F1.1-F1.10 已落地本地状态、证据、Proposal、Task Packet、MCP 契约、单安装包和鸿日桌面旅程。环境项保持黄色，是因为公司服务器配置和分发签名尚未验收；这些工作按 Phase 2-4 实施，不回写为 Phase 1 缺口。

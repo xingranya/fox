@@ -13,6 +13,18 @@ from .sqlite_base import CanonicalStoreError, ProjectNotFound, SQLiteStoreBase
 class SQLiteQueryMixin(SQLiteStoreBase):
     """集中实现不会创建新业务事件的读取与重建。"""
 
+    def get_project(self, project_id: str) -> Mapping[str, object]:
+        """读取项目身份、当前版本和更新时间。"""
+
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT project_id, name, version, created_at, updated_at FROM projects WHERE project_id = ?",
+                (project_id,),
+            ).fetchone()
+        if row is None:
+            raise ProjectNotFound(project_id)
+        return dict(row)
+
     def get_current_state(self, project_id: str) -> list[Mapping[str, object]]:
         """读取人工确认后的当前状态投影。"""
 

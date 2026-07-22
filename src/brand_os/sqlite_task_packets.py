@@ -154,6 +154,23 @@ class SQLiteTaskPacketMixin(SQLiteTaskPacketAssemblyMixin):
             raise ProjectNotFound(f"未找到 Task Packet {packet_id}")
         return json.loads(row["content_json"])
 
+    def list_task_packets(self, project_id: str) -> list[Mapping[str, object]]:
+        """读取 Packet 元数据，不在列表接口重复返回完整上下文。"""
+
+        with self._connect() as connection:
+            rows = connection.execute(
+                """
+                SELECT packet_id, project_id, task_id, packet_version, task_revision,
+                       base_state_version, schema_version, assembly_policy_version,
+                       content_hash, generated_by_kind, generated_by_id, generated_at
+                FROM task_packets
+                WHERE project_id = ?
+                ORDER BY generated_at DESC, task_id, packet_version DESC
+                """,
+                (project_id,),
+            ).fetchall()
+        return [dict(row) for row in rows]
+
     def get_task_packet_layer(
         self, project_id: str, packet_id: str, layer: str
     ) -> Mapping[str, object]:

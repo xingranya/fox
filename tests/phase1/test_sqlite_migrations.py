@@ -5,6 +5,7 @@ from __future__ import annotations
 import sqlite3
 import stat
 import tempfile
+import threading
 import unittest
 from pathlib import Path
 
@@ -15,6 +16,59 @@ from brand_os.sqlite_store import MIN_SQLITE_VERSION, SQLiteCanonicalStore
 
 class SQLiteMigrationTest(unittest.TestCase):
     """验证迁移可升级、失败整版回滚且运行版本受控。"""
+
+    def test_concurrent_initialization_does_not_reapply_migration(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            database = Path(directory) / "project.db"
+            with sqlite3.connect(database, isolation_level=None) as connection:
+                apply_migrations(connection, ())
+
+            migration = Migration(
+                1,
+                "concurrent_initialization",
+                ("CREATE TABLE concurrency_probe(id INTEGER PRIMARY KEY)",),
+            )
+            begin_barrier = threading.Barrier(2)
+            errors: list[BaseException] = []
+
+            class CoordinatedConnection:
+                """让两个连接都在读到缺失版本后再竞争写锁。"""
+
+                def __init__(self, connection: sqlite3.Connection) -> None:
+                    self.connection = connection
+                    self.coordinated = False
+
+                def execute(self, statement: str, parameters: tuple[object, ...] = ()):
+                    if statement == "BEGIN IMMEDIATE" and not self.coordinated:
+                        self.coordinated = True
+                        begin_barrier.wait(timeout=5)
+                    return self.connection.execute(statement, parameters)
+
+            def initialize() -> None:
+                connection = sqlite3.connect(database, timeout=5, isolation_level=None)
+                connection.execute("PRAGMA busy_timeout = 5000")
+                try:
+                    apply_migrations(CoordinatedConnection(connection), (migration,))
+                except BaseException as exc:
+                    errors.append(exc)
+                finally:
+                    connection.close()
+
+            threads = [threading.Thread(target=initialize) for _ in range(2)]
+            for thread in threads:
+                thread.start()
+            for thread in threads:
+                thread.join(timeout=10)
+
+            self.assertFalse(any(thread.is_alive() for thread in threads))
+            self.assertEqual(errors, [])
+            with sqlite3.connect(database) as connection:
+                self.assertEqual(
+                    connection.execute(
+                        "SELECT COUNT(*) FROM schema_migrations WHERE version = 1"
+                    ).fetchone()[0],
+                    1,
+                )
 
     def test_new_database_reaches_current_schema(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

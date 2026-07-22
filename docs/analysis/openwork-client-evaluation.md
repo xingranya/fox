@@ -6,7 +6,7 @@
 
 Fox 已明确选择 OpenWork 作为公司唯一的员工桌面客户端。员工安装的是公司定制版 OpenWork，不再安装第二个 Brand Project OS 客户端；Brand Project OS 作为业务能力层集成在 OpenWork 内或由 OpenWork 调用。完整决策见 [ADR-0004](../adr/0004-openwork-single-client.md)。
 
-`OW-L0` 已有条件通过：固定稳定版可以完成社区依赖安装、桌面与 sidecar 构建，不要求 `ee/**` 或 Den 编译依赖。上游默认包含的遥测、Den/Cloud、模型目录、更新源和宽松网络权限已由 F1.9 收口；当前从 F1.10 起按授权清单接入真实鸿日资料。完整证据见 [OW-L0 技术选型记录](../phase1/openwork-ow-l0-evaluation.md)。
+`OW-L0` 已有条件通过：固定稳定版可以完成社区依赖安装、桌面与 sidecar 构建，不要求 `ee/**` 或 Den 编译依赖。上游默认包含的遥测、Den/Cloud、模型目录、更新源和宽松网络权限已由 F1.9 收口；F1.10 已按授权清单接入真实鸿日资料并通过桌面验收。完整证据见 [OW-L0 技术选型记录](../phase1/openwork-ow-l0-evaluation.md)。
 
 | 项 | CURRENT 判断 |
 |:---|:---|

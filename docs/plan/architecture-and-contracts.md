@@ -2,7 +2,7 @@
 
 > 当前生效路线：公司定制 OpenWork 唯一员工客户端 + Brand Project OS Service<br>
 > 权威决策：[ADR-0005](../adr/0005-single-client-server-authority.md)<br>
-> Phase 1：本地 SQLite 纵切；Phase 2-4：服务器权威、联网客户端和团队试点
+> Phase 1：本地 SQLite 纵切，已完成；当前 F2.1；Phase 2-4：服务器权威、联网客户端和团队试点
 
 ## 架构结论
 

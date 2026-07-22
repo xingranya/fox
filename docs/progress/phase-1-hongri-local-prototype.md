@@ -1,7 +1,7 @@
 # Phase 1：单一客户端本地纵向切片
 
 **目标**：让 Fox 在公司定制 OpenWork 中完成资料、会议变化、当前状态、AI 工作、Proposal、人工确认和证据回查，并冻结服务器迁移基线。
-**状态**：进行中
+**状态**：已完成
 **任务数**：10
 **自适应阈值**：标注 2 / 重计划 4 / 重定范围 6
 
@@ -88,27 +88,27 @@
   - 验收：员工只安装一个公司定制 OpenWork；OpenCode Runtime/Sidecar 随包；默认无上游遥测、Cloud、模型目录、更新和宽松外联；不另做第二个客户端。
   - 备注：2026-07-22 完成。正式 fork 的 `brand-os/f1.9-offline-shell` 用 9 个独立提交完成默认关闭遥测、Den/Cloud、模型目录和更新，统一公司工作名、Bundle ID、深链和数据目录，收紧 Electron Sandbox、IPC、导航、外链、权限、网络与打包边界，并移除核心离线界面的外部图标 CDN。`Brand Project OS.app` 构建成功；8 帧 fraimz 全部通过，实际包无 PostHog Key、未包含鸿日资料，旧上游地址只用于迁移识别且默认配置为空、网络策略不放行。App 370 项通过；Desktop 100 项通过、1 项平台条件跳过；App、Desktop、Server、Orchestrator 类型检查通过。最终提交 `7cf9b229` 已推送。内部包尚未签名和公证，不能向员工分发；签名分发仍由 F4.8 验收。实际工作量 L，SUPER 10/10，发现外部图标 CDN 这一项未计划依赖，任务漂移 1，Phase 1 累计漂移 3。详见 [OW-L0 技术选型记录](../phase1/openwork-ow-l0-evaluation.md)。
 
-- [ ] **F1.10：接入鸿日业务纵切并通过 fraimz、黄金集和本地 E2E**
+- [x] **F1.10：接入鸿日业务纵切并通过 fraimz、黄金集和本地 E2E**
   - 优先级 / 工作量 / Lane：P0 / XL / E
   - 依赖：F1.1-F1.9
   - S.U.P.E.R：全部
   - 测试期望：fraimz 桌面流程、当前/证据/Proposal/模式/AI 工作、空错加载、10-20 黄金用例、冷启动、多模型、恢复和安装烟测。
   - 治理影响：记录迁移前版本、水位、已知限制和进入服务器阶段的门。
   - 验收：Fox 在唯一客户端完成八旅程；一票否决为 0；回源和恢复完整；形成 SQLite 到服务器的可校验迁移基线。
-  - 备注：自适应提醒：Phase 1 累计漂移 3，已达到标注阈值 2、未达到重计划阈值 4。F1.10 按 XL 复杂度执行，先接只读旅程，再逐步开放 Proposal 与人工确认，不扩大当前范围。
+  - 备注：2026-07-22 完成。公司定制 OpenWork 已接入项目总览、当前状态、证据、Proposal、Task Packet 和 AI 任务入口；Proposal 业务确认继续走独立 Electron IPC 和人工确认框，未与 Tool Permission 混用。最终验收使用 Codex/ChatGPT 内置 macOS 控制检查真实 Electron 窗口，12 帧 fraimz 和 12 段旁白全部通过，0 失败、0 跳过。Fox 159 项及 5 组子测试、OpenWork App 370 项、F1.10 共置契约 6 项、Desktop 105 项通过且 1 项平台条件跳过，App 与 Electron 类型检查通过。9 个当前来源与 Manifest 的 SHA-256 一致；5 个资料缺口、2 个已批准 Proposal、1 个已驳回 Proposal、2 个待确认 Proposal、2 条正式状态、1 个 Runtime Task 和 1 个 Task Packet 均可对账。权威数据库 SHA-256 仍为 `cd9ff29827e7bec2fb3db50c54958ada89c76705fc1df6ab7e549251ed7801e3`。fraimz 报告位于 OpenWork fork 的 `evals/results/2026-07-22T14-40-43-230Z/report.md`。内部包尚未签名和公证，不能向员工分发。实际工作量 XL，SUPER 10/10；初始草稿未消费、加载态截图竞态是 2 项未计划依赖，任务漂移 1，Phase 1 最终漂移 4。阶段已完成，不重开已通过范围；相关约束带入 F2.1。
 
 ## 阶段备注
 
 - SQLite 是迁移前的验证权威。Phase 3 切换后退出正式写入，不形成双主。
-- PostgreSQL、对象存储、OIDC 和外部组件已进入后续批准路线，但不得反向成为 F1.9/F1.10 的运行前置。
+- PostgreSQL、对象存储、OIDC 和外部组件已进入后续批准路线。它们不是 Phase 1 的补验条件，从 F2.1 起按服务器 SPEC 逐项实现。
 - 员工界面只在公司定制 OpenWork 中实现；不新增 Web/PWA 或第二个桌面壳。
 
 ## 完成检查
 
-- [ ] 所有任务先记录执行遥测，再标记完成。
-- [ ] 八条黄金旅程均有可复核结果。
-- [ ] 七项一票否决为 0。
-- [ ] 本地备份恢复与多模型切换通过。
-- [ ] 本地 E2E 与安装烟测有可复核证据。
-- [ ] Fox 已确认可进入服务器权威基础阶段。
-- [ ] `docs/progress/MASTER.md` 已更新为 Phase 2：服务器权威基础。
+- [x] 所有任务先记录执行遥测，再标记完成。
+- [x] 八条黄金旅程均有可复核结果。
+- [x] 七项一票否决为 0。
+- [x] 本地备份恢复与多模型切换通过。
+- [x] 本地 E2E 与安装烟测有可复核证据。
+- [x] Fox 已确认可进入服务器权威基础阶段。
+- [x] `docs/progress/MASTER.md` 已更新为 Phase 2：服务器权威基础。

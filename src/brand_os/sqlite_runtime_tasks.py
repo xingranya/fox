@@ -236,6 +236,24 @@ class SQLiteRuntimeTaskMixin(SQLiteRuntimeBaseMixin):
         finally:
             connection.close()
 
+    def list_runtime_tasks(self, project_id: str) -> list[Mapping[str, object]]:
+        """读取由 Fox 登记的任务及其当前角色和工作模式。"""
+
+        with self._connect() as connection:
+            rows = connection.execute(
+                """
+                SELECT * FROM runtime_tasks
+                WHERE project_id = ? ORDER BY updated_at DESC, task_id
+                """,
+                (project_id,),
+            ).fetchall()
+        tasks: list[Mapping[str, object]] = []
+        for row in rows:
+            value = dict(row)
+            value["spec"] = json.loads(value.pop("spec_json"))
+            tasks.append(value)
+        return tasks
+
     def list_runtime_mode_switches(
         self, project_id: str, task_id: str
     ) -> Sequence[Mapping[str, object]]:

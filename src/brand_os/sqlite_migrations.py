@@ -883,6 +883,16 @@ def apply_migrations(
             continue
         connection.execute("BEGIN IMMEDIATE")
         try:
+            current = connection.execute(
+                "SELECT checksum FROM schema_migrations WHERE version = ?",
+                (migration.version,),
+            ).fetchone()
+            if current is not None:
+                if current[0] != migration.checksum:
+                    raise RuntimeError(f"迁移 {migration.version} 校验和发生变化")
+                connection.execute("COMMIT")
+                applied[migration.version] = current[0]
+                continue
             for statement in migration.statements:
                 connection.execute(statement)
             connection.execute(
@@ -890,6 +900,7 @@ def apply_migrations(
                 (migration.version, migration.name, migration.checksum, datetime.now(UTC).isoformat()),
             )
             connection.execute("COMMIT")
+            applied[migration.version] = migration.checksum
         except Exception:
             connection.execute("ROLLBACK")
             raise

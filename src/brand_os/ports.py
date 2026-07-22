@@ -50,6 +50,8 @@ class CanonicalStorePort(Protocol):
 
     def get_project_version(self, project_id: str) -> int: ...
 
+    def get_project(self, project_id: str) -> Mapping[str, object]: ...
+
     def get_current_state(self, project_id: str) -> Sequence[Mapping[str, object]]: ...
 
     def list_proposals(
@@ -181,6 +183,14 @@ class TaskPacketPort(Protocol):
     ) -> Mapping[str, object]: ...
 
     def get_task_packet(self, project_id: str, packet_id: str) -> Mapping[str, object]: ...
+
+    def list_runtime_tasks(
+        self, project_id: str
+    ) -> Sequence[Mapping[str, object]]: ...
+
+    def list_task_packets(
+        self, project_id: str
+    ) -> Sequence[Mapping[str, object]]: ...
 
     def get_task_packet_layer(
         self, project_id: str, packet_id: str, layer: str
