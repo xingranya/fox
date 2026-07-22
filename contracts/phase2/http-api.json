@@ -1,0 +1,66 @@
+{
+  "schema_version": "http-api.v1",
+  "openapi_version": "3.1.0",
+  "major_version": 1,
+  "minimum_supported_major": 1,
+  "compatibility_window": {
+    "breaking_change_requires_new_major": true,
+    "minor_additive_changes_allowed": true,
+    "retired_major_response": 410,
+    "v1_supported_until": "下一主版本发布后至少 90 天，具体日期由发布记录确认"
+  },
+  "health_paths": ["/livez", "/readyz"],
+  "openapi_path": "/openapi.json",
+  "employee_prefix": "/api/v1/employee",
+  "agent_prefix": "/api/v1/agent",
+  "routes": [
+    {"method": "POST", "path": "/api/v1/employee/auth/login", "surface": "employee_public", "auth": "none"},
+    {"method": "GET", "path": "/api/v1/employee/auth/callback", "surface": "employee_public", "auth": "none"},
+    {"method": "POST", "path": "/api/v1/employee/auth/refresh", "surface": "employee", "auth": "employee_session"},
+    {"method": "POST", "path": "/api/v1/employee/auth/logout", "surface": "employee", "auth": "employee_session"},
+    {"method": "GET", "path": "/api/v1/employee/me", "surface": "employee", "auth": "employee_session"},
+    {"method": "GET", "path": "/api/v1/employee/projects/{project_id}", "surface": "employee", "auth": "employee_session", "action": "PROJECT_READ"},
+    {"method": "GET", "path": "/api/v1/employee/projects/{project_id}/state", "surface": "employee", "auth": "employee_session", "action": "PROJECT_READ", "pagination": true},
+    {"method": "GET", "path": "/api/v1/employee/projects/{project_id}/proposals", "surface": "employee", "auth": "employee_session", "action": "PROJECT_READ", "pagination": true},
+    {"method": "GET", "path": "/api/v1/employee/projects/{project_id}/proposals/{proposal_id}", "surface": "employee", "auth": "employee_session", "action": "PROJECT_READ"},
+    {"method": "POST", "path": "/api/v1/employee/projects/{project_id}/proposals", "surface": "employee", "auth": "employee_session", "action": "PROPOSAL_CREATE", "write": true},
+    {"method": "POST", "path": "/api/v1/employee/projects/{project_id}/proposals/{proposal_id}/review", "surface": "employee", "auth": "employee_session", "action": "PROPOSAL_REVIEW", "write": true},
+    {"method": "GET", "path": "/api/v1/employee/projects/{project_id}/evidence", "surface": "employee", "auth": "employee_session", "action": "EVIDENCE_READ"},
+    {"method": "POST", "path": "/api/v1/employee/projects/{project_id}/evidence/uploads", "surface": "employee", "auth": "employee_session", "action": "EVIDENCE_WRITE", "write": true},
+    {"method": "PUT", "path": "/api/v1/employee/projects/{project_id}/evidence/uploads/{upload_id}/content", "surface": "employee", "auth": "employee_session", "action": "EVIDENCE_WRITE", "write": true},
+    {"method": "GET", "path": "/api/v1/employee/projects/{project_id}/evidence/versions/{version_id}/content", "surface": "employee", "auth": "employee_session", "action": "EVIDENCE_READ"},
+    {"method": "GET", "path": "/api/v1/employee/projects/{project_id}/tasks/{packet_id}", "surface": "employee", "auth": "employee_session", "action": "TASK_READ"},
+    {"method": "GET", "path": "/api/v1/agent/projects/{project_id}/state", "surface": "agent", "auth": "agent_bearer", "action": "PROJECT_READ", "pagination": true},
+    {"method": "GET", "path": "/api/v1/agent/projects/{project_id}/proposals", "surface": "agent", "auth": "agent_bearer", "action": "PROJECT_READ", "pagination": true},
+    {"method": "GET", "path": "/api/v1/agent/projects/{project_id}/proposals/{proposal_id}", "surface": "agent", "auth": "agent_bearer", "action": "PROJECT_READ"},
+    {"method": "POST", "path": "/api/v1/agent/projects/{project_id}/proposals", "surface": "agent", "auth": "agent_bearer", "action": "PROPOSAL_CREATE", "write": true},
+    {"method": "GET", "path": "/api/v1/agent/projects/{project_id}/evidence", "surface": "agent", "auth": "agent_bearer", "action": "EVIDENCE_READ"},
+    {"method": "GET", "path": "/api/v1/agent/projects/{project_id}/tasks/{packet_id}", "surface": "agent", "auth": "agent_bearer", "action": "TASK_READ"}
+  ],
+  "error_statuses": {
+    "400": "请求格式、游标或前置版本不正确",
+    "401": "缺少或无效的身份凭据",
+    "403": "身份有效但没有项目动作权限",
+    "404": "项目、Proposal、证据或 Packet 不存在",
+    "409": "正式写冲突或游标对应的状态版本已变化",
+    "422": "请求字段未通过 Schema 校验",
+    "429": "超过当前入口限流",
+    "503": "核心依赖未就绪或可选适配器未提供"
+  },
+  "limits": {
+    "employee_public_per_minute": 20,
+    "employee_per_minute": 120,
+    "agent_per_minute": 60
+  },
+  "security": {
+    "employee_session_is_opaque": true,
+    "agent_cannot_review": true,
+    "client_cannot_access_postgresql_or_s3": true,
+    "remote_mcp_oauth_deferred_to": "F3.6"
+  },
+  "deferred": [
+    "remote_mcp_oauth_and_mcp_command_identity",
+    "distributed_rate_limit_store",
+    "metrics_tracing_and_alerting"
+  ]
+}

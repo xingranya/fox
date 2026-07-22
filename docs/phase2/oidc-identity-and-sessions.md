@@ -4,7 +4,7 @@
 
 服务器已经具备可运行的员工身份链路：使用 OIDC Authorization Code 与 S256 PKCE 登录，只允许预登记的 `(issuer, subject)` 绑定建立员工会话，再由有效会话生成 `HUMAN` 命令身份。邮箱、显示名和模型会话都不能自动创建员工或代替身份绑定。
 
-本轮使用假的 OIDC 传输与签名密钥、临时 PostgreSQL 17 和测试员工完成验证。没有连接公司 OIDC，没有读取、上传或迁移鸿日、鸿喜达正式资料，也没有实现 F2.5 的项目 RBAC/RLS。
+本轮使用假的 OIDC 传输与签名密钥、临时 PostgreSQL 17 和测试员工完成验证。没有连接公司 OIDC，没有读取、上传或迁移鸿日、鸿喜达正式资料，也没有实现 F2.5 的项目 RBAC/RLS。F2.8 已在本轮之后完成版本化 HTTP/OpenAPI 入口；OpenWork 的登录界面仍待 F3.2。
 
 机器契约为 `contracts/phase2/oidc-identity.json`。主要实现：
 
@@ -98,7 +98,7 @@ Phase 2 共 `74 passed, 11 subtests passed`；完整回归为 `233 passed, 16 su
 ## 后续边界
 
 - F2.5 在当前交互式员工身份之上增加项目 RBAC、保密级别和 RLS。
-- F2.8 才发布浏览器回调、登录、刷新和撤销的 HTTP/OpenAPI 路由。
+- F2.8 已完成浏览器回调、登录、刷新和撤销的版本化 HTTP/OpenAPI 路由，详见 [F2.8 HTTP API 与 OpenAPI](http-api-and-openapi.md)。
 - F3.2 才把 OpenWork 登录界面、系统钥匙串和项目选择接到服务器。
 - F4.6 使用公司真实身份平台验证 MFA、离职撤权、跨项目越权和日志脱敏。
 - BISHENG 仍是当前 49 项完成后的候选，只能复用受控服务身份或 MCP/API，不能持有员工会话或取得人工批准权。

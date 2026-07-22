@@ -1,7 +1,7 @@
 # Phase 2：服务器权威基础
 
 **目标**：建立公司服务器上的唯一正式写入面，以及身份、权限、一致性、审计和恢复能力。
-**状态**：进行中，当前任务 F2.8
+**状态**：进行中，8/10，当前任务 F2.9
 **任务数**：10
 **自适应阈值**：标注 2 / 重计划 4 / 重定范围 6
 
@@ -50,10 +50,11 @@
   - 验收：事件、审批、投影、审计和 Outbox 同事务；消费者不能直写正式表。
   - 完成记录：新增 `audit-outbox.v1`、PostgreSQL v10、追加式事件审计、按消费者 Outbox、`FOR UPDATE SKIP LOCKED` 租约、同聚合版本顺序、Inbox 去重、重试、可审计死信、死信重放和 `grant_outbox_worker_role`。消费者不写 `projects`、`events`、`proposals`、`human_actions` 或 `state_items`；正式状态查询不依赖消费者运行。专项 7 项、Phase 2 全量 101 项及 14 组子测试、完整回归 260 项及 19 组子测试通过；未启动常驻 Worker，未读取或迁移鸿日/鸿喜达资料。详见 [F2.7 审计、Outbox/Inbox 和后台任务](../phase2/audit-outbox-inbox.md)。
 
-- [ ] **F2.8：发布版本化 HTTP API 与 OpenAPI 契约**
+- [x] **F2.8：发布版本化 HTTP API 与 OpenAPI 契约**
   - P0 / L / Lane D；依赖 F2.3-F2.7；S.U.P.E.R：S、P、E、R。
   - 测试：契约、鉴权、分页、错误码、兼容窗口和限流。
   - 验收：Desktop 只调 API；人工路由与 Agent 路由分离；客户端不直连存储。
+  - 完成记录：新增 `http-api.v1`、`http-error.v1`、OpenAPI 3.1 文档和可嵌入 ASGI 应用。Employee API 复用 OIDC 会话和人工命令身份，Agent API 只开放读取、证据回源、Task Packet 和 Proposal 创建，没有人工评审路由；正式写强制 `Idempotency-Key`/`If-Match` 并复用 F2.6 的 201/200/409 语义。HMAC 游标绑定项目状态版本，统一错误体覆盖 400/401/403/404/409/422/429/503；客户端没有 PostgreSQL/S3 直连能力。专项 11 项、完整回归 271 项及 19 组子测试通过；未启动常驻 Web，未连接公司 OIDC 或正式资料。
 
 - [ ] **F2.9：建立日志、指标、追踪、健康和告警**
   - P1 / M / Lane D；依赖 F2.7-F2.8；S.U.P.E.R：S、E、R。
@@ -135,3 +136,11 @@
 | L | L | 0 | 10/10 | +1 | 0 | 0 |
 
 实现没有新增生产依赖；新增 PostgreSQL v10 和独立 `PostgreSQLOutboxMixin`，领域核心仍通过现有事件端口单向写入。Worker 只拥有运行表权限，不能写正式业务表；生产 Worker、指标/告警和 HTTP 路由分别留给 F2.8-F2.9。Phase 2 累计漂移保持 3，未触发重计划阈值；当前进入 F2.8。
+
+### F2.8 遥测
+
+| 估算 | 实际 | 工期差 | SUPER 分数 | SUPER 变化 | 未计划依赖 | 任务漂移 |
+|:---|:---|---:|:---:|:---:|---:|---:|
+| L | L | 0 | 10/10 | +1 | 1 | 1 |
+
+实现新增直接生产依赖 Starlette，并将 HTTPX 固定为测试依赖；依赖已有 MCP 间接提供的 ASGI 生态，但为避免隐式依赖将 Starlette/HTTPX 显式写入项目配置。OpenAPI、Employee/Agent 分路、限流、分页、错误映射和兼容窗口均在进程内测试验证，未启动常驻服务。Phase 2 累计漂移为 4，达到重计划阈值；本次漂移来自 Web 适配器依赖和错误/游标契约扩展，不改变 F2.9-F2.10 顺序，后续需在 F2.9 明确多副本限流与可观测性落地边界。

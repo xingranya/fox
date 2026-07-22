@@ -11,6 +11,14 @@ from .authorization import (
 )
 from .consistency import ConflictCode, WriteConsistencyService, WriteOutcome
 from .identity import InteractiveEmployeePrincipal, OidcIdentityService
+from .http_api import (
+    HTTP_API_CONTRACT,
+    HTTP_API_SCHEMA_VERSION,
+    HttpApplicationDependencies,
+    InMemoryRateLimiter,
+    build_http_app,
+    build_openapi_document,
+)
 from .oidc_provider import OidcProviderAdapter
 from .postgresql_identity import PostgreSQLIdentityRepository
 from .postgresql_authorization import PostgreSQLProjectAuthorizationRepository
@@ -32,6 +40,10 @@ __all__ = [
     "ConflictCode",
     "FernetSecretCipher",
     "InteractiveEmployeePrincipal",
+    "HTTP_API_CONTRACT",
+    "HTTP_API_SCHEMA_VERSION",
+    "HttpApplicationDependencies",
+    "InMemoryRateLimiter",
     "OidcIdentityService",
     "OidcProviderAdapter",
     "PrincipalKind",
@@ -50,6 +62,8 @@ __all__ = [
     "SERVER_BOUNDARY",
     "build_liveness_report",
     "build_readiness_report",
+    "build_http_app",
+    "build_openapi_document",
     "initialize_workspace",
     "load_server_settings",
     "load_workspace_settings",

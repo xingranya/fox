@@ -1,7 +1,7 @@
 # 团队服务器架构
 
 > 状态：已批准，按 Phase 2-4 分阶段实施<br>
-> 当前进度：F2.1-F2.7 已通过，当前执行 F2.8 HTTP API 与 OpenAPI 契约<br>
+> 当前进度：F2.1-F2.8 已通过，当前执行 F2.9 日志、指标、追踪、健康和告警<br>
 > 当前生效决策：[ADR-0005：单一客户端与服务器权威服务](../adr/0005-single-client-server-authority.md)
 
 F2.1 已完成配置优先级、秘密注入、服务器组件职责和健康报告基线。F2.2 已完成 PostgreSQL v1-v6 权威存储，F2.3 已完成 PostgreSQL v7 对象元数据与 S3 原件准入，F2.4 已完成 PostgreSQL v8 员工绑定、OIDC 协议校验和加密会话，F2.5 已完成 PostgreSQL v9 项目授权与强制 RLS，F2.6 已完成幂等重放、乐观版本和可复核冲突差异，F2.7 已完成 PostgreSQL v10 审计、Outbox/Inbox、死信和 Worker 权限边界。各项均通过一次性 PostgreSQL 17 验证。当前仍不启动常驻服务，不执行公司 S3/OIDC 初始化，也不迁移鸿日正式数据。

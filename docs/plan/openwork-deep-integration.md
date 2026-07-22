@@ -1,6 +1,6 @@
 # 公司定制版 OpenWork 单一客户端集成计划
 
-> 状态：Phase 1 客户端纵切和 F2.1-F2.7 已通过，当前执行 F2.8<br>
+> 状态：Phase 1 客户端纵切和 F2.1-F2.8 已通过，当前执行 F2.9<br>
 > 当前目标：保留公司定制 OpenWork 这一唯一员工客户端，继续完成服务器权限和联网契约<br>
 > 单一安装：OpenCode Runtime、Sidecar 和本机桥接随 OpenWork 安装包分发<br>
 > 后续连接：公司服务器上的 Brand Project OS API、MCP Gateway 和 Skills<br>

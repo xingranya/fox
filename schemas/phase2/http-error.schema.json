@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://brand-project-os.invalid/schemas/phase2/http-error.v1.json",
+  "title": "Brand Project OS HTTP Error",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "code", "message", "request_id", "retryable", "details"],
+  "properties": {
+    "schema_version": {"const": "http-error.v1"},
+    "code": {"type": "string", "minLength": 1},
+    "message": {"type": "string", "minLength": 1},
+    "request_id": {"type": "string", "minLength": 1},
+    "retryable": {"type": "boolean"},
+    "details": {"type": "object", "additionalProperties": true}
+  }
+}
