@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Mapping, Protocol, Sequence
 
 from .domain import (
+    Actor,
     ClassificationCandidate,
     CommandContext,
     CommandResult,
@@ -17,6 +18,7 @@ from .domain import (
     SourceRecord,
     SourceImportBatch,
 )
+from .task_packets import AgentRunRequest, RuntimeTaskDefinition, WorkModeSwitch
 
 
 class CanonicalStorePort(Protocol):
@@ -137,3 +139,48 @@ class EvidenceQueryPort(Protocol):
         as_of: str | None = None,
         include_inactive: bool = False,
     ) -> Sequence[Mapping[str, object]]: ...
+
+
+class TaskPacketPort(Protocol):
+    """任务定义、分层上下文、人工模式切换和运行留痕端口。"""
+
+    def register_runtime_task(
+        self,
+        project_id: str,
+        actor: Actor,
+        task: RuntimeTaskDefinition,
+        *,
+        idempotency_key: str,
+    ) -> Mapping[str, object]: ...
+
+    def switch_work_mode(
+        self,
+        project_id: str,
+        actor: Actor,
+        switch: WorkModeSwitch,
+        *,
+        idempotency_key: str,
+    ) -> Mapping[str, object]: ...
+
+    def build_task_packet(
+        self,
+        project_id: str,
+        task_id: str,
+        actor: Actor,
+        *,
+        expected_state_version: int | None = None,
+    ) -> Mapping[str, object]: ...
+
+    def get_task_packet(self, project_id: str, packet_id: str) -> Mapping[str, object]: ...
+
+    def get_task_packet_layer(
+        self, project_id: str, packet_id: str, layer: str
+    ) -> Mapping[str, object]: ...
+
+    def validate_task_packet(self, project_id: str, packet_id: str) -> Mapping[str, object]: ...
+
+    def record_agent_run(
+        self, project_id: str, actor: Actor, request: AgentRunRequest
+    ) -> Mapping[str, object]: ...
+
+    def get_agent_run(self, project_id: str, run_id: str) -> Mapping[str, object]: ...

@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://brand-os.local/schema/runtime-mode-switch.v2.json",
+  "title": "运行时工作模式人工切换事件 v2",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "event_id",
+    "project_id",
+    "task_id",
+    "from_mode",
+    "to_mode",
+    "initiated_by",
+    "initiator_type",
+    "reason",
+    "task_scope",
+    "base_state_version",
+    "from_task_revision",
+    "to_task_revision",
+    "occurred_at"
+  ],
+  "properties": {
+    "schema_version": {"const": "runtime-mode-switch.v2"},
+    "event_id": {"type": "string", "minLength": 1},
+    "project_id": {"type": "string", "minLength": 1},
+    "task_id": {"type": "string", "minLength": 1},
+    "from_mode": {"$ref": "#/$defs/workMode"},
+    "to_mode": {"$ref": "#/$defs/workMode"},
+    "initiated_by": {"const": "Fox"},
+    "initiator_type": {"const": "HUMAN"},
+    "reason": {"type": "string", "minLength": 1},
+    "task_scope": {"type": "string", "minLength": 1},
+    "base_state_version": {"type": "integer", "minimum": 0},
+    "from_task_revision": {"type": "integer", "minimum": 1},
+    "to_task_revision": {"type": "integer", "minimum": 2},
+    "suggested_by_runtime": {"type": ["string", "null"]},
+    "occurred_at": {"type": "string", "format": "date-time"}
+  },
+  "allOf": [
+    {"not": {"properties": {"from_mode": {"const": "EXPLORATION"}, "to_mode": {"const": "EXPLORATION"}}, "required": ["from_mode", "to_mode"]}},
+    {"not": {"properties": {"from_mode": {"const": "EVALUATION"}, "to_mode": {"const": "EVALUATION"}}, "required": ["from_mode", "to_mode"]}},
+    {"not": {"properties": {"from_mode": {"const": "DECISION"}, "to_mode": {"const": "DECISION"}}, "required": ["from_mode", "to_mode"]}},
+    {"not": {"properties": {"from_mode": {"const": "EXECUTION"}, "to_mode": {"const": "EXECUTION"}}, "required": ["from_mode", "to_mode"]}}
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "workMode": {"enum": ["EXPLORATION", "EVALUATION", "DECISION", "EXECUTION"]}
+  }
+}

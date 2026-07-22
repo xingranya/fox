@@ -169,6 +169,10 @@ AI 不直接读取“全部项目”。Task Packet 按需分层：
 
 Task Packet 的摘要不能成为新事实；模型如需依赖摘要中的结论，必须打开对应证据或批准事件。
 
+当前本地实现使用 `task-packet.v2`。Fox 先登记任务角色、工作模式和显式上下文引用，装配器再读取当前状态。过期、被替代、尚未生效或不存在的引用不会进入正文，而会变成可见缺口。AI 可以建议切换模式，但只有 Fox 能写入 `runtime-mode-switch.v2`；切换后生成新 Packet，旧 Packet 保持不变。Phase 0 的 v1 Schema 继续保留用于历史追溯，不作为当前写入格式。
+
+每次运行写入 `runtime-run.v1`，固定 Task Packet 哈希、状态版本、任务版本、角色、模式、协议、运行时和模型版本。运行请求不能覆盖 Packet 里的角色或模式。
+
 ## Proposal 与证据契约
 
 ### 最小 Proposal

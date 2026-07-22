@@ -726,6 +726,128 @@ MIGRATIONS = (
             "CREATE INDEX idx_proposals_project_classification ON proposals(project_id, classification, created_at)",
         ),
     ),
+    Migration(
+        7,
+        "task_packets_and_agent_run_audit",
+        (
+            """
+            CREATE TABLE runtime_commands (
+                project_id TEXT NOT NULL,
+                actor_kind TEXT NOT NULL CHECK(actor_kind IN ('HUMAN','AI','WORKFLOW','SYSTEM')),
+                actor_id TEXT NOT NULL CHECK(length(actor_id) > 0),
+                command_name TEXT NOT NULL CHECK(length(command_name) > 0),
+                idempotency_key TEXT NOT NULL CHECK(length(idempotency_key) > 0),
+                request_hash TEXT NOT NULL CHECK(length(request_hash) = 64),
+                result_json TEXT NOT NULL,
+                committed_at TEXT NOT NULL,
+                PRIMARY KEY(project_id, actor_kind, actor_id, command_name, idempotency_key),
+                FOREIGN KEY(project_id) REFERENCES projects(project_id) ON DELETE RESTRICT
+            )
+            """,
+            """
+            CREATE TABLE runtime_tasks (
+                project_id TEXT NOT NULL,
+                task_id TEXT NOT NULL CHECK(length(task_id) > 0),
+                task_revision INTEGER NOT NULL DEFAULT 1 CHECK(task_revision > 0),
+                role TEXT NOT NULL CHECK(role IN (
+                    'BRAND_STRATEGIST','BRAND_RESEARCHER','CREATIVE_PARTNER','EXECUTION_PARTNER'
+                )),
+                work_mode TEXT NOT NULL CHECK(work_mode IN (
+                    'EXPLORATION','EVALUATION','DECISION','EXECUTION'
+                )),
+                spec_json TEXT NOT NULL,
+                spec_hash TEXT NOT NULL CHECK(length(spec_hash) = 64),
+                created_by TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                updated_by TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                PRIMARY KEY(project_id, task_id),
+                FOREIGN KEY(project_id) REFERENCES projects(project_id) ON DELETE RESTRICT
+            )
+            """,
+            """
+            CREATE TABLE runtime_mode_switches (
+                event_id TEXT PRIMARY KEY,
+                schema_version TEXT NOT NULL CHECK(schema_version = 'runtime-mode-switch.v2'),
+                project_id TEXT NOT NULL,
+                task_id TEXT NOT NULL,
+                from_mode TEXT NOT NULL CHECK(from_mode IN (
+                    'EXPLORATION','EVALUATION','DECISION','EXECUTION'
+                )),
+                to_mode TEXT NOT NULL CHECK(to_mode IN (
+                    'EXPLORATION','EVALUATION','DECISION','EXECUTION'
+                )),
+                initiated_by TEXT NOT NULL CHECK(initiated_by = 'Fox'),
+                initiator_type TEXT NOT NULL CHECK(initiator_type = 'HUMAN'),
+                reason TEXT NOT NULL CHECK(length(reason) > 0),
+                task_scope TEXT NOT NULL CHECK(length(task_scope) > 0),
+                base_state_version INTEGER NOT NULL CHECK(base_state_version >= 0),
+                from_task_revision INTEGER NOT NULL CHECK(from_task_revision > 0),
+                to_task_revision INTEGER NOT NULL CHECK(to_task_revision > from_task_revision),
+                suggested_by_runtime TEXT,
+                occurred_at TEXT NOT NULL,
+                UNIQUE(project_id, task_id, to_task_revision),
+                FOREIGN KEY(project_id, task_id)
+                    REFERENCES runtime_tasks(project_id, task_id) ON DELETE RESTRICT
+            )
+            """,
+            """
+            CREATE TABLE task_packets (
+                packet_id TEXT PRIMARY KEY,
+                project_id TEXT NOT NULL,
+                task_id TEXT NOT NULL,
+                packet_version INTEGER NOT NULL CHECK(packet_version > 0),
+                task_revision INTEGER NOT NULL CHECK(task_revision > 0),
+                base_state_version INTEGER NOT NULL CHECK(base_state_version >= 0),
+                schema_version TEXT NOT NULL CHECK(schema_version = 'task-packet.v2'),
+                assembly_policy_version TEXT NOT NULL,
+                fingerprint TEXT NOT NULL CHECK(length(fingerprint) = 64),
+                content_hash TEXT NOT NULL CHECK(length(content_hash) = 64),
+                content_json TEXT NOT NULL,
+                generated_by_kind TEXT NOT NULL CHECK(generated_by_kind IN ('HUMAN','WORKFLOW','SYSTEM')),
+                generated_by_id TEXT NOT NULL,
+                generated_at TEXT NOT NULL,
+                UNIQUE(project_id, task_id, packet_version),
+                UNIQUE(project_id, task_id, fingerprint),
+                FOREIGN KEY(project_id, task_id)
+                    REFERENCES runtime_tasks(project_id, task_id) ON DELETE RESTRICT
+            )
+            """,
+            """
+            CREATE TABLE agent_runs (
+                run_id TEXT PRIMARY KEY,
+                schema_version TEXT NOT NULL CHECK(schema_version = 'runtime-run.v1'),
+                project_id TEXT NOT NULL,
+                task_id TEXT NOT NULL,
+                packet_id TEXT NOT NULL,
+                packet_hash TEXT NOT NULL CHECK(length(packet_hash) = 64),
+                packet_version INTEGER NOT NULL CHECK(packet_version > 0),
+                task_revision INTEGER NOT NULL CHECK(task_revision > 0),
+                base_state_version INTEGER NOT NULL CHECK(base_state_version >= 0),
+                role TEXT NOT NULL,
+                work_mode TEXT NOT NULL,
+                protocol_versions_json TEXT NOT NULL,
+                runtime_id TEXT NOT NULL,
+                runtime_version TEXT NOT NULL,
+                model_id TEXT NOT NULL,
+                model_version TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'created' CHECK(status = 'created'),
+                started_by_kind TEXT NOT NULL CHECK(started_by_kind IN ('HUMAN','WORKFLOW','SYSTEM')),
+                started_by_id TEXT NOT NULL,
+                idempotency_key TEXT NOT NULL,
+                request_hash TEXT NOT NULL CHECK(length(request_hash) = 64),
+                started_at TEXT NOT NULL,
+                UNIQUE(project_id, runtime_id, idempotency_key),
+                FOREIGN KEY(packet_id) REFERENCES task_packets(packet_id) ON DELETE RESTRICT,
+                FOREIGN KEY(project_id, task_id)
+                    REFERENCES runtime_tasks(project_id, task_id) ON DELETE RESTRICT
+            )
+            """,
+            "CREATE INDEX idx_runtime_tasks_mode ON runtime_tasks(project_id, work_mode, updated_at)",
+            "CREATE INDEX idx_task_packets_task ON task_packets(project_id, task_id, packet_version)",
+            "CREATE INDEX idx_agent_runs_task ON agent_runs(project_id, task_id, started_at)",
+        ),
+    ),
 )
 
 

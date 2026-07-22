@@ -15,6 +15,13 @@ PROPOSAL_LIFECYCLE_CONTRACT_PATH = (
     ROOT / "contracts" / "phase1" / "proposal-lifecycle.json"
 )
 EVIDENCE_QUERY_CONTRACT_PATH = ROOT / "contracts" / "phase1" / "evidence-query.json"
+TASK_PACKET_CONTRACT_PATH = ROOT / "contracts" / "phase1" / "task-packet-assembly.json"
+AGENT_RUN_CONTRACT_PATH = ROOT / "contracts" / "phase1" / "agent-runtime-run.json"
+TASK_PACKET_SCHEMA_PATH = ROOT / "schemas" / "phase1" / "task-packet.schema.json"
+RUNTIME_MODE_SWITCH_SCHEMA_PATH = (
+    ROOT / "schemas" / "phase1" / "runtime-mode-switch.schema.json"
+)
+RUNTIME_RUN_SCHEMA_PATH = ROOT / "schemas" / "phase1" / "runtime-run.schema.json"
 
 
 class CanonicalStoreContractTest(unittest.TestCase):
@@ -35,9 +42,24 @@ class CanonicalStoreContractTest(unittest.TestCase):
         cls.evidence_query_contract = json.loads(
             EVIDENCE_QUERY_CONTRACT_PATH.read_text(encoding="utf-8")
         )
+        cls.task_packet_contract = json.loads(
+            TASK_PACKET_CONTRACT_PATH.read_text(encoding="utf-8")
+        )
+        cls.agent_run_contract = json.loads(
+            AGENT_RUN_CONTRACT_PATH.read_text(encoding="utf-8")
+        )
+        cls.task_packet_schema = json.loads(
+            TASK_PACKET_SCHEMA_PATH.read_text(encoding="utf-8")
+        )
+        cls.runtime_mode_switch_schema = json.loads(
+            RUNTIME_MODE_SWITCH_SCHEMA_PATH.read_text(encoding="utf-8")
+        )
+        cls.runtime_run_schema = json.loads(
+            RUNTIME_RUN_SCHEMA_PATH.read_text(encoding="utf-8")
+        )
 
     def test_contract_is_replaceable_and_versioned(self) -> None:
-        self.assertEqual(self.contract["schema_version"], "canonical-store-port.v5")
+        self.assertEqual(self.contract["schema_version"], "canonical-store-port.v6")
         self.assertTrue(self.contract["replaceable"])
         self.assertEqual(self.contract["current_implementation"], "sqlite")
 
@@ -85,7 +107,7 @@ class CanonicalStoreContractTest(unittest.TestCase):
             self.contract["proposal_lifecycle_rebuild_source"],
             "proposal events from configured human reviewers",
         )
-        self.assertEqual(self.contract["backup"]["schema_version"], "sqlite-backup.v5")
+        self.assertEqual(self.contract["backup"]["schema_version"], "sqlite-backup.v6")
 
     def test_evidence_queries_are_read_only_versioned_and_fail_closed(self) -> None:
         self.assertEqual(
@@ -119,6 +141,47 @@ class CanonicalStoreContractTest(unittest.TestCase):
         self.assertTrue(requirements["idempotency_key"])
         self.assertTrue(requirements["expected_version"])
         self.assertTrue(requirements["single_transaction_event_and_projection"])
+
+    def test_task_packet_and_agent_run_bind_mode_without_agent_authority(self) -> None:
+        self.assertEqual(
+            self.task_packet_contract["schema_version"], "task-packet-assembly.v1"
+        )
+        self.assertEqual(self.task_packet_contract["packet_schema"], "task-packet.v2")
+        self.assertEqual(
+            self.task_packet_contract["mode_switch_schema"],
+            "runtime-mode-switch.v2",
+        )
+        self.assertEqual(
+            self.task_packet_contract["authority"]["mode_switch"], "Fox"
+        )
+        self.assertFalse(
+            self.task_packet_contract["authority"]["runtime_may_apply_mode_switch"]
+        )
+        self.assertFalse(
+            self.task_packet_contract["context_policy"][
+                "historical_items_loaded_by_default"
+            ]
+        )
+        self.assertEqual(
+            self.task_packet_schema["properties"]["schema_version"]["const"],
+            "task-packet.v2",
+        )
+        self.assertEqual(
+            self.runtime_mode_switch_schema["properties"]["schema_version"]["const"],
+            "runtime-mode-switch.v2",
+        )
+        self.assertEqual(
+            self.runtime_mode_switch_schema["properties"]["base_state_version"]["type"],
+            "integer",
+        )
+        self.assertEqual(
+            self.runtime_run_schema["properties"]["schema_version"]["const"],
+            "runtime-run.v1",
+        )
+        authority = self.agent_run_contract["authority"]
+        self.assertTrue(authority["work_mode_copied_from_task_packet"])
+        self.assertFalse(authority["caller_may_override_work_mode"])
+        self.assertFalse(authority["agent_may_write_audit_record"])
 
     def test_source_import_is_versioned_and_cannot_approve_business_state(self) -> None:
         command = next(

@@ -37,7 +37,7 @@ class SQLiteBackupService:
             metadata = self._database_metadata(backup_database)
             digest, size = sha256_file(backup_database)
             manifest = {
-                "schema_version": "sqlite-backup.v5",
+                "schema_version": "sqlite-backup.v6",
                 "backup_id": backup_id,
                 "created_at": datetime.now(UTC).isoformat(),
                 "database_sha256": digest,
@@ -73,6 +73,7 @@ class SQLiteBackupService:
             "sqlite-backup.v3",
             "sqlite-backup.v4",
             "sqlite-backup.v5",
+            "sqlite-backup.v6",
         } or manifest.get("backup_id") != backup_id:
             raise BackupError("SQLite 备份版本或 ID 不匹配")
         digest, size = sha256_file(source_database)
@@ -271,6 +272,45 @@ class SQLiteBackupService:
                     separators=(",", ":"),
                 ).encode("utf-8")
             ).hexdigest()
+            runtime_task_count = 0
+            runtime_mode_switch_count = 0
+            task_packet_count = 0
+            agent_run_count = 0
+            runtime_rows = {}
+            if schema_version >= 7:
+                runtime_task_count = int(
+                    connection.execute("SELECT COUNT(*) FROM runtime_tasks").fetchone()[0]
+                )
+                runtime_mode_switch_count = int(
+                    connection.execute("SELECT COUNT(*) FROM runtime_mode_switches").fetchone()[0]
+                )
+                task_packet_count = int(
+                    connection.execute("SELECT COUNT(*) FROM task_packets").fetchone()[0]
+                )
+                agent_run_count = int(
+                    connection.execute("SELECT COUNT(*) FROM agent_runs").fetchone()[0]
+                )
+                runtime_rows = {
+                    table: [
+                        list(row)
+                        for row in connection.execute(f"SELECT * FROM {table} ORDER BY rowid")
+                    ]
+                    for table in (
+                        "runtime_commands",
+                        "runtime_tasks",
+                        "runtime_mode_switches",
+                        "task_packets",
+                        "agent_runs",
+                    )
+                }
+            runtime_digest = hashlib.sha256(
+                json.dumps(
+                    runtime_rows,
+                    ensure_ascii=False,
+                    sort_keys=True,
+                    separators=(",", ":"),
+                ).encode("utf-8")
+            ).hexdigest()
         return {
             "store_schema_version": schema_version,
             "event_count": event_count,
@@ -290,11 +330,16 @@ class SQLiteBackupService:
             "proposal_reopen_count": proposal_reopen_count,
             "proposal_supersession_count": proposal_supersession_count,
             "meeting_item_proposal_count": meeting_item_proposal_count,
+            "runtime_task_count": runtime_task_count,
+            "runtime_mode_switch_count": runtime_mode_switch_count,
+            "task_packet_count": task_packet_count,
+            "agent_run_count": agent_run_count,
             "project_versions": project_versions,
             "state_digest": state_digest,
             "source_digest": source_digest,
             "meeting_digest": meeting_digest,
             "proposal_digest": proposal_digest,
+            "runtime_digest": runtime_digest,
         }
 
     def _manifest_metadata(self, manifest: dict[str, object]) -> dict[str, object]:
@@ -311,6 +356,7 @@ class SQLiteBackupService:
             "sqlite-backup.v3",
             "sqlite-backup.v4",
             "sqlite-backup.v5",
+            "sqlite-backup.v6",
         }:
             metadata.update(
                 {
@@ -325,6 +371,7 @@ class SQLiteBackupService:
             "sqlite-backup.v3",
             "sqlite-backup.v4",
             "sqlite-backup.v5",
+            "sqlite-backup.v6",
         }:
             metadata.update(
                 {
@@ -336,7 +383,11 @@ class SQLiteBackupService:
                     "meeting_digest": manifest.get("meeting_digest"),
                 }
             )
-        if manifest.get("schema_version") in {"sqlite-backup.v4", "sqlite-backup.v5"}:
+        if manifest.get("schema_version") in {
+            "sqlite-backup.v4",
+            "sqlite-backup.v5",
+            "sqlite-backup.v6",
+        }:
             metadata.update(
                 {
                     "proposal_lifecycle_count": manifest.get("proposal_lifecycle_count"),
@@ -351,12 +402,24 @@ class SQLiteBackupService:
                     "proposal_digest": manifest.get("proposal_digest"),
                 }
             )
+        if manifest.get("schema_version") == "sqlite-backup.v6":
+            metadata.update(
+                {
+                    "runtime_task_count": manifest.get("runtime_task_count"),
+                    "runtime_mode_switch_count": manifest.get(
+                        "runtime_mode_switch_count"
+                    ),
+                    "task_packet_count": manifest.get("task_packet_count"),
+                    "agent_run_count": manifest.get("agent_run_count"),
+                    "runtime_digest": manifest.get("runtime_digest"),
+                }
+            )
         return metadata
 
     def _comparable_metadata(
         self, database_path: Path, manifest: dict[str, object]
     ) -> dict[str, object]:
-        """按备份清单版本选择对账字段，兼容已生成的 v1 快照。"""
+        """按备份清单版本选择对账字段，兼容已生成的旧快照。"""
 
         metadata = self._database_metadata(database_path)
         if manifest.get("schema_version") == "sqlite-backup.v1":
@@ -390,6 +453,15 @@ class SQLiteBackupService:
                 "proposal_supersession_count",
                 "meeting_item_proposal_count",
                 "proposal_digest",
+            ):
+                metadata.pop(key)
+        if manifest.get("schema_version") != "sqlite-backup.v6":
+            for key in (
+                "runtime_task_count",
+                "runtime_mode_switch_count",
+                "task_packet_count",
+                "agent_run_count",
+                "runtime_digest",
             ):
                 metadata.pop(key)
         return metadata

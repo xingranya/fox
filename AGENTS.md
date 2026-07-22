@@ -28,6 +28,7 @@
 - `VIEW`、`PREFERENCE`、`HYPOTHESIS`、`OPTION`、`TENDENCY`、`TARGET_DATE` 不得自动升级为 `DECISION`、`CONSTRAINT` 或 `DEADLINE`。
 - 新资料和新会议只生成增量 Proposal；未经人工确认不得静默覆盖当前状态。
 - 开始任务时按“当前状态 -> 当前阶段与任务 -> 已批准决定 -> 开放问题 -> 相关证据 -> 必要原文”装配上下文，历史废案默认不进入当前上下文。
+- Task Packet 必须是不可变派生快照；任务角色和工作模式由 Fox 登记，AI 只能建议模式切换。每次 Agent 运行必须绑定 Packet 哈希、状态版本、任务版本、协议、运行时和模型版本。
 - 探索协议与执行规格必须显式分离和切换；AI 不得在探索中强行收口，也不得在执行中重写已批准战略。
 - 领域核心不得直接依赖 OpenWork、OpenCode、Zvec、Nubase、Open Notebook、FlowLong、Dify 或具体模型 SDK；必须通过版本化端口和 Schema 调用。
 - 所有外部组件必须可禁用、可替换；检索索引必须可从权威数据完整重建。

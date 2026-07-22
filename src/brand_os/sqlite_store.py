@@ -10,15 +10,21 @@ from .sqlite_base import (
     ResourceConflict,
     VersionConflict,
 )
+from .sqlite_agent_runs import SQLiteAgentRunMixin
 from .sqlite_commands import SQLiteCommandMixin
 from .sqlite_evidence_queries import SQLiteEvidenceQueryMixin
 from .sqlite_imports import SQLiteImportMixin
 from .sqlite_meetings import SQLiteMeetingMixin
 from .sqlite_proposals import SQLiteProposalMixin
 from .sqlite_queries import SQLiteQueryMixin
+from .sqlite_runtime_tasks import SQLiteRuntimeTaskMixin
+from .sqlite_task_packets import SQLiteTaskPacketMixin
 
 
 class SQLiteCanonicalStore(
+    SQLiteTaskPacketMixin,
+    SQLiteAgentRunMixin,
+    SQLiteRuntimeTaskMixin,
     SQLiteEvidenceQueryMixin,
     SQLiteProposalMixin,
     SQLiteMeetingMixin,

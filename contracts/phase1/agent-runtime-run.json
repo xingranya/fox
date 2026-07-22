@@ -1,0 +1,37 @@
+{
+  "schema_version": "runtime-run.v1",
+  "purpose": "记录一次 Agent 运行实际使用的 Task Packet、状态、模式、协议、运行时和模型版本",
+  "status": ["created"],
+  "required_bindings": [
+    "run_id",
+    "project_id",
+    "task_id",
+    "packet_id",
+    "packet_hash",
+    "packet_version",
+    "task_revision",
+    "base_state_version",
+    "role",
+    "work_mode",
+    "protocol_versions",
+    "runtime_id",
+    "runtime_version",
+    "model_id",
+    "model_version",
+    "started_by_kind",
+    "started_by_id",
+    "started_at"
+  ],
+  "authority": {
+    "role_copied_from_task_packet": true,
+    "work_mode_copied_from_task_packet": true,
+    "caller_may_override_role": false,
+    "caller_may_override_work_mode": false,
+    "agent_may_write_audit_record": false,
+    "tool_permission_is_business_approval": false
+  },
+  "idempotency": {
+    "scope": ["project_id", "runtime_id", "idempotency_key"],
+    "same_key_different_request": "conflict"
+  }
+}

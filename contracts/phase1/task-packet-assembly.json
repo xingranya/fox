@@ -1,0 +1,55 @@
+{
+  "schema_version": "task-packet-assembly.v1",
+  "packet_schema": "task-packet.v2",
+  "mode_switch_schema": "runtime-mode-switch.v2",
+  "runtime_run_schema": "runtime-run.v1",
+  "replaceable": true,
+  "current_implementation": "sqlite",
+  "operations": [
+    "register_runtime_task",
+    "switch_work_mode",
+    "build_task_packet",
+    "get_task_packet",
+    "get_task_packet_layer",
+    "validate_task_packet",
+    "record_agent_run",
+    "get_agent_run"
+  ],
+  "default_layers": ["L0", "L1", "L2"],
+  "on_demand_layers": ["L3", "L4"],
+  "authority": {
+    "task_role_and_initial_mode": "Fox",
+    "mode_switch": "Fox",
+    "runtime_may_suggest_mode_switch": true,
+    "runtime_may_apply_mode_switch": false,
+    "packet_may_approve_business_state": false,
+    "agent_run_may_approve_business_state": false
+  },
+  "context_policy": {
+    "explicit_context_refs_only": true,
+    "current_items_only": true,
+    "inactive_or_missing_items_become_gap": true,
+    "unresolved_evidence_becomes_gap": true,
+    "historical_items_loaded_by_default": false,
+    "evidence_limit_is_explicit": true,
+    "confidentiality_ceiling_is_enforced": true
+  },
+  "version_bindings": [
+    "base_state_version",
+    "task_revision",
+    "task_spec_hash",
+    "task_packet_schema",
+    "assembly_policy",
+    "brand_agent_protocol",
+    "work_mode_protocol",
+    "taxonomy",
+    "evidence_query",
+    "runtime",
+    "model"
+  ],
+  "immutable_records": [
+    "task_packet",
+    "runtime_mode_switch",
+    "agent_run_start"
+  ]
+}

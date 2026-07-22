@@ -28,6 +28,11 @@ from brand_os.meeting_ingest import parse_meeting_ingest
 from brand_os.sqlite_backup import SQLiteBackupService
 from brand_os.sqlite_migrations import MIGRATIONS, apply_migrations
 from brand_os.sqlite_store import SQLiteCanonicalStore
+from brand_os.task_packets import (
+    AgentRunRequest,
+    RuntimeTaskDefinition,
+    WorkModeSwitch,
+)
 from brand_os.workspace import initialize_workspace
 
 
@@ -72,7 +77,7 @@ class SQLiteBackupTest(unittest.TestCase):
         manifest = json.loads(
             (self.layout.backups / backup_id / "manifest.json").read_text(encoding="utf-8")
         )
-        self.assertEqual(manifest["schema_version"], "sqlite-backup.v5")
+        self.assertEqual(manifest["schema_version"], "sqlite-backup.v6")
         self.assertEqual(manifest["proposal_lifecycle_count"], 1)
         self.assertEqual(len(manifest["proposal_digest"]), 64)
         restored_path = self.backups.restore(backup_id, self.base / "restored" / "project.db")
@@ -83,6 +88,77 @@ class SQLiteBackupTest(unittest.TestCase):
         self.assertEqual(restored.get_current_state("hongri"), self.store.get_current_state("hongri"))
         self.assertEqual(restored.list_human_actions("hongri"), self.store.list_human_actions("hongri"))
         self.assertTrue(restored.quick_check())
+
+    def test_online_backup_reconciles_task_packets_mode_switches_and_runs(self) -> None:
+        system = Actor(ActorKind.SYSTEM, "local-runtime")
+        task = RuntimeTaskDefinition(
+            task_id="task-1",
+            goal="准备本轮品牌判断",
+            role="BRAND_STRATEGIST",
+            work_mode="EXPLORATION",
+            deliverables=("两个方向",),
+            non_goals=("不替 Fox 批准",),
+            context_refs=(),
+            evidence_refs=(),
+            known_gap_ids=(),
+            allowed_tools=("evidence_get",),
+            network="deny",
+            model_allowlist=("codex",),
+            output_schema_ref="state-proposal.v1",
+            acceptance_criteria=("没有一票否决",),
+        )
+        self.store.register_runtime_task(
+            "hongri", self.fox, task, idempotency_key="task"
+        )
+        self.store.switch_work_mode(
+            "hongri",
+            self.fox,
+            WorkModeSwitch(
+                "task-1",
+                "EVALUATION",
+                "进入方案比较",
+                "本轮品牌判断",
+                1,
+            ),
+            idempotency_key="mode",
+        )
+        packet = self.store.build_task_packet("hongri", "task-1", system)
+        run = self.store.record_agent_run(
+            "hongri",
+            system,
+            AgentRunRequest(
+                "run-1",
+                packet["packet_id"],
+                packet["content_hash"],
+                "codex-cli",
+                "1.0.0",
+                "codex",
+                "gpt-5",
+                "run-start",
+            ),
+        )
+
+        backup_id = self.backups.create()
+        manifest = json.loads(
+            (self.layout.backups / backup_id / "manifest.json").read_text(encoding="utf-8")
+        )
+        self.assertEqual(manifest["runtime_task_count"], 1)
+        self.assertEqual(manifest["runtime_mode_switch_count"], 1)
+        self.assertEqual(manifest["task_packet_count"], 1)
+        self.assertEqual(manifest["agent_run_count"], 1)
+        self.assertEqual(len(manifest["runtime_digest"]), 64)
+
+        restored_path = self.backups.restore(
+            backup_id, self.base / "runtime-restored.db"
+        )
+        restored = SQLiteCanonicalStore(restored_path)
+        self.assertEqual(
+            restored.get_task_packet("hongri", packet["packet_id"]), packet
+        )
+        self.assertEqual(restored.get_agent_run("hongri", "run-1"), run)
+        self.assertEqual(
+            len(restored.list_runtime_mode_switches("hongri", "task-1")), 1
+        )
 
     def test_online_backup_reconciles_reopened_proposal_lifecycle(self) -> None:
         self.store.review_proposal(
@@ -274,6 +350,11 @@ class SQLiteBackupTest(unittest.TestCase):
             "proposal_supersession_count",
             "meeting_item_proposal_count",
             "proposal_digest",
+            "runtime_task_count",
+            "runtime_mode_switch_count",
+            "task_packet_count",
+            "agent_run_count",
+            "runtime_digest",
         ):
             manifest.pop(key)
         manifest_path.write_text(
@@ -300,6 +381,11 @@ class SQLiteBackupTest(unittest.TestCase):
             "proposal_supersession_count",
             "meeting_item_proposal_count",
             "proposal_digest",
+            "runtime_task_count",
+            "runtime_mode_switch_count",
+            "task_packet_count",
+            "agent_run_count",
+            "runtime_digest",
         ):
             manifest.pop(key)
         manifest_path.write_text(
@@ -320,6 +406,11 @@ class SQLiteBackupTest(unittest.TestCase):
             "proposal_supersession_count",
             "meeting_item_proposal_count",
             "proposal_digest",
+            "runtime_task_count",
+            "runtime_mode_switch_count",
+            "task_packet_count",
+            "agent_run_count",
+            "runtime_digest",
         ):
             manifest.pop(key)
         manifest_path.write_text(
@@ -334,6 +425,7 @@ class SQLiteBackupTest(unittest.TestCase):
             (3, "sqlite-backup.v2"),
             (4, "sqlite-backup.v3"),
             (5, "sqlite-backup.v4"),
+            (6, "sqlite-backup.v5"),
         )
         source_fields = (
             "source_import_batch_count",
@@ -358,6 +450,13 @@ class SQLiteBackupTest(unittest.TestCase):
             "meeting_item_proposal_count",
             "proposal_digest",
         )
+        runtime_fields = (
+            "runtime_task_count",
+            "runtime_mode_switch_count",
+            "task_packet_count",
+            "agent_run_count",
+            "runtime_digest",
+        )
         for schema_version, manifest_version in cases:
             with self.subTest(schema_version=schema_version, manifest_version=manifest_version):
                 database = self.base / f"schema-{schema_version}.db"
@@ -369,10 +468,11 @@ class SQLiteBackupTest(unittest.TestCase):
                 manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
                 manifest["schema_version"] = manifest_version
                 fields_by_schema = {
-                    2: (*source_fields, *meeting_fields, *proposal_fields),
-                    3: (*meeting_fields, *proposal_fields),
-                    4: proposal_fields,
-                    5: (),
+                    2: (*source_fields, *meeting_fields, *proposal_fields, *runtime_fields),
+                    3: (*meeting_fields, *proposal_fields, *runtime_fields),
+                    4: (*proposal_fields, *runtime_fields),
+                    5: runtime_fields,
+                    6: runtime_fields,
                 }
                 fields = fields_by_schema[schema_version]
                 for key in fields:

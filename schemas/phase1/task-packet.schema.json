@@ -1,0 +1,153 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://brand-os.local/schema/task-packet.v2.json",
+  "title": "本地品牌任务包 v2",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "packet_id",
+    "packet_version",
+    "content_hash",
+    "project_id",
+    "base_state_version",
+    "generated_at",
+    "assembly_policy_version",
+    "protocol_versions",
+    "task",
+    "role_contract",
+    "mode_contract",
+    "runtime_policy",
+    "approved_state",
+    "working_state",
+    "relevant_evidence",
+    "known_gaps",
+    "conflicts",
+    "output_contract",
+    "vetoes",
+    "context_watermark"
+  ],
+  "properties": {
+    "schema_version": {"const": "task-packet.v2"},
+    "packet_id": {"type": "string", "pattern": "^TP-[A-F0-9]{24}$"},
+    "packet_version": {"type": "integer", "minimum": 1},
+    "content_hash": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "project_id": {"type": "string", "minLength": 1},
+    "base_state_version": {"type": "integer", "minimum": 0},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "assembly_policy_version": {"const": "task-packet-assembly.v1"},
+    "protocol_versions": {
+      "type": "object",
+      "required": ["brand_agent", "work_mode", "taxonomy", "evidence_query", "assembly"],
+      "additionalProperties": {"type": "string", "minLength": 1}
+    },
+    "task": {
+      "type": "object",
+      "required": ["task_id", "goal", "role", "work_mode", "deliverables", "non_goals"],
+      "properties": {
+        "task_id": {"type": "string", "minLength": 1},
+        "goal": {"type": "string", "minLength": 1},
+        "role": {"enum": ["BRAND_STRATEGIST", "BRAND_RESEARCHER", "CREATIVE_PARTNER", "EXECUTION_PARTNER"]},
+        "work_mode": {"enum": ["EXPLORATION", "EVALUATION", "DECISION", "EXECUTION"]},
+        "deliverables": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+        "non_goals": {"type": "array", "items": {"type": "string", "minLength": 1}}
+      },
+      "additionalProperties": false
+    },
+    "role_contract": {"$ref": "#/$defs/behaviorContract"},
+    "mode_contract": {
+      "allOf": [
+        {"$ref": "#/$defs/behaviorContract"},
+        {
+          "type": "object",
+          "required": ["mode_switch_authority", "runtime_may_suggest_switch", "runtime_may_apply_switch"],
+          "properties": {
+            "mode_switch_authority": {"const": "Fox"},
+            "runtime_may_suggest_switch": {"const": true},
+            "runtime_may_apply_switch": {"const": false}
+          }
+        }
+      ]
+    },
+    "runtime_policy": {
+      "type": "object",
+      "required": ["network", "allowed_tools", "model_allowlist", "confidentiality_ceiling", "mode_switch_authority", "data_externalization"],
+      "properties": {
+        "network": {"enum": ["deny", "local_only", "approved_external"]},
+        "allowed_tools": {"type": "array", "uniqueItems": true, "items": {"type": "string"}},
+        "model_allowlist": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string"}},
+        "confidentiality_ceiling": {"enum": ["P0", "P1", "P2", "P3"]},
+        "mode_switch_authority": {"const": "Fox"},
+        "data_externalization": {"enum": ["deny", "requires_explicit_approval"]}
+      },
+      "additionalProperties": false
+    },
+    "approved_state": {"$ref": "#/$defs/approvedState"},
+    "working_state": {"$ref": "#/$defs/workingState"},
+    "relevant_evidence": {"type": "array", "items": {"type": "object"}},
+    "known_gaps": {"type": "array", "items": {"type": "object"}},
+    "conflicts": {"type": "array", "items": {"type": "object"}},
+    "output_contract": {
+      "type": "object",
+      "required": ["schema_ref", "proposal_only", "acceptance_criteria"],
+      "properties": {
+        "schema_ref": {"type": "string", "minLength": 1},
+        "proposal_only": {"const": true},
+        "acceptance_criteria": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}}
+      },
+      "additionalProperties": false
+    },
+    "vetoes": {"type": "array", "minItems": 7, "uniqueItems": true, "items": {"type": "string"}},
+    "context_watermark": {
+      "type": "object",
+      "required": ["state_version", "task_revision", "task_spec_hash", "source_version_count", "selected_context_count", "selected_evidence_count", "search_index"],
+      "properties": {
+        "state_version": {"type": "integer", "minimum": 0},
+        "task_revision": {"type": "integer", "minimum": 1},
+        "task_spec_hash": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "source_version_count": {"type": "integer", "minimum": 0},
+        "selected_context_count": {"type": "integer", "minimum": 0},
+        "selected_evidence_count": {"type": "integer", "minimum": 0},
+        "search_index": {"type": "string", "minLength": 1}
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "behaviorContract": {
+      "type": "object",
+      "required": ["label", "must", "must_not"],
+      "properties": {
+        "label": {"type": "string", "minLength": 1},
+        "must": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+        "must_not": {"type": "array", "minItems": 1, "items": {"type": "string"}}
+      }
+    },
+    "approvedState": {
+      "type": "object",
+      "required": ["facts", "decisions", "constraints", "actions"],
+      "properties": {
+        "facts": {"type": "array"},
+        "decisions": {"type": "array"},
+        "constraints": {"type": "array"},
+        "actions": {"type": "array"}
+      },
+      "additionalProperties": false
+    },
+    "workingState": {
+      "type": "object",
+      "required": ["views", "preferences", "hypotheses", "options", "tendencies", "target_dates", "open_questions", "proposals"],
+      "properties": {
+        "views": {"type": "array"},
+        "preferences": {"type": "array"},
+        "hypotheses": {"type": "array"},
+        "options": {"type": "array"},
+        "tendencies": {"type": "array"},
+        "target_dates": {"type": "array"},
+        "open_questions": {"type": "array"},
+        "proposals": {"type": "array"}
+      },
+      "additionalProperties": false
+    }
+  }
+}

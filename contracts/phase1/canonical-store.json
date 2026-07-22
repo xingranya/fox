@@ -1,5 +1,5 @@
 {
-  "schema_version": "canonical-store-port.v5",
+  "schema_version": "canonical-store-port.v6",
   "authority": "human_confirmed_events",
   "current_implementation": "sqlite",
   "replaceable": true,
@@ -82,12 +82,13 @@
     "reject",
     "reopen",
     "approve_supersede",
+    "switch_work_mode",
     "direct_sql"
   ],
   "projection_rebuild_source": "PROPOSAL_APPROVED events from configured human reviewers",
   "proposal_lifecycle_rebuild_source": "proposal events from configured human reviewers",
   "backup": {
-    "schema_version": "sqlite-backup.v5",
+    "schema_version": "sqlite-backup.v6",
     "method": "sqlite_online_backup_api",
     "direct_live_file_copy_forbidden": true,
     "restore_checks": [
@@ -115,7 +116,12 @@
       "state_digest",
       "source_digest",
       "meeting_digest",
-      "proposal_digest"
+      "proposal_digest",
+      "runtime_task_count",
+      "runtime_mode_switch_count",
+      "task_packet_count",
+      "agent_run_count",
+      "runtime_digest"
     ]
   }
 }

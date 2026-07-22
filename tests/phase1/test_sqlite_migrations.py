@@ -36,7 +36,7 @@ class SQLiteMigrationTest(unittest.TestCase):
                     apply_migrations(connection, MIGRATIONS), MIGRATIONS[-1].version
                 )
                 versions = [row[0] for row in connection.execute("SELECT version FROM schema_migrations")]
-                self.assertEqual(versions, [1, 2, 3, 4, 5, 6])
+                self.assertEqual(versions, [1, 2, 3, 4, 5, 6, 7])
             finally:
                 connection.close()
 
@@ -183,7 +183,7 @@ class SQLiteMigrationTest(unittest.TestCase):
             connection = sqlite3.connect(database, isolation_level=None)
             try:
                 apply_migrations(connection, MIGRATIONS[:5])
-                self.assertEqual(apply_migrations(connection, MIGRATIONS), 6)
+                self.assertEqual(apply_migrations(connection, MIGRATIONS[:6]), 6)
                 proposal_columns = {
                     row[1] for row in connection.execute("PRAGMA table_info(proposals)")
                 }
@@ -192,6 +192,44 @@ class SQLiteMigrationTest(unittest.TestCase):
                 }
                 self.assertTrue({"valid_from", "valid_until"}.issubset(proposal_columns))
                 self.assertTrue({"valid_from", "valid_until"}.issubset(state_columns))
+            finally:
+                connection.close()
+
+    def test_v7_upgrade_adds_runtime_tables_without_changing_project_version(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            database = Path(directory) / "project.db"
+            connection = sqlite3.connect(database, isolation_level=None)
+            try:
+                apply_migrations(connection, MIGRATIONS[:6])
+                connection.execute(
+                    """
+                    INSERT INTO projects(project_id, name, version, created_at, updated_at)
+                    VALUES ('hongri', '鸿日', 3, '2026-07-22T00:00:00+00:00',
+                            '2026-07-22T00:00:00+00:00')
+                    """
+                )
+                self.assertEqual(apply_migrations(connection, MIGRATIONS), 7)
+                tables = {
+                    row[0]
+                    for row in connection.execute(
+                        "SELECT name FROM sqlite_master WHERE type = 'table'"
+                    )
+                }
+                self.assertTrue(
+                    {
+                        "runtime_commands",
+                        "runtime_tasks",
+                        "runtime_mode_switches",
+                        "task_packets",
+                        "agent_runs",
+                    }.issubset(tables)
+                )
+                self.assertEqual(
+                    connection.execute(
+                        "SELECT version FROM projects WHERE project_id = 'hongri'"
+                    ).fetchone()[0],
+                    3,
+                )
             finally:
                 connection.close()
 

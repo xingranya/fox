@@ -200,14 +200,17 @@ supersede(proposal_id, replacement_id, human_action)
 ### `TaskPacketPort`
 
 ```text
-build(task_id, role, work_mode, base_state_version?)
-get_layer(packet_id, layer)
-resolve_evidence(packet_id, evidence_ref)
-validate(packet_id)
-record_consumption(packet_id, runtime_id, model_id)
+register_runtime_task(project_id, actor, task, idempotency_key)
+switch_work_mode(project_id, actor, switch, idempotency_key)
+build_task_packet(project_id, task_id, actor, expected_state_version?)
+get_task_packet(project_id, packet_id)
+get_task_packet_layer(project_id, packet_id, layer)
+validate_task_packet(project_id, packet_id)
+record_agent_run(project_id, actor, request)
+get_agent_run(project_id, run_id)
 ```
 
-Task Packet 使用 L0-L4 分层：任务头、当前状态、相关证据、按需原文、历史/废案。默认只加载 L0-L2。包必须区分已批准层与工作层，携带状态版本、证据哈希、索引水位、缺口、工具范围、数据外发策略、输出 Schema、一票否决项和工作模式切换权限。
+当前实现为 `task-packet.v2` 和 `task-packet-assembly.v1`。Task Packet 使用 L0-L4 分层：任务头、当前状态、相关证据、按需原文、历史/废案。默认只加载 L0-L2。包必须区分已批准层与工作层，携带状态版本、证据哈希、索引水位、缺口、工具范围、数据外发策略、输出 Schema、一票否决项和工作模式切换权限。任务角色和初始模式由 Fox 登记；AI 不能创建任务配置或执行模式切换。
 
 ## Agent Runtime 契约
 
@@ -226,6 +229,8 @@ health(runtime_id)
 ```
 
 首版可以通过本地 CLI/子进程调用 Codex、Claude 或 OpenCode。OpenWork 只是可选 UI/控制面适配器。Tool Permission 控制文件、命令、网络和工具，不得复用 Proposal 人工确认 Schema。`publish_artifact` 只能登记产物或创建 `proposed` 状态的 Proposal。
+
+F1.7 已实现 `runtime-run.v1` 的起始留痕：角色和模式从不可变 Task Packet 复制，记录 Packet 哈希、状态版本、任务版本、协议、运行时和模型版本。流式事件、取消、工具授权、产物和运行完成状态在 F1.8 的运行时入口继续实现。
 
 ## 检索与模型端口
 
@@ -264,7 +269,7 @@ cancel(run_id)
 | `state-proposal.v1` | 增量变化建议 | `proposed`、基础版本、单一变化、差异、影响、冲突和证据必填 |
 | `human-action.v1` | Fox 人工动作 | 动作、理由、旧新值、证据、范围、时间和版本必填 |
 | `domain-event.v1` | 只追加事件 | 项目序号、聚合版本、Schema 版本、因果链和操作者完整 |
-| `task-packet.v1` | 分层任务上下文 | 角色、模式、L0-L4、批准/工作层、证据、禁区和状态版本完整 |
+| `task-packet.v2` | 分层任务上下文 | 角色、模式、L0-L4、批准/工作层、证据、禁区、状态版本和 Packet 哈希完整 |
 | `runtime-run.v1` | 模型/Agent 运行 | Task Packet、运行时、模型、规则、工具决策、成本和结果哈希完整 |
 | `tool-permission.v1` | 运行时工具权限 | 运行、工具、参数摘要、路径/网络、时限和决定人完整；不能表达业务批准 |
 
