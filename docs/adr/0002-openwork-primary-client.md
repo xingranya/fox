@@ -1,18 +1,21 @@
 # ADR-0002：条件性采用 OpenWork 作为本地客户端基础
 
-- 状态：条件性候选
-- 当前结论：可做隔离验证，尚未批准为必选主客户端
+- 状态：条件性候选；OW-L0 有条件通过
+- 当前结论：从固定稳定版继续本地切片，先完成默认离线补丁；尚未批准为必选主客户端
 - 日期：2026-07-13
+- 最近复审：2026-07-22
 - 影响范围：鸿日本地 MVP 界面、Agent 运行、本地文件访问和后续客户端演进
 - 关联：[ADR-0003](0003-local-first-hongri-validation.md)、[OpenWork 深度集成计划](../plan/openwork-deep-integration.md)
 
 ## 背景
 
-OpenWork 社区核心提供 Electron/React 桌面壳、工作区、会话流、流式任务、工具权限、Skills/MCP、模型连接和本地文件能力，可能显著缩短本地客户端开发时间。其最新稳定发布评估基线为 `v0.17.20`（2026-07-10），源码观察快照为 `dev@316b996`（2026-07-12）；二者不得混作同一固定基线。
+OpenWork 社区核心提供 Electron/React 桌面壳、工作区、会话流、流式任务、工具权限、Skills/MCP、模型连接和本地文件能力，可能缩短本地客户端开发时间。当前固定基线为 [`v0.17.36@ddf3e482`](https://github.com/different-ai/openwork/tree/ddf3e482d2fdf3a374d0fbf4e23e01467a3014fc)（2026-07-20）；持续变化的 `dev` 不作为 fork 基线。
 
 但 OpenWork 的信息架构和运行层深度依赖 OpenCode，并带有 OpenWork Server、Orchestrator、远程 Workspace 和团队化演进路径。当前批准路线只是 Fox 在 `/Users/fox/work` 中验证鸿日，本地单用户、无需登录、无需常驻服务端。若为了采用 OpenWork 先建设团队服务器、OIDC、远程 Worker、签名分发和三平台更新，就会再次让技术方案反客为主。
 
 OpenWork 根许可证约定 `ee/**` 之外采用 MIT，`ee/**` 采用 FSL-1.1-MIT；许可证不授予 OpenWork 或 Different AI 商标权。
+
+2026-07-22 的 OW-L0 核验表明：社区切片能完成桌面、sidecar、Server/Orchestrator 和 helper 构建，不要求 `ee/**` 或 Den 编译依赖；桌面测试 80 项中 79 通过、1 跳过。上游默认仍连接遥测、Den/Cloud、模型目录和 GitHub 更新，并保留 OpenWork AppID、协议以及 `NSAllowsArbitraryLoads=true`。因此 OW-L0 只按“有条件通过”处理，详见 [OW-L0 技术选型记录](../phase1/openwork-ow-l0-evaluation.md)。
 
 ## 决策
 
@@ -24,6 +27,7 @@ OpenWork 根许可证约定 `ee/**` 之外采用 MIT，`ee/**` 采用 FSL-1.1-MI
 6. Tool Permission 只控制本次运行能否读取目录、执行命令或调用工具；它不能批准 `DECISION`、`CONSTRAINT`、`ACTION`、正式日期或项目状态变更。
 7. 如采用源码，只使用 `ee/**` 之外的 MIT 社区核心，保留许可证与版权声明，不依赖 Den、上游生产云、不可关闭遥测或上游更新源。内部名称、图标、协议和包标识不得造成官方来源混淆。
 8. 若 OpenWork 切片不通过，退回更薄的本地界面或现有 Web 技术壳，不影响本地领域核心、SQLite、MCP、CLI、Task Packet 和运行时协议。
+9. F1.9 的第一批补丁必须默认关闭 PostHog、Den、Cloud、上游模型目录和自动更新，更换内部名称/AppID/协议/更新源，并收紧 Electron 网络与沙箱配置。完成无上游请求验证后才能接真实鸿日资料。
 
 ## 采用门
 

@@ -86,7 +86,7 @@
   - 测试期望：组件、键盘、窗口尺寸、空/错/加载、原话证据、确认差异、模式状态和 E2E 测试。
   - 治理影响：固化界面只做呈现/命令，Tool Permission 与业务确认分离。
   - 验收：首屏可看阶段、任务、决定、开放问题、变化；可回源、处理 Proposal、选模式和发起 AI；可复用 MIT 壳但不要求团队深度改造、OIDC 或完整 PWA。
-  - 备注：无。
+  - 备注：2026-07-22 完成前置 OW-L0。固定 `v0.17.36@ddf3e482`，社区切片的桌面、OpenCode sidecar、Server/Orchestrator 和 macOS helper 均构建通过；桌面测试 79 通过、1 跳过，App/Server 类型检查通过。`ee/**` 不是构建依赖，但上游默认仍有 PostHog、Den/Cloud、模型目录、GitHub 更新、OpenWork AppID/协议和宽松 ATS，因此仅“有条件通过”。F1.9 仍未完成，先在正式 fork 做默认离线、内部品牌和 Electron 安全补丁，再接鸿日页面。详见 [OW-L0 技术选型记录](../phase1/openwork-ow-l0-evaluation.md)。
 
 - [ ] **F1.10：通过 Phase 0 黄金集与本地端到端验收并发布 Fox 试用原型**
   - 优先级 / 工作量 / Lane：P0 / XL / E

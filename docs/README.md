@@ -2,7 +2,7 @@
 
 本目录保存 Brand Project OS 的产品、分析、架构、验证和执行 SPEC。2026-07-13 依据[场景化需求澄清与产品反馈](../20260713_品牌AI长期项目协作系统_场景化需求澄清与产品反馈_v0.1(1).md)完成范围重定：当前先用鸿日项目证明 Fox 本地单用户真实提效，再决定是否进入团队服务器化。
 
-当前已有 Phase 1 本地核心。Phase 0 已完成 7/7；Phase 1 已完成 8/10。Codex 和 Claude 已能通过同一个本地 stdio MCP 读取状态、Task Packet 和证据，并创建等待 Fox 确认的 Proposal。下一步先完成 OpenWork `OW-L0` 选型门，再进入 F1.9 本地界面纵切。未经用户明确要求，不启动桌面应用、Web、数据库、Docker 或其他常驻服务。
+当前已有 Phase 1 本地核心。Phase 0 已完成 7/7；Phase 1 已完成 8/10。Codex 和 Claude 已能通过同一个本地 stdio MCP 读取状态、Task Packet 和证据，并创建等待 Fox 确认的 Proposal。OpenWork `OW-L0` 已有条件通过；F1.9 先做默认离线、安全和内部品牌补丁，再接鸿日业务纵切。未经用户明确要求，不启动桌面应用、Web、数据库、Docker 或其他常驻服务。
 
 ## 当前结论
 
@@ -30,6 +30,7 @@
 - [部署拓扑评估](analysis/deployment-topology-evaluation.md)
 - [六个开源项目总评估（含 OpenWork）](analysis/open-source-evaluation.md)
 - [OpenWork 客户端采用评估](analysis/openwork-client-evaluation.md)
+- [OpenWork OW-L0 技术选型记录](phase1/openwork-ow-l0-evaluation.md)
 
 ## 当前执行计划
 
@@ -55,6 +56,7 @@
 - [F1.6 当前决定、开放问题、关系有效性与证据回源](phase1/evidence-query-and-provenance.md)
 - [F1.7 Task Packet、品牌角色/模式与 Agent 运行留痕](phase1/task-packet-and-agent-run.md)
 - [F1.8 本地 CLI、stdio MCP、Codex/Claude 适配与模型切换](phase1/local-cli-mcp-and-model-switching.md)
+- [F1.9 前置：OpenWork OW-L0 技术选型记录](phase1/openwork-ow-l0-evaluation.md)
 
 ## Phase 0 当前证据
 
