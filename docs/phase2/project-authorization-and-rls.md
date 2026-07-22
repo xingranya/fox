@@ -4,13 +4,13 @@
 
 服务器已经能在 OIDC 身份之上判断“这个主体在这个项目能做什么”。应用服务必须先校验项目、动作和资料保密级别，再进入存储；PostgreSQL RLS 使用同一份授权记录做第二道防线，不能代替应用判权。
 
-本轮新增 `project-authorization.v1` 和 PostgreSQL v9。没有发布 HTTP 路由，没有接 OpenWork 登录界面，没有实现 F2.6 的冲突差异，也没有读取、上传或迁移鸿日、鸿喜达正式资料。
+本轮新增 `project-authorization.v1` 和 PostgreSQL v9；当前服务器 Schema 已由 F2.7 升至 v10。没有发布 HTTP 路由，没有接 OpenWork 登录界面，没有读取、上传或迁移鸿日、鸿喜达正式资料。
 
 主要实现：
 
 - `src/brand_os/authorization.py`：员工角色、服务动作白名单、P0-P3 上限和应用授权用例。
 - `src/brand_os/postgresql_authorization.py`：成员、服务身份、授权事件、运行时角色权限和事务级 RLS 上下文。
-- `src/brand_os/postgresql_migrations.py`：PostgreSQL v9 授权表、辅助函数和强制 RLS 策略。
+- `src/brand_os/postgresql_migrations.py`：PostgreSQL v9 授权表、辅助函数和强制 RLS 策略；v10 的派生表另见 F2.7 文档。
 - `contracts/phase2/project-authorization.json`：稳定机器契约。
 
 ## 员工角色

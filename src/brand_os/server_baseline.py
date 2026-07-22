@@ -9,7 +9,7 @@ from .server_config import ServerSettings
 
 
 SERVER_BOUNDARY: dict[str, object] = {
-    "schema_version": "server-boundary.v3",
+    "schema_version": "server-boundary.v4",
     "service": "Brand Project OS Service",
     "authority": {
         "only_application_service_may_advance_formal_state": True,
@@ -100,9 +100,35 @@ SERVER_BOUNDARY: dict[str, object] = {
             "forbidden_operations": ["direct_client_access", "direct_agent_access"],
             "may_advance_formal_state": False,
             "stores_formal_business_state": True,
-            "stores": ["events", "approvals", "projections", "audit", "outbox"],
+            "stores": [
+                "events",
+                "approvals",
+                "projections",
+                "audit",
+                "outbox",
+                "inbox",
+                "dead_letters",
+            ],
             "replaceable": True,
             "required_for_core_readiness": True,
+        },
+        {
+            "id": "outbox_worker",
+            "kind": "background_worker",
+            "business_operations": [
+                "consume_outbox",
+                "write_inbox",
+                "write_dead_letter",
+            ],
+            "forbidden_operations": [
+                "human_review",
+                "direct_formal_table_write",
+            ],
+            "may_advance_formal_state": False,
+            "stores_formal_business_state": False,
+            "stores": ["delivery_leases", "inbox", "dead_letters"],
+            "replaceable": True,
+            "required_for_core_readiness": False,
         },
         {
             "id": "object_store_adapter",
@@ -142,6 +168,7 @@ SERVER_BOUNDARY: dict[str, object] = {
         "required_dependencies": ["postgresql", "schema", "object_storage", "oidc"],
         "optional_dependencies": [
             "openwork_runtime",
+            "outbox_worker",
             "dify",
             "zvec",
             "open_notebook",
@@ -274,7 +301,7 @@ def validate_server_boundary(document: Mapping[str, object]) -> tuple[str, ...]:
     """检查组件职责契约的一票否决项。"""
 
     errors: list[str] = []
-    if document.get("schema_version") != "server-boundary.v3":
+    if document.get("schema_version") != "server-boundary.v4":
         errors.append("服务器边界 Schema 版本不正确")
     components = document.get("components")
     if not isinstance(components, list):
@@ -301,6 +328,17 @@ def validate_server_boundary(document: Mapping[str, object]) -> tuple[str, ...]:
             errors.append(f"{component_id} 只能读取或创建 Proposal")
         if "human_review" not in component.get("forbidden_operations", []):
             errors.append(f"{component_id} 必须禁止人工审批操作")
+
+    outbox_worker = by_id.get("outbox_worker")
+    if outbox_worker is None:
+        errors.append("缺少组件：outbox_worker")
+    elif (
+        outbox_worker.get("may_advance_formal_state") is not False
+        or "direct_formal_table_write"
+        not in outbox_worker.get("forbidden_operations", [])
+        or outbox_worker.get("required_for_core_readiness") is not False
+    ):
+        errors.append("Outbox Worker 只能处理派生任务，不能写正式状态")
 
     runtime = by_id.get("openwork_runtime")
     if runtime and (

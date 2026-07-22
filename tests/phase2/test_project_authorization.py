@@ -87,6 +87,8 @@ class ProjectAuthorizationContractTest(unittest.TestCase):
         self.assertFalse(contract["authority"]["service_may_manage_access"])
         self.assertTrue(contract["rls"]["forced_on_project_tables"])
         self.assertFalse(contract["rls"]["runtime_role_may_bypass_rls"])
+        self.assertEqual(contract["storage"]["postgresql_schema_version"], 10)
+        self.assertNotIn("outbox", contract["deferred"])
         self.assertFalse(contract["migrates_hongri_data"])
 
 
@@ -172,8 +174,8 @@ class ProjectAuthorizationStoreTest(unittest.TestCase):
             ),
         )
 
-    def test_schema_v9_tables_and_forced_rls_are_complete(self) -> None:
-        self.assertEqual(self.repository.schema_version, 9)
+    def test_schema_v10_tables_and_forced_rls_are_complete(self) -> None:
+        self.assertEqual(self.repository.schema_version, 10)
         self.assertTrue(self.repository.quick_check())
         with psycopg.connect(self.dsn, autocommit=True) as connection:
             rows = connection.execute(

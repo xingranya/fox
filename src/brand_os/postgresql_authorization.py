@@ -34,6 +34,17 @@ PROJECT_AUTHORIZATION_TABLES = frozenset(
     }
 )
 
+OUTBOX_OPERATIONAL_TABLES = frozenset(
+    {
+        "audit_records",
+        "outbox_consumers",
+        "outbox_messages",
+        "inbox_messages",
+        "dead_letter_messages",
+        "background_worker_leases",
+    }
+)
+
 
 class PostgreSQLProjectAuthorizationRepository(PostgreSQLStoreBase):
     """持久化项目成员、服务身份、撤权状态和授权事件。"""
@@ -708,6 +719,7 @@ def grant_project_runtime_role(dsn: str, role_name: str) -> None:
                 ORDER BY class.relname
                 """
             )
+            if str(row[0]) not in OUTBOX_OPERATIONAL_TABLES
         ]
         role = sql.Identifier(role_name)
         connection.execute(
@@ -726,6 +738,65 @@ def grant_project_runtime_role(dsn: str, role_name: str) -> None:
                 "GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO {}"
             ).format(role)
         )
+        for signature in (
+            "brand_os_confidentiality_rank(TEXT)",
+            "brand_os_has_project_action(TEXT, TEXT, TEXT)",
+            "brand_os_current_action_permitted(TEXT, TEXT, TEXT[])",
+        ):
+            connection.execute(
+                sql.SQL("GRANT EXECUTE ON FUNCTION {} TO {}").format(
+                    sql.SQL(signature), role
+                )
+            )
+
+
+def grant_outbox_worker_role(dsn: str, role_name: str) -> None:
+    """只授予后台投递表权限，并显式撤销正式业务表写入权限。"""
+
+    if not role_name.strip():
+        raise ValueError("role_name 不能为空")
+    with psycopg.connect(dsn, autocommit=True) as connection:
+        role = sql.Identifier(role_name)
+        connection.execute(
+            sql.SQL("GRANT USAGE ON SCHEMA {} TO {}").format(
+                sql.Identifier("public"), role
+            )
+        )
+        formal_tables = [
+            str(row[0])
+            for row in connection.execute(
+                """
+                SELECT class.relname
+                FROM pg_class AS class
+                JOIN pg_namespace AS namespace ON namespace.oid = class.relnamespace
+                WHERE namespace.nspname = current_schema()
+                  AND class.relkind = 'r'
+                  AND class.relname NOT IN (
+                      'schema_migrations',
+                      'audit_records','outbox_consumers','outbox_messages',
+                      'inbox_messages','dead_letter_messages','background_worker_leases'
+                  )
+                ORDER BY class.relname
+                """
+            )
+        ]
+        for table_name in formal_tables:
+            connection.execute(
+                sql.SQL("REVOKE ALL ON TABLE {} FROM {}").format(
+                    sql.Identifier(table_name), role
+                )
+            )
+        for table_name in sorted(OUTBOX_OPERATIONAL_TABLES):
+            privileges = (
+                "SELECT, INSERT"
+                if table_name == "audit_records"
+                else "SELECT, INSERT, UPDATE"
+            )
+            connection.execute(
+                sql.SQL(f"GRANT {privileges} ON TABLE {{}} TO {{}}").format(
+                    sql.Identifier(table_name), role
+                )
+            )
         for signature in (
             "brand_os_confidentiality_rank(TEXT)",
             "brand_os_has_project_action(TEXT, TEXT, TEXT)",
@@ -816,7 +887,9 @@ def _require_employee_actor(principal: ProjectPrincipal) -> None:
 
 __all__ = [
     "PROJECT_AUTHORIZATION_TABLES",
+    "OUTBOX_OPERATIONAL_TABLES",
     "PostgreSQLProjectAuthorizationRepository",
     "authorized_project_transaction",
     "grant_project_runtime_role",
+    "grant_outbox_worker_role",
 ]

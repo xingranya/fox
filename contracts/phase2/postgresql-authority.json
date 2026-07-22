@@ -1,17 +1,20 @@
 {
-  "schema_version": "postgresql-authority.v4",
+  "schema_version": "postgresql-authority.v5",
   "canonical_store_port": "canonical-store-port.v6",
   "object_evidence_contract": "object-evidence.v1",
   "oidc_identity_contract": "oidc-identity.v1",
   "project_authorization_contract": "project-authorization.v1",
   "write_consistency_contract": "write-consistency.v1",
+  "audit_outbox_contract": "audit-outbox.v1",
   "formal_write_store": "postgresql",
-  "migration_versions": [1, 2, 3, 4, 5, 6, 7, 8, 9],
+  "migration_versions": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
   "transaction": {
     "event_approval_projection_atomic": true,
     "idempotency_key_binds_request_digest": true,
     "expected_version_required": true,
-    "intermediate_failure_rolls_back": true
+    "intermediate_failure_rolls_back": true,
+    "event_audit_outbox_atomic": true,
+    "waits_for_derived_consumer": false
   },
   "rebuild": {
     "state_source": "human_approval_events",
@@ -26,7 +29,6 @@
   "dual_write": false,
   "migrates_hongri_data": false,
   "deferred": [
-    "outbox",
     "http_api",
     "data_cutover"
   ]

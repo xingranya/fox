@@ -2,7 +2,7 @@
 
 ## 当前结果
 
-服务器侧已经有可运行的 `PostgreSQLCanonicalStore`。它实现 `canonical-store-port.v6` 的项目、来源、会议、候选、Proposal、关系、人工动作、事件、当前投影和稳定证据查询。F2.2 的领域语义仍位于 PostgreSQL v1-v6；F2.3 已把同一服务器 Schema 扩展到 v7，用于对象准入元数据。
+服务器侧已经有可运行的 `PostgreSQLCanonicalStore`。它实现 `canonical-store-port.v6` 的项目、来源、会议、候选、Proposal、关系、人工动作、事件、当前投影和稳定证据查询。F2.2 的领域语义仍位于 PostgreSQL v1-v6；后续 F2.3-F2.7 已把同一服务器 Schema 扩展到 v10，用于对象准入、身份权限、冲突一致性和派生任务边界。
 
 这一步完成的是服务器权威存储适配器，不是鸿日数据切换。F3.1 完成前，Phase 1 SQLite 仍是鸿日正式权威；当前没有复制鸿日数据，也没有 SQLite/PostgreSQL 双写。
 
@@ -23,7 +23,7 @@
 
 ## 迁移
 
-PostgreSQL 当前应用 v1-v7：
+PostgreSQL 当前应用 v1-v10：
 
 | 版本 | 内容 |
 |:---|:---|
@@ -33,10 +33,13 @@ PostgreSQL 当前应用 v1-v7：
 | v5 | Proposal 生命周期、重开、会议绑定和显式替代 |
 | v6 | 状态与 Proposal 有效期 |
 | v7 | F2.3 上传会话、对象版本、状态迁移、延迟墓碑和对账记录 |
+| v8 | F2.4 员工身份、OIDC 授权事务、加密会话和会话审计 |
+| v9 | F2.5 项目角色、服务授权和强制 RLS |
+| v10 | F2.7 追加式审计、按消费者 Outbox、Inbox 去重、死信和 Worker 租约 |
 
 每版迁移保存 SHA-256。已经登记的迁移内容变化时，适配器拒绝启动；单版迁移失败时整版回滚。迁移使用 PostgreSQL 会话锁串行执行，避免多个服务实例同时改 Schema。
 
-SQLite v7 的 Task Packet 与 Agent 运行留痕仍留在 Phase 1 本地实现。SQLite 与 PostgreSQL 使用独立迁移序列；PostgreSQL v7 是 F2.3 对象元数据，不表示 Task Packet 已迁入服务器。本轮仍没有提前实现 F2.7 的审计和 Outbox。
+SQLite v7 的 Task Packet 与 Agent 运行留痕仍留在 Phase 1 本地实现。SQLite 与 PostgreSQL 使用独立迁移序列；PostgreSQL v10 的审计和 Outbox 只保存服务器事件的派生投递，不表示 Task Packet 或外部工作流已迁入服务器。
 
 ## 领域语义复用
 
@@ -64,6 +67,6 @@ PostgreSQL 返回行同时支持字段名和数字位置，保证现有映射、
 - F2.3 已增加 S3 兼容原件版本和准入状态机，详见[对象原件准入](object-evidence-store.md)。
 - F2.4 已增加 OIDC 员工身份与服务器会话；F2.5 继续增加项目权限和 RLS，当前 `allowed_reviewers` 仍只是 F2.2 的领域权限基线。
 - F2.6 增加 API 级并发冲突差异，不把数据库异常直接暴露给客户端。
-- F2.7 增加审计、Outbox/Inbox 和后台任务。
+- F2.7 已增加审计、Outbox/Inbox 和后台任务边界，详见[审计、Outbox/Inbox 和后台任务](audit-outbox-inbox.md)。
 - F2.10 完成 PostgreSQL 备份恢复和故障演练。
 - F3.1 才执行 SQLite 到 PostgreSQL/S3 的一次性迁移和正式切换。

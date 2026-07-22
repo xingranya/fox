@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 from .sqlite_migrations import MIGRATIONS, Migration
 
 
-POSTGRESQL_SCHEMA_VERSION = 9
+POSTGRESQL_SCHEMA_VERSION = 10
 
 
 def _translate_statement(statement: str) -> str:
@@ -666,11 +666,248 @@ POSTGRESQL_PROJECT_AUTHORIZATION_MIGRATION = Migration(
 )
 
 
+POSTGRESQL_AUDIT_OUTBOX_MIGRATION = Migration(
+    10,
+    "audit_outbox_inbox_background_boundary",
+    (
+        """
+        CREATE TABLE audit_records (
+            audit_id TEXT PRIMARY KEY CHECK(length(audit_id) > 0),
+            project_id TEXT NOT NULL,
+            event_id TEXT,
+            audit_type TEXT NOT NULL CHECK(audit_type IN (
+                'DOMAIN_EVENT','DELIVERY','REPLAY','DEAD_LETTER'
+            )),
+            operation TEXT NOT NULL CHECK(length(operation) > 0),
+            outcome TEXT NOT NULL CHECK(outcome IN (
+                'COMMITTED','REPLAYED','RETRY','FAILED','ACKNOWLEDGED'
+            )),
+            aggregate_type TEXT,
+            aggregate_id TEXT,
+            event_type TEXT,
+            project_version INTEGER CHECK(project_version IS NULL OR project_version >= 0),
+            aggregate_version INTEGER CHECK(aggregate_version IS NULL OR aggregate_version > 0),
+            actor_kind TEXT NOT NULL CHECK(actor_kind IN ('HUMAN','AI','WORKFLOW','SYSTEM')),
+            actor_id TEXT NOT NULL CHECK(length(actor_id) > 0),
+            correlation_id TEXT,
+            causation_id TEXT,
+            idempotency_key TEXT,
+            payload_digest TEXT CHECK(payload_digest IS NULL OR length(payload_digest) = 64),
+            details_json TEXT NOT NULL,
+            occurred_at TEXT NOT NULL,
+            FOREIGN KEY(project_id) REFERENCES projects(project_id) ON DELETE RESTRICT,
+            FOREIGN KEY(event_id) REFERENCES events(event_id) ON DELETE RESTRICT
+        )
+        """,
+        """
+        CREATE TABLE outbox_consumers (
+            consumer_name TEXT PRIMARY KEY CHECK(length(consumer_name) > 0),
+            status TEXT NOT NULL CHECK(status IN ('ACTIVE','PAUSED','RETIRED')),
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        )
+        """,
+        """
+        CREATE TABLE outbox_messages (
+            message_id TEXT PRIMARY KEY CHECK(length(message_id) > 0),
+            consumer_name TEXT NOT NULL,
+            event_id TEXT NOT NULL,
+            event_global_position BIGINT NOT NULL,
+            project_id TEXT NOT NULL,
+            aggregate_type TEXT NOT NULL,
+            aggregate_id TEXT NOT NULL,
+            aggregate_version INTEGER NOT NULL CHECK(aggregate_version > 0),
+            event_type TEXT NOT NULL,
+            schema_version TEXT NOT NULL,
+            payload_json TEXT NOT NULL,
+            status TEXT NOT NULL CHECK(status IN (
+                'PENDING','CLAIMED','RETRY','ACKED','DEAD_LETTER'
+            )),
+            attempts INTEGER NOT NULL DEFAULT 0 CHECK(attempts >= 0),
+            available_at TEXT NOT NULL,
+            claimed_by TEXT,
+            lease_token TEXT,
+            lease_until TEXT,
+            last_error TEXT,
+            dead_letter_reason TEXT,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            acked_at TEXT,
+            FOREIGN KEY(consumer_name) REFERENCES outbox_consumers(consumer_name) ON DELETE RESTRICT,
+            FOREIGN KEY(event_id) REFERENCES events(event_id) ON DELETE RESTRICT,
+            FOREIGN KEY(event_global_position) REFERENCES events(global_position) ON DELETE RESTRICT,
+            FOREIGN KEY(project_id) REFERENCES projects(project_id) ON DELETE RESTRICT,
+            UNIQUE(consumer_name, event_id),
+            UNIQUE(consumer_name, project_id, aggregate_type, aggregate_id, aggregate_version)
+        )
+        """,
+        """
+        CREATE TABLE inbox_messages (
+            consumer_name TEXT NOT NULL,
+            event_id TEXT NOT NULL,
+            message_id TEXT NOT NULL,
+            project_id TEXT NOT NULL,
+            status TEXT NOT NULL CHECK(status IN ('IN_PROGRESS','PROCESSED','IGNORED','FAILED')),
+            attempts INTEGER NOT NULL DEFAULT 0 CHECK(attempts >= 0),
+            result_json TEXT,
+            last_error TEXT,
+            first_seen_at TEXT NOT NULL,
+            processed_at TEXT,
+            updated_at TEXT NOT NULL,
+            PRIMARY KEY(consumer_name, event_id),
+            FOREIGN KEY(consumer_name) REFERENCES outbox_consumers(consumer_name) ON DELETE RESTRICT,
+            FOREIGN KEY(event_id) REFERENCES events(event_id) ON DELETE RESTRICT,
+            FOREIGN KEY(project_id) REFERENCES projects(project_id) ON DELETE RESTRICT
+        )
+        """,
+        """
+        CREATE TABLE dead_letter_messages (
+            dead_letter_id TEXT PRIMARY KEY CHECK(length(dead_letter_id) > 0),
+            message_id TEXT NOT NULL,
+            consumer_name TEXT NOT NULL,
+            event_id TEXT NOT NULL,
+            project_id TEXT NOT NULL,
+            reason TEXT NOT NULL,
+            error_message TEXT NOT NULL,
+            attempts INTEGER NOT NULL CHECK(attempts > 0),
+            payload_json TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            resolved_at TEXT,
+            resolved_by TEXT,
+            resolution TEXT,
+            FOREIGN KEY(message_id) REFERENCES outbox_messages(message_id) ON DELETE RESTRICT,
+            FOREIGN KEY(consumer_name) REFERENCES outbox_consumers(consumer_name) ON DELETE RESTRICT,
+            FOREIGN KEY(event_id) REFERENCES events(event_id) ON DELETE RESTRICT,
+            FOREIGN KEY(project_id) REFERENCES projects(project_id) ON DELETE RESTRICT
+        )
+        """,
+        """
+        CREATE TABLE background_worker_leases (
+            consumer_name TEXT NOT NULL,
+            worker_id TEXT NOT NULL CHECK(length(worker_id) > 0),
+            lease_token TEXT NOT NULL CHECK(length(lease_token) > 0),
+            acquired_at TEXT NOT NULL,
+            expires_at TEXT NOT NULL,
+            heartbeat_at TEXT NOT NULL,
+            status TEXT NOT NULL CHECK(status IN ('ACTIVE','EXPIRED','RELEASED')),
+            PRIMARY KEY(consumer_name, worker_id),
+            FOREIGN KEY(consumer_name) REFERENCES outbox_consumers(consumer_name) ON DELETE RESTRICT
+        )
+        """,
+        "CREATE INDEX idx_audit_records_project_time ON audit_records(project_id, occurred_at, audit_id)",
+        "CREATE INDEX idx_audit_records_event ON audit_records(event_id, occurred_at)",
+        "CREATE INDEX idx_outbox_messages_claimable ON outbox_messages(consumer_name, status, available_at, event_global_position)",
+        "CREATE INDEX idx_outbox_messages_aggregate ON outbox_messages(consumer_name, project_id, aggregate_type, aggregate_id, aggregate_version)",
+        "CREATE INDEX idx_inbox_messages_project_status ON inbox_messages(project_id, status, updated_at)",
+        "CREATE INDEX idx_dead_letter_messages_project_time ON dead_letter_messages(project_id, created_at, dead_letter_id)",
+        """
+        INSERT INTO outbox_consumers(consumer_name, status, created_at, updated_at)
+        VALUES ('default', 'ACTIVE', CURRENT_TIMESTAMP::TEXT, CURRENT_TIMESTAMP::TEXT)
+        ON CONFLICT(consumer_name) DO NOTHING
+        """,
+        """
+        ALTER TABLE audit_records ENABLE ROW LEVEL SECURITY;
+        ALTER TABLE audit_records FORCE ROW LEVEL SECURITY;
+        CREATE POLICY audit_records_select ON audit_records FOR SELECT USING (
+            brand_os_has_project_action(project_id, 'PROJECT_READ', 'P0')
+        );
+        CREATE POLICY audit_records_insert ON audit_records FOR INSERT WITH CHECK (
+            brand_os_current_action_permitted(
+                project_id, 'P0',
+                ARRAY[
+                    'EVIDENCE_WRITE','WORKING_WRITE','PROPOSAL_CREATE',
+                    'PROPOSAL_REVIEW','RUNTIME_START','ACCESS_MANAGE'
+                ]::TEXT[]
+            )
+        );
+        CREATE POLICY audit_records_update ON audit_records FOR UPDATE USING (
+            brand_os_current_action_permitted(project_id, 'P0', ARRAY['RUNTIME_START']::TEXT[])
+        ) WITH CHECK (
+            brand_os_current_action_permitted(project_id, 'P0', ARRAY['RUNTIME_START']::TEXT[])
+        )
+        """,
+        """
+        ALTER TABLE outbox_messages ENABLE ROW LEVEL SECURITY;
+        ALTER TABLE outbox_messages FORCE ROW LEVEL SECURITY;
+        CREATE POLICY outbox_messages_select ON outbox_messages FOR SELECT USING (
+            brand_os_has_project_action(project_id, 'PROJECT_READ', 'P0')
+            OR brand_os_has_project_action(project_id, 'RUNTIME_START', 'P0')
+        );
+        CREATE POLICY outbox_messages_insert ON outbox_messages FOR INSERT WITH CHECK (
+            brand_os_current_action_permitted(
+                project_id, 'P0',
+                ARRAY[
+                    'EVIDENCE_WRITE','WORKING_WRITE','PROPOSAL_CREATE',
+                    'PROPOSAL_REVIEW','RUNTIME_START','ACCESS_MANAGE'
+                ]::TEXT[]
+            )
+        );
+        CREATE POLICY outbox_messages_update ON outbox_messages FOR UPDATE USING (
+            brand_os_current_action_permitted(
+                project_id, 'P0',
+                ARRAY[
+                    'EVIDENCE_WRITE','WORKING_WRITE','PROPOSAL_CREATE',
+                    'PROPOSAL_REVIEW','RUNTIME_START','ACCESS_MANAGE'
+                ]::TEXT[]
+            )
+        ) WITH CHECK (
+            brand_os_current_action_permitted(
+                project_id, 'P0',
+                ARRAY[
+                    'EVIDENCE_WRITE','WORKING_WRITE','PROPOSAL_CREATE',
+                    'PROPOSAL_REVIEW','RUNTIME_START','ACCESS_MANAGE'
+                ]::TEXT[]
+            )
+        )
+        """,
+        """
+        ALTER TABLE inbox_messages ENABLE ROW LEVEL SECURITY;
+        ALTER TABLE inbox_messages FORCE ROW LEVEL SECURITY;
+        CREATE POLICY inbox_messages_select ON inbox_messages FOR SELECT USING (
+            brand_os_has_project_action(project_id, 'PROJECT_READ', 'P0')
+            OR brand_os_has_project_action(project_id, 'RUNTIME_START', 'P0')
+        );
+        CREATE POLICY inbox_messages_insert ON inbox_messages FOR INSERT WITH CHECK (
+            brand_os_current_action_permitted(project_id, 'P0', ARRAY['RUNTIME_START']::TEXT[])
+        );
+        CREATE POLICY inbox_messages_update ON inbox_messages FOR UPDATE USING (
+            brand_os_current_action_permitted(project_id, 'P0', ARRAY['RUNTIME_START']::TEXT[])
+        ) WITH CHECK (
+            brand_os_current_action_permitted(project_id, 'P0', ARRAY['RUNTIME_START']::TEXT[])
+        )
+        """,
+        """
+        ALTER TABLE dead_letter_messages ENABLE ROW LEVEL SECURITY;
+        ALTER TABLE dead_letter_messages FORCE ROW LEVEL SECURITY;
+        CREATE POLICY dead_letter_messages_select ON dead_letter_messages FOR SELECT USING (
+            brand_os_has_project_action(project_id, 'PROJECT_READ', 'P0')
+            OR brand_os_has_project_action(project_id, 'RUNTIME_START', 'P0')
+        );
+        CREATE POLICY dead_letter_messages_insert ON dead_letter_messages FOR INSERT WITH CHECK (
+            brand_os_current_action_permitted(project_id, 'P0', ARRAY['RUNTIME_START']::TEXT[])
+        );
+        CREATE POLICY dead_letter_messages_update ON dead_letter_messages FOR UPDATE USING (
+            brand_os_current_action_permitted(project_id, 'P0', ARRAY['RUNTIME_START']::TEXT[])
+        ) WITH CHECK (
+            brand_os_current_action_permitted(project_id, 'P0', ARRAY['RUNTIME_START']::TEXT[])
+        )
+        """,
+        """
+        ALTER TABLE background_worker_leases ENABLE ROW LEVEL SECURITY;
+        ALTER TABLE background_worker_leases FORCE ROW LEVEL SECURITY;
+        CREATE POLICY background_worker_leases_all ON background_worker_leases
+        USING (true) WITH CHECK (true)
+        """,
+    ),
+)
+
+
 POSTGRESQL_MIGRATIONS = (
     *_SHARED_POSTGRESQL_MIGRATIONS,
     POSTGRESQL_OBJECT_EVIDENCE_MIGRATION,
     POSTGRESQL_OIDC_IDENTITY_MIGRATION,
     POSTGRESQL_PROJECT_AUTHORIZATION_MIGRATION,
+    POSTGRESQL_AUDIT_OUTBOX_MIGRATION,
 )
 
 
@@ -742,6 +979,7 @@ __all__ = [
     "POSTGRESQL_OBJECT_EVIDENCE_MIGRATION",
     "POSTGRESQL_OIDC_IDENTITY_MIGRATION",
     "POSTGRESQL_PROJECT_AUTHORIZATION_MIGRATION",
+    "POSTGRESQL_AUDIT_OUTBOX_MIGRATION",
     "POSTGRESQL_SCHEMA_VERSION",
     "apply_postgresql_migrations",
 ]

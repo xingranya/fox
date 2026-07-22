@@ -13,6 +13,7 @@ from .postgresql_migrations import (
     POSTGRESQL_MIGRATIONS,
     apply_postgresql_migrations,
 )
+from .postgresql_outbox import PostgreSQLOutboxMixin
 from .sqlite_base import SQLiteStoreBase
 from .sqlite_commands import SQLiteCommandMixin
 from .sqlite_evidence_queries import SQLiteEvidenceQueryMixin
@@ -164,7 +165,19 @@ class PostgreSQLStoreBase(SQLiteStoreBase):
         """核对迁移版本、校验和及 F2.2 核心表是否完整。"""
 
         expected = {migration.version: migration.checksum for migration in POSTGRESQL_MIGRATIONS}
-        required_tables = ("projects", "events", "proposals", "human_actions", "state_items")
+        required_tables = (
+            "projects",
+            "events",
+            "proposals",
+            "human_actions",
+            "state_items",
+            "audit_records",
+            "outbox_consumers",
+            "outbox_messages",
+            "inbox_messages",
+            "dead_letter_messages",
+            "background_worker_leases",
+        )
         with self._connect() as connection:
             applied = {
                 int(row[0]): str(row[1])
@@ -178,7 +191,7 @@ class PostgreSQLStoreBase(SQLiteStoreBase):
                     """
                     SELECT table_name FROM information_schema.tables
                     WHERE table_schema = current_schema()
-                      AND table_name IN (?, ?, ?, ?, ?)
+                      AND table_name IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     required_tables,
                 )
@@ -187,6 +200,7 @@ class PostgreSQLStoreBase(SQLiteStoreBase):
 
 
 class PostgreSQLCanonicalStore(
+    PostgreSQLOutboxMixin,
     PostgreSQLStoreBase,
     SQLiteEvidenceQueryMixin,
     SQLiteProposalMixin,

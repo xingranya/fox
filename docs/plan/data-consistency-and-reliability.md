@@ -157,7 +157,7 @@ stateDiagram-v2
 - 大批量导入、投影重建和迁移使用项目级或任务级 advisory lock，不使用全局长事务。
 - 审批策略在提案创建时保存快照；流程进行中修改规则不追溯改变既有提案。
 
-F2.6 已完成当前并发实现：命令级 advisory lock 和项目行锁串行化正式版本推进；冲突报告从批准事件重建正式状态，并核对当前投影。当前没有自动合并冲突，也不会把数据库或投影异常转换成 409。HTTP 路由留给 F2.8，Outbox/Inbox 留给 F2.7。详见 [F2.6 幂等、乐观锁和冲突差异](../phase2/write-consistency-and-conflicts.md)。
+F2.6 已完成当前并发实现：命令级 advisory lock 和项目行锁串行化正式版本推进；冲突报告从批准事件重建正式状态，并核对当前投影。当前没有自动合并冲突，也不会把数据库或投影异常转换成 409。HTTP 路由留给 F2.8；F2.7 已完成 Outbox/Inbox、审计和后台任务边界。详见 [F2.6 幂等、乐观锁和冲突差异](../phase2/write-consistency-and-conflicts.md) 与 [F2.7 审计、Outbox/Inbox 和后台任务](../phase2/audit-outbox-inbox.md)。
 
 ## Phase 2+：Outbox 与消费者
 

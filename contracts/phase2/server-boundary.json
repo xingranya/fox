@@ -1,5 +1,5 @@
 {
-  "schema_version": "server-boundary.v3",
+  "schema_version": "server-boundary.v4",
   "service": "Brand Project OS Service",
   "authority": {
     "only_application_service_may_advance_formal_state": true,
@@ -90,9 +90,35 @@
       "forbidden_operations": ["direct_client_access", "direct_agent_access"],
       "may_advance_formal_state": false,
       "stores_formal_business_state": true,
-      "stores": ["events", "approvals", "projections", "audit", "outbox"],
+      "stores": [
+        "events",
+        "approvals",
+        "projections",
+        "audit",
+        "outbox",
+        "inbox",
+        "dead_letters"
+      ],
       "replaceable": true,
       "required_for_core_readiness": true
+    },
+    {
+      "id": "outbox_worker",
+      "kind": "background_worker",
+      "business_operations": [
+        "consume_outbox",
+        "write_inbox",
+        "write_dead_letter"
+      ],
+      "forbidden_operations": [
+        "human_review",
+        "direct_formal_table_write"
+      ],
+      "may_advance_formal_state": false,
+      "stores_formal_business_state": false,
+      "stores": ["delivery_leases", "inbox", "dead_letters"],
+      "replaceable": true,
+      "required_for_core_readiness": false
     },
     {
       "id": "object_store_adapter",
@@ -132,6 +158,7 @@
     "required_dependencies": ["postgresql", "schema", "object_storage", "oidc"],
     "optional_dependencies": [
       "openwork_runtime",
+      "outbox_worker",
       "dify",
       "zvec",
       "open_notebook",

@@ -37,12 +37,10 @@
     "next_event_version"
   ],
   "state_change_kinds": ["ADDED", "REMOVED", "MODIFIED"],
-  "postgresql_schema_version": 9,
+  "postgresql_schema_version": 10,
   "deferred": [
     "http_route",
     "openapi",
-    "outbox",
-    "inbox",
     "mcp_command_identity"
   ],
   "migrates_hongri_data": false

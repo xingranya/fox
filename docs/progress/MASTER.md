@@ -10,7 +10,7 @@
 
 ## 当前结论
 
-- 当前活动方案为 5 阶段 49 项：Phase 0 和 Phase 1 已完成，F2.1-F2.6 已通过，当前执行 F2.7 审计、Outbox/Inbox 和后台任务边界；MCP/Skills、工作流接入和团队试点仍按后续阶段过门。
+- 当前活动方案为 5 阶段 49 项：Phase 0 和 Phase 1 已完成，F2.1-F2.7 已通过，当前执行 F2.8 HTTP API 与 OpenAPI 契约；MCP/Skills、工作流接入和团队试点仍按后续阶段过门。
 - 旧 42 项服务器草案和 32 项本地价值验证方案均保留在 Git 历史中，不再作为当前依赖或完成度来源。
 - 当前主线不是通用项目管理、企业知识库或完整 RAG，而是长期品牌项目的状态与品牌认知协作层。
 - 公司定制版 OpenWork 是唯一员工客户端。Brand Project OS 是当前项目名，最终发行名可以另定；OpenCode Runtime、Sidecar 和本机桥接仍随同一安装包分发。
@@ -18,7 +18,7 @@
 - MCP Gateway、Skills 和 Dify/外部组件适配都调用同一应用服务。MCP 是 AI 接口，不是数据库；AI 和服务账号无人工批准权。
 - Phase 1 SQLite 在迁移前继续承载本地验证；Phase 3 一次性切换后退出正式写入，不形成双主。
 - 七项一票否决适用于所有模型/协议/版本；任何一项出现即阻断阶段门。
-- BISHENG 评估与条件接入 SPEC 已进入当前 49 项之后的候选池；它不影响 F2.2-F4.9 完成度，只有 Phase 4 试点结论和 Fox 单独批准后才能正式 rescope。
+- BISHENG 评估与条件接入 SPEC 已进入当前 49 项之后的候选池；它不影响 F2.2-F4.9 完成度，只有 Phase 4 试点结论和 Fox 单独批准后才能正式 rescope。F2.7 的 Worker 边界已预留未来 Dify、FlowLong、BISHENG 等消费者，但没有提前接入。
 
 ## 参考文档
 
@@ -47,6 +47,7 @@
 - [F2.4 OIDC 员工身份与服务器会话](../phase2/oidc-identity-and-sessions.md)
 - [F2.5 项目 RBAC、保密级别与 RLS](../phase2/project-authorization-and-rls.md)
 - [F2.6 幂等、乐观锁和冲突差异](../phase2/write-consistency-and-conflicts.md)
+- [F2.7 审计、Outbox/Inbox 和后台任务](../phase2/audit-outbox-inbox.md)
 - [BISHENG 接入评估](../analysis/bisheng-integration-evaluation.md)
 - [BISHENG 条件接入 SPEC](../plan/bisheng-integration-spec.md)
 - [ADR-0005：单一客户端与服务器权威服务](../adr/0005-single-client-server-authority.md)
@@ -59,26 +60,26 @@
 |:---|:---|---:|---:|:---|:---|
 | 0 | 边界、协议与黄金测试先行 | 7 | 7 | 100% | 一页边界、鸿日样本、分类标准、品牌 Agent 协议、10-20 黄金用例与 BrandBench |
 | 1 | 单一客户端本地纵向切片 | 10 | 10 | 100% | 本地领域核心、CLI/MCP、OpenWork 单安装包和鸿日桌面闭环 |
-| 2 | 服务器权威基础 | 10 | 6 | 60% | PostgreSQL、对象存储、OIDC/RBAC、一致性、API、审计和恢复 |
+| 2 | 服务器权威基础 | 10 | 7 | 70% | PostgreSQL、对象存储、OIDC/RBAC、一致性、API、审计和恢复 |
 | 3 | 客户端联网与集成 | 13 | 0 | 0% | Desktop 联网、MCP、Skills、Dify、Zvec、Open Notebook、Nubase、FlowLong |
 | 4 | 团队试点与生产准入 | 9 | 0 | 0% | 真实团队工作、并发、故障恢复、安全、SLO、签名分发和 Go/No-Go |
-| **合计** |  | **49** | **23** | **47%** | 当前执行 F2.7，后续阶段依次过门 |
+| **合计** |  | **49** | **24** | **49%** | 当前执行 F2.8，后续阶段依次过门 |
 
 ## 阶段清单
 
 - [x] Phase 0：边界、协议与黄金测试先行（7/7）- [详情](phase-0-boundary-and-bench.md)
 - [x] Phase 1：单一客户端本地纵向切片（10/10）- [详情](phase-1-hongri-local-prototype.md)
-- [ ] Phase 2：服务器权威基础（6/10）- [详情](phase-2-server-authority-foundation.md)
+- [ ] Phase 2：服务器权威基础（7/10）- [详情](phase-2-server-authority-foundation.md)
 - [ ] Phase 3：客户端联网、MCP、Skills 与工作流（0/13）- [详情](phase-3-connected-client-and-integrations.md)
 - [ ] Phase 4：团队试点与生产准入（0/9）- [详情](phase-4-team-pilot-and-production-gate.md)
 
 ## 当前状态
 
 **活动阶段**：Phase 2：服务器权威基础
-**活动任务**：F2.7：实现审计、Outbox/Inbox 和后台任务边界
+**活动任务**：F2.8：发布版本化 HTTP API 与 OpenAPI 契约
 **阻塞项**：当前无业务阻塞；内部 macOS 包尚未签名、公证，仍不可向员工分发
-**后续顺序**：F2.7-F2.10 -> Phase 3 联网与集成 -> Phase 4 团队试点
-**规划检查点**：Phase 0、Phase 1 和 F2.1-F2.6 已通过，当前完成 23/49
+**后续顺序**：F2.8-F2.10 -> Phase 3 联网与集成 -> Phase 4 团队试点
+**规划检查点**：Phase 0、Phase 1 和 F2.1-F2.7 已通过，当前完成 24/49
 
 ## 治理状态
 
@@ -118,7 +119,7 @@
 | threshold_replan | 4 |
 | threshold_rescope | 6 |
 | total_tasks | 10 |
-| completed_tasks | 6 |
+| completed_tasks | 7 |
 | last_updated | 2026-07-23 |
 
 ### 各阶段阈值
@@ -162,6 +163,7 @@
 | F2.4 | L | XL | +1 | 10/10 | 0 | 1 | 1 |
 | F2.5 | L | L | 0 | 10/10 | +1 | 0 | 0 |
 | F2.6 | L | L | 0 | 10/10 | +1 | 0 | 0 |
+| F2.7 | L | L | 0 | 10/10 | +1 | 0 | 0 |
 
 ## Rescope 追踪
 
@@ -170,20 +172,21 @@
 | 初始本地草案 | 个人本地 29 项 | 未开始 | 本地知识与 AI 接入 | 被团队服务器方案替代 |
 | 团队服务器方案 | 6 阶段 / 42 项 | 0/42，未开始 | OpenWork Electron + PostgreSQL/S3 团队服务器先行 | 被本次 rescope 替代；逐项映射保留在任务分解 |
 | 本地价值验证方案 | 4 阶段 / 32 项 | 15/32 时 rescope | Fox/鸿日、本地单用户、黄金测试与真实工作先行 | Phase 0 和 F1.1-F1.8 保留；未开始的旧 Phase 2/3 被取代 |
-| 单一客户端 + 服务器权威服务 | 5 阶段 / 49 项 | 23/49，执行中 | OpenWork 唯一客户端、公司服务器权威、MCP/Skills/工作流和团队试点 | 当前活动方案 |
+| 单一客户端 + 服务器权威服务 | 5 阶段 / 49 项 | 24/49，执行中 | OpenWork 唯一客户端、公司服务器权威、MCP/Skills/工作流和团队试点 | 当前活动方案 |
 
 服务器、身份、一致性、恢复、Dify 和四个开源组件已进入正式实施顺序。外部组件仍需逐项证明收益；“拒绝并使用 NoOp”是合法结果。
 
 ## 下一步
 
-1. 用 F2.7 把业务事件、审批、投影、审计和 Outbox 放进同一事务，并为 Inbox、重放、乱序和死信冻结边界。
-2. 保持 F2.6 的 `COMMITTED/REPLAYED/CONFLICT` 语义；后台投递不得重复改变正式状态，也不能把故障伪装成业务冲突。
+1. 用 F2.8 发布版本化 HTTP API/OpenAPI，保持人工路由与 Agent 路由分离，并复用 F2.6/F2.7 的结果和错误语义。
+2. 保持 F2.7 的“至少一次 + Inbox 去重 + 死信可重放”语义；后台投递不得重复改变正式状态，也不能把故障伪装成业务冲突。
 3. 保留 F1.10 的 SQLite、原件哈希和验收副本，供 F3.1 对账；在 F4.8 前不向员工分发未签名包。
 
 ## 会话日志
 
 | 日期 | 会话 | 摘要 |
 |:---|:---|:---|
+| 2026-07-23 | F2.7 审计、Outbox/Inbox 和后台任务 | 新增 `audit-outbox.v1`、PostgreSQL v10、追加式事件审计、按消费者 Outbox、租约领取、聚合顺序、Inbox 去重、重试、死信、重放和 Worker 最小权限。消费者不写正式表，正式状态在消费者停机或失败时仍可查询。专项 7 项、Phase 2 全量 101 项及 14 组子测试、完整回归 260 项及 19 组子测试通过；未迁移正式资料，临时 PostgreSQL 已退出。实际工作量 L，SUPER 10/10，未计划依赖 0，任务漂移 0，Phase 2 累计漂移保持 3，当前进入 F2.8。 |
 | 2026-07-13 | 初始规划 | 核验 Zvec、Nubase、Open Notebook、FlowLong，形成个人本地方案初稿。 |
 | 2026-07-13 | 团队服务器范围变更 | 将目标改为 PostgreSQL/S3 团队服务器、远程 API/MCP、Web/PWA 和可靠性体系。 |
 | 2026-07-13 | Dify 范围变更 | 将 Dify 纳入外部组件 POC，形成 6 阶段 42 项未开始方案。 |
@@ -218,4 +221,4 @@
 | 2026-07-23 | F2.4 OIDC 员工身份与会话 | 新增 `oidc-identity.v1`、PostgreSQL v8、Authorization Code + S256 PKCE、Discovery/JWKS/claims 校验、预登记 issuer/subject 绑定、加密令牌、刷新轮换、本地优先撤销和 `IDENTITY_ASSERTED` 审计。Phase 2 共 74 项、全量 233 项及 16 组子测试通过；未连接公司 OIDC，未读取或迁移正式资料。实际工作量 XL，SUPER 10/10；PyJWT/cryptography 与补充安全语义记 1 项未计划依赖，任务漂移 1，Phase 2 累计漂移 3，当前进入 F2.5。 |
 | 2026-07-23 | F2.5 项目授权与 RLS | 新增 `project-authorization.v1`、五角色九动作矩阵、P0-P3 上限、独立服务身份、PostgreSQL v9 授权表和强制 RLS。应用服务先判权，非所有者 `NOBYPASSRLS` 角色再按事务上下文过滤；服务身份不能获授或伪造人工评审。Phase 2 共 83 项、全量 242 项及 16 组子测试通过；未迁移正式资料。实际工作量 L，SUPER 10/10，未计划依赖 0、任务漂移 0，Phase 2 累计漂移保持 3，当前进入 F2.6。 |
 | 2026-07-23 | BISHENG 未来规划确认 | Fox 确认 BISHENG 文档可以保留并作为后续规划参考。本次确认不启动部署或 BS0，也不改变当前 49 项；仍需 Phase 4 试点结论和单独 rescope 才能进入实施。 |
-| 2026-07-23 | F2.6 写一致性与冲突差异 | 新增 `write-consistency.v1`、`write-conflict.v1`、专用幂等键冲突、一致性应用服务和 PostgreSQL `REPEATABLE READ` 差异快照。100 次同请求并发重试只提交一次；双请求同版本竞争只有一个成功，另一端得到 409、当前版本、事件元数据和可复核正式状态差异。事件重建与当前投影不一致时阻断报告，未知事务异常保持回滚。Phase 2 共 93 项、全量 252 项及 19 组子测试通过；未迁移正式资料，临时 PostgreSQL 已退出。实际工作量 L，SUPER 10/10，未计划依赖 0、任务漂移 0，Phase 2 累计漂移保持 3，当前进入 F2.7。 |
+| 2026-07-23 | F2.6 写一致性与冲突差异 | 新增 `write-consistency.v1`、`write-conflict.v1`、专用幂等键冲突、一致性应用服务和 PostgreSQL `REPEATABLE READ` 差异快照。100 次同请求并发重试只提交一次；双请求同版本竞争只有一个成功，另一端得到 409、当前版本、事件元数据和可复核正式状态差异。事件重建与当前投影不一致时阻断报告，未知事务异常保持回滚。Phase 2 共 93 项、全量 252 项及 19 组子测试通过；未迁移正式资料，临时 PostgreSQL 已退出。实际工作量 L，SUPER 10/10，未计划依赖 0、任务漂移 0，Phase 2 累计漂移保持 3，随后进入 F2.7。 |

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import TYPE_CHECKING, BinaryIO, Iterator, Mapping, Protocol, Sequence
+from typing import TYPE_CHECKING, BinaryIO, Callable, Iterator, Mapping, Protocol, Sequence
 
 from .domain import (
     Actor,
@@ -146,6 +146,53 @@ class ConflictSnapshotPort(Protocol):
         resource_id: str | None,
         max_events: int,
     ) -> ConflictReport: ...
+
+
+class BackgroundTaskPort(Protocol):
+    """审计、Outbox/Inbox 和至少一次后台投递端口。"""
+
+    def register_outbox_consumer(
+        self,
+        consumer_name: str,
+        *,
+        replay_from_start: bool = True,
+    ) -> Mapping[str, object]: ...
+
+    def claim_outbox_messages(
+        self,
+        consumer_name: str,
+        worker_id: str,
+        *,
+        limit: int = 10,
+        lease_seconds: int = 60,
+        project_id: str | None = None,
+    ) -> Sequence[Mapping[str, object]]: ...
+
+    def deliver_outbox_message(
+        self,
+        consumer_name: str,
+        message: Mapping[str, object],
+        handler: Callable[[Mapping[str, object]], object],
+        *,
+        worker_id: str,
+        lease_token: str | None = None,
+        max_attempts: int = 3,
+    ) -> Mapping[str, object]: ...
+
+    def replay_dead_letter(
+        self,
+        consumer_name: str,
+        *,
+        dead_letter_id: str | None = None,
+        worker_id: str = "replay",
+    ) -> Mapping[str, object]: ...
+
+    def list_audit_records(
+        self,
+        project_id: str,
+        *,
+        event_id: str | None = None,
+    ) -> Sequence[Mapping[str, object]]: ...
 
 
 class CanonicalBackupPort(Protocol):

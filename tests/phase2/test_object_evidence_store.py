@@ -166,10 +166,10 @@ class ObjectEvidenceStoreTest(unittest.TestCase):
         )
 
     def test_schema_v7_is_repeatable_and_contains_object_tables(self) -> None:
-        self.assertEqual(self.repository.schema_version, 9)
+        self.assertEqual(self.repository.schema_version, 10)
         self.assertTrue(self.repository.quick_check())
         reopened = PostgreSQLEvidenceRepository(self.dsn)
-        self.assertEqual(reopened.schema_version, 9)
+        self.assertEqual(reopened.schema_version, 10)
         self.assertTrue(reopened.quick_check())
 
     def test_bucket_without_versioning_is_rejected_before_upload(self) -> None:

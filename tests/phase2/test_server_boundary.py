@@ -23,7 +23,7 @@ class ServerBoundaryContractTest(unittest.TestCase):
     def test_machine_contract_matches_runtime_boundary(self) -> None:
         self.assertEqual(self.contract, SERVER_BOUNDARY)
         self.assertEqual(validate_server_boundary(self.contract), ())
-        self.assertEqual(self.contract["schema_version"], "server-boundary.v3")
+        self.assertEqual(self.contract["schema_version"], "server-boundary.v4")
 
     def test_only_application_service_may_advance_formal_state(self) -> None:
         advancing = [
@@ -60,6 +60,18 @@ class ServerBoundaryContractTest(unittest.TestCase):
         self.assertFalse(runtime["required_for_core_readiness"])
         self.assertFalse(runtime["stores_formal_business_state"])
         self.assertIn("session_state", runtime["stores"])
+
+    def test_outbox_worker_cannot_write_formal_state(self) -> None:
+        worker = next(
+            component
+            for component in self.contract["components"]
+            if component["id"] == "outbox_worker"
+        )
+
+        self.assertEqual(worker["kind"], "background_worker")
+        self.assertFalse(worker["may_advance_formal_state"])
+        self.assertFalse(worker["required_for_core_readiness"])
+        self.assertIn("direct_formal_table_write", worker["forbidden_operations"])
 
     def test_oidc_authenticates_employee_without_business_approval(self) -> None:
         identity = next(
