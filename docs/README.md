@@ -51,6 +51,7 @@
 - [远程鸿喜达资料筛选结论](phase0/remote-hongxida-source-selection.md)
 - [已知资料缺口](phase0/known-source-gaps.md)
 - [BrandBench 匿名评审指引](phase0/brandbench-review-guide.md)
+- [BrandBench 首轮人工基线结果](phase0/brandbench-baseline-result.md)
 - [技术实施就绪与 OpenWork 交接](phase0/technical-readiness-and-openwork-handoff.md)
 - [阶段成果简报](phase0/leadership-progress-brief.md)
 

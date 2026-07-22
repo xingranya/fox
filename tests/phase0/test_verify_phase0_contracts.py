@@ -29,11 +29,16 @@ class VerifyPhase0ContractsTest(unittest.TestCase):
         results = verify.validate_brandbench(data)
         self.assertTrue(all(result.passed for result in results), [result.detail for result in results if not result.passed])
 
+    def test_brandbench_baseline_records_failed_quality_gate(self) -> None:
+        data = verify.load_json(verify.BRANDBENCH_BASELINE_PATH)
+        results = verify.validate_brandbench_baseline(data)
+        self.assertTrue(all(result.passed for result in results), [result.detail for result in results if not result.passed])
+
     def test_report_is_machine_readable_and_passes(self) -> None:
         report = verify.build_report()
         self.assertEqual(report["schema_version"], "phase0-contract-verification.v1")
         self.assertTrue(report["passed"])
-        self.assertEqual(report["brandbench_baseline"], "pending_human_review")
+        self.assertEqual(report["brandbench_baseline"], "completed_failed_quality_gate")
 
     def test_openwork_remains_replaceable_and_has_no_business_authority(self) -> None:
         port_catalog = verify.load_json(verify.PORT_CATALOG_PATH)

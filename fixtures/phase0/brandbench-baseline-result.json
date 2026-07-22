@@ -1,0 +1,28 @@
+{
+  "schema_version": "brandbench-review.v1",
+  "review_id": "brandbench-phase0-hongxida-product-repack-002",
+  "review_status": "completed",
+  "fixture_id": "G-16",
+  "candidate_order": ["A", "B"],
+  "dimensions": ["战略锋利度", "自然中文", "消费者真实", "记忆性", "产品咬合度", "证据纪律"],
+  "scores": [
+    {"candidate":"A","dimension":"战略锋利度","score":3,"comment":""},
+    {"candidate":"A","dimension":"自然中文","score":2,"comment":"整体不像人话"},
+    {"candidate":"A","dimension":"消费者真实","score":3,"comment":""},
+    {"candidate":"A","dimension":"记忆性","score":4,"comment":""},
+    {"candidate":"A","dimension":"产品咬合度","score":4,"comment":""},
+    {"candidate":"A","dimension":"证据纪律","score":3,"comment":""},
+    {"candidate":"B","dimension":"战略锋利度","score":3,"comment":""},
+    {"candidate":"B","dimension":"自然中文","score":1,"comment":"整体不像人话"},
+    {"candidate":"B","dimension":"消费者真实","score":2,"comment":""},
+    {"candidate":"B","dimension":"记忆性","score":2,"comment":""},
+    {"candidate":"B","dimension":"产品咬合度","score":2,"comment":""},
+    {"candidate":"B","dimension":"证据纪律","score":2,"comment":""}
+  ],
+  "reviewer_confirmation": {
+    "reviewed_by":"Fox",
+    "model_identity_hidden":true,
+    "order_randomized":true,
+    "confirmed_at":"2026-07-22T03:50:20Z"
+  }
+}

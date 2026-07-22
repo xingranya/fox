@@ -13,6 +13,7 @@ from pathlib import Path
 ROOT = Path(__file__).parents[2]
 GOLDEN_PATH = ROOT / "fixtures" / "phase0" / "golden-cases.json"
 BRANDBENCH_PATH = ROOT / "fixtures" / "phase0" / "brandbench-review-template.json"
+BRANDBENCH_BASELINE_PATH = ROOT / "fixtures" / "phase0" / "brandbench-baseline-result.json"
 PORT_CATALOG_PATH = ROOT / "contracts" / "phase0" / "port-catalog.json"
 OPENWORK_ADAPTER_PATH = ROOT / "contracts" / "phase0" / "openwork-adapter.json"
 REPORT_PATH = ROOT / ".work" / "phase0" / "contract-verification.json"
@@ -93,6 +94,29 @@ def validate_brandbench(data: dict[str, object]) -> list[CheckResult]:
     ]
 
 
+def validate_brandbench_baseline(data: dict[str, object]) -> list[CheckResult]:
+    """验证 Fox 首轮匿名评分完整，并确认质量门没有被误报为通过。"""
+
+    scores = data.get("scores", [])
+    by_candidate: dict[str, dict[str, int]] = {}
+    for row in scores:
+        candidate = row.get("candidate")
+        dimension = row.get("dimension")
+        score = row.get("score")
+        if isinstance(candidate, str) and isinstance(dimension, str) and isinstance(score, int):
+            by_candidate.setdefault(candidate, {})[dimension] = score
+    a_scores = by_candidate.get("A", {})
+    b_scores = by_candidate.get("B", {})
+    improved = sum(b_scores.get(dimension, 0) > a_scores.get(dimension, 0) for dimension in EXPECTED_DIMENSIONS)
+    return [
+        CheckResult("首轮人工评审完成", data.get("review_status") == "completed", "必须由 Fox 完成"),
+        CheckResult("首轮评分矩阵完整", all(len(by_candidate.get(candidate, {})) == 6 for candidate in ["A", "B"]), "A/B 均须有六维评分"),
+        CheckResult("首轮评审人为 Fox", data.get("reviewer_confirmation", {}).get("reviewed_by") == "Fox", "AI 不得代评"),
+        CheckResult("首轮总分可复算", sum(a_scores.values()) == 19 and sum(b_scores.values()) == 12, "记录分数必须与用户输入一致"),
+        CheckResult("质量门正确失败", improved == 0 and b_scores.get("自然中文") == 1, "Task Packet 版没有产生质量改善"),
+    ]
+
+
 def validate_technical_boundary(
     port_catalog: dict[str, object], openwork_adapter: dict[str, object]
 ) -> list[CheckResult]:
@@ -119,6 +143,7 @@ def build_report() -> dict[str, object]:
 
     results = validate_golden_cases(load_json(GOLDEN_PATH))
     results.extend(validate_brandbench(load_json(BRANDBENCH_PATH)))
+    results.extend(validate_brandbench_baseline(load_json(BRANDBENCH_BASELINE_PATH)))
     results.extend(
         validate_technical_boundary(
             load_json(PORT_CATALOG_PATH), load_json(OPENWORK_ADAPTER_PATH)
@@ -128,7 +153,7 @@ def build_report() -> dict[str, object]:
         "schema_version": "phase0-contract-verification.v1",
         "passed": all(result.passed for result in results),
         "checks": [result.__dict__ for result in results],
-        "brandbench_baseline": "pending_human_review",
+        "brandbench_baseline": "completed_failed_quality_gate",
     }
 
 
