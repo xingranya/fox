@@ -121,6 +121,16 @@ M00 黄金测试与 BrandBench 横向验证 M01-M09
 
 OpenWork 是 M09 的唯一员工客户端基础，也是 M08 的 Agent 运行辅助。OpenWork Server、OpenCode Session、Permission、SQLite/JSON 状态不是业务真相源；OpenCode Tool Permission 也不是 M05 的业务批准。
 
+## Phase 2 当前实现
+
+| 模块 | 责任 | 端口/边界 | S.U.P.E.R |
+|:---|:---|:---|:---|
+| F2.1 服务器基线 | 配置优先级、秘密注入、组件职责和健康检查 | `server_config.py`、`server_baseline.py` | S/U/P/E/R：绿 |
+| F2.2 PostgreSQL 权威 | 事件、Proposal、人工动作、投影和稳定查询 | `CanonicalStorePort`；v1-v6 领域迁移 | S/U/P/E/R：绿 |
+| F2.3 对象准入 | 上传会话、哈希校验、不可变对象版本、墓碑和对账 | `ObjectStorePort`、`EvidenceMetadataPort`；PostgreSQL v7 + S3 | S/U/P/E/R：绿 |
+
+F2.3 的 boto3 只存在于 `s3_store.py` 适配器；状态机、人工撤销和正式回源规则不依赖 S3 SDK。桶版本控制是准入前置条件，只有 `ACTIVE` 对象可以进入证据链，故障通过重试、过期清理和对账恢复。
+
 ## Phase 3 可替换适配器
 
 | 候选 | 端口 | 当前状态 | 替代基线 |

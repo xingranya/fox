@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from pathlib import Path
-from typing import Mapping, Protocol, Sequence
+from typing import BinaryIO, Iterator, Mapping, Protocol, Sequence
 
 from .domain import (
     Actor,
@@ -19,6 +20,15 @@ from .domain import (
     SourceImportBatch,
 )
 from .task_packets import AgentRunRequest, RuntimeTaskDefinition, WorkModeSwitch
+from .object_evidence import (
+    EvidenceAdmissionRequest,
+    EvidenceTombstone,
+    EvidenceUpload,
+    EvidenceVersion,
+    MultipartUploadInfo,
+    ObjectInfo,
+    ReconciliationReport,
+)
 
 
 class CanonicalStorePort(Protocol):
@@ -106,6 +116,154 @@ class CanonicalBackupPort(Protocol):
     def create(self) -> str: ...
 
     def restore(self, backup_id: str, destination: Path) -> Path: ...
+
+
+class ObjectStorePort(Protocol):
+    """S3 兼容对象操作端口，领域层不依赖具体 SDK。"""
+
+    bucket: str
+
+    def versioning_enabled(self) -> bool: ...
+
+    def put_stream(
+        self,
+        key: str,
+        source: BinaryIO,
+        *,
+        content_type: str,
+        metadata: Mapping[str, str],
+    ) -> ObjectInfo: ...
+
+    def head(self, key: str, *, version_id: str | None = None) -> ObjectInfo | None: ...
+
+    def iter_chunks(
+        self,
+        key: str,
+        *,
+        version_id: str | None = None,
+        chunk_size: int = 1024 * 1024,
+    ) -> Iterator[bytes]: ...
+
+    def copy(
+        self,
+        source_key: str,
+        destination_key: str,
+        *,
+        source_version_id: str | None,
+        content_type: str,
+        metadata: Mapping[str, str],
+    ) -> ObjectInfo: ...
+
+    def delete(self, key: str, *, version_id: str | None = None) -> None: ...
+
+    def list_objects(self, prefix: str) -> Sequence[ObjectInfo]: ...
+
+    def list_multipart_uploads(self, prefix: str) -> Sequence[MultipartUploadInfo]: ...
+
+    def abort_multipart_upload(self, key: str, upload_id: str) -> None: ...
+
+
+class EvidenceMetadataPort(Protocol):
+    """对象准入状态、版本、墓碑和对账记录的持久化端口。"""
+
+    def create_upload(
+        self,
+        request: EvidenceAdmissionRequest,
+        *,
+        upload_id: str,
+        temporary_object_key: str,
+        occurred_at: datetime,
+        expires_at: datetime,
+    ) -> EvidenceUpload: ...
+
+    def mark_quarantined(
+        self,
+        upload_id: str,
+        *,
+        object_info: ObjectInfo,
+        occurred_at: datetime,
+    ) -> EvidenceUpload: ...
+
+    def mark_verified(
+        self,
+        upload_id: str,
+        *,
+        actual_sha256: str,
+        actual_size_bytes: int,
+        detected_media_type: str,
+        final_object_key: str,
+        occurred_at: datetime,
+    ) -> EvidenceUpload: ...
+
+    def reject_upload(
+        self,
+        upload_id: str,
+        *,
+        code: str,
+        reason: str,
+        actual_sha256: str | None,
+        actual_size_bytes: int | None,
+        detected_media_type: str | None,
+        occurred_at: datetime,
+    ) -> EvidenceUpload: ...
+
+    def activate_upload(
+        self,
+        upload_id: str,
+        *,
+        bucket: str,
+        object_info: ObjectInfo,
+        occurred_at: datetime,
+    ) -> EvidenceVersion: ...
+
+    def get_upload(self, upload_id: str) -> EvidenceUpload: ...
+
+    def list_uploads(self) -> Sequence[EvidenceUpload]: ...
+
+    def get_version(self, version_id: str) -> EvidenceVersion: ...
+
+    def get_version_for_upload(self, upload_id: str) -> EvidenceVersion: ...
+
+    def list_all_versions(self) -> Sequence[EvidenceVersion]: ...
+
+    def expire_due_uploads(self, occurred_at: datetime) -> Sequence[EvidenceUpload]: ...
+
+    def revoke_version(
+        self,
+        version_id: str,
+        *,
+        actor_id: str,
+        reason: str,
+        occurred_at: datetime,
+        earliest_delete_at: datetime,
+    ) -> EvidenceVersion: ...
+
+    def list_due_tombstones(self, occurred_at: datetime) -> Sequence[EvidenceTombstone]: ...
+
+    def claim_object_deletion(
+        self,
+        tombstone: EvidenceTombstone,
+        *,
+        occurred_at: datetime,
+    ) -> bool: ...
+
+    def mark_object_deleted(
+        self,
+        bucket: str,
+        object_key: str,
+        object_version_id: str,
+        *,
+        occurred_at: datetime,
+    ) -> None: ...
+
+    def record_reconciliation(
+        self,
+        report: ReconciliationReport,
+        *,
+        started_at: datetime,
+        completed_at: datetime,
+        cleanup_enabled: bool,
+    ) -> None: ...
 
 
 class EvidenceQueryPort(Protocol):

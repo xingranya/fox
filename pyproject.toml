@@ -8,6 +8,7 @@ version = "0.1.0"
 description = "本地优先的品牌项目状态与证据协作核心"
 requires-python = ">=3.11"
 dependencies = [
+    "boto3>=1.40,<2",
     "mcp>=1.26,<2",
     "psycopg[binary]>=3.2,<4",
 ]
@@ -19,6 +20,7 @@ brand-os = "brand_os.cli:main"
 dev = [
   "pdfplumber>=0.11,<1",
   "pypdf>=5,<7",
+  "moto[server]>=5.1,<6",
   "pytest>=9.0.3,<10",
   "python-docx>=1.1,<2",
   "python-pptx>=1.0,<2",

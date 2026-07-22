@@ -1,8 +1,9 @@
 {
-  "schema_version": "postgresql-authority.v1",
+  "schema_version": "postgresql-authority.v2",
   "canonical_store_port": "canonical-store-port.v6",
+  "object_evidence_contract": "object-evidence.v1",
   "formal_write_store": "postgresql",
-  "migration_versions": [1, 2, 3, 4, 5, 6],
+  "migration_versions": [1, 2, 3, 4, 5, 6, 7],
   "transaction": {
     "event_approval_projection_atomic": true,
     "idempotency_key_binds_request_digest": true,
@@ -22,7 +23,6 @@
   "dual_write": false,
   "migrates_hongri_data": false,
   "deferred": [
-    "object_storage",
     "oidc_rbac_rls",
     "outbox",
     "http_api",

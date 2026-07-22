@@ -2,7 +2,7 @@
 
 本目录保存产品、架构、数据治理、测试和执行 SPEC。`Brand Project OS` 是当前项目名，最终发行名可以另定。当前路线由 2026-07-22 的正式 rescope 确定：员工只使用公司定制版 OpenWork；公司服务器服务向 Desktop 和其他 Agent 提供同一业务能力。
 
-当前完成 19/49 项。Phase 0、Phase 1 和 F2.1-F2.2 已完成，活动任务是 F2.3。服务器应用边界、配置、环境、健康测试基线和 PostgreSQL v1-v6 权威存储适配器已经完成；当前开始实现对象存储原件版本、哈希和准入状态机，远程 MCP/Skills、Dify 和四个开源组件仍按 Phase 3 的顺序接入。
+当前完成 20/49 项。Phase 0、Phase 1 和 F2.1-F2.3 已完成，活动任务是 F2.4。服务器配置、PostgreSQL 权威存储和 S3 兼容原件准入已经完成；当前实现 OIDC 登录、会话和员工身份绑定，远程 MCP/Skills、Dify 和四个开源组件仍按 Phase 3 的顺序接入。
 
 ## 当前结论
 
@@ -78,6 +78,8 @@
 ## Phase 2 已实现
 
 - F2.1 服务器配置、组件职责和健康基线：见[架构与接口契约](plan/architecture-and-contracts.md#f21-服务器基线已完成)与[阶段进度](progress/phase-2-server-authority-foundation.md)。
+- [F2.2 PostgreSQL 权威事件、审批和投影](phase2/postgresql-authority-store.md)
+- [F2.3 S3 兼容原件版本、哈希和准入状态机](phase2/object-evidence-store.md)
 
 ## 外部组件
 

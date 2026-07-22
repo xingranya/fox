@@ -1,0 +1,48 @@
+{
+  "schema_version": "object-evidence.v1",
+  "metadata_store": "postgresql",
+  "object_store": "s3-compatible",
+  "bucket_versioning_required": true,
+  "temporary_prefix": "quarantine/",
+  "content_prefix": "evidence/sha256/",
+  "states": [
+    "UPLOADING",
+    "QUARANTINED",
+    "VERIFIED",
+    "ACTIVE",
+    "REJECTED",
+    "EXPIRED",
+    "REVOKED"
+  ],
+  "transitions": [
+    ["UPLOADING", "QUARANTINED"],
+    ["UPLOADING", "EXPIRED"],
+    ["QUARANTINED", "VERIFIED"],
+    ["QUARANTINED", "REJECTED"],
+    ["VERIFIED", "ACTIVE"],
+    ["ACTIVE", "REVOKED"]
+  ],
+  "authority": {
+    "active_only_for_formal_evidence": true,
+    "temporary_objects_are_evidence": false,
+    "agent_may_revoke": false,
+    "workflow_may_revoke": false,
+    "client_may_access_object_store_directly": false
+  },
+  "integrity": {
+    "content_address": "sha256",
+    "verify_size": true,
+    "verify_media_type": true,
+    "security_check_required": true,
+    "same_name_different_content_creates_version": true,
+    "silent_overwrite": false
+  },
+  "consistency": {
+    "distributed_transaction": false,
+    "reconciliation_required": true,
+    "multipart_abort_required": true,
+    "orphan_cleanup_required": true,
+    "revocation_uses_delayed_tombstone": true
+  },
+  "migrates_hongri_data": false
+}
