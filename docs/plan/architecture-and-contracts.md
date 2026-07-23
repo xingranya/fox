@@ -79,7 +79,7 @@ F2.8 发布 `http-api.v1`、`http-error.v1` 和 OpenAPI 3.1。实现位于 `src/
 
 ### F2.10 服务器恢复演练（已完成）
 
-F2.10 新增 `postgresql-backup.v1` 和 `server-recovery.v1`。PostgreSQL 备份在导出快照事务中同时生成 custom-format 归档与逐表摘要；恢复只允许进入空数据库，并用单事务恢复、全表摘要和事件序列水位阻止部分恢复或原地覆盖。
+F2.10 新增 `postgresql-backup.v1` 和 `server-recovery.v1`；Fox 批准内部运行目标后，恢复契约升级为 `server-recovery.v2`，明确记录批准值和待 Phase 4 验证状态。PostgreSQL 备份在导出快照事务中同时生成 custom-format 归档与逐表摘要；恢复只允许进入空数据库，并用单事务恢复、全表摘要和事件序列水位阻止部分恢复或原地覆盖。
 
 恢复库随后从正式事件重建 Proposal 生命周期和当前状态，重建后的全库摘要必须与备份点相同。对象存储按数据库登记的明确 VersionId 校验大小和 SHA-256；同名文件、当前版本或删除标记都不能替代缺失的正式版本。归档篡改、非空目标、不可重放的批准事件和缺失 ACTIVE 对象都会阻断。
 

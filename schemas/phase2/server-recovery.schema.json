@@ -15,7 +15,7 @@
     "measurement"
   ],
   "properties": {
-    "schema_version": {"const": "server-recovery.v1"},
+    "schema_version": {"const": "server-recovery.v2"},
     "postgresql_backup": {
       "type": "object",
       "additionalProperties": false,
@@ -130,12 +130,33 @@
       "required": [
         "report_schema_version",
         "local_fixture_is_production_evidence",
-        "production_slo_status"
+        "approved_internal_target",
+        "production_verification_status"
       ],
       "properties": {
         "report_schema_version": {"const": "server-recovery-report.v1"},
         "local_fixture_is_production_evidence": {"const": false},
-        "production_slo_status": {"const": "candidate-requires-fox-confirmation"}
+        "approved_internal_target": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "approved_by",
+            "approved_on",
+            "deployment_profile",
+            "core_api_monthly_availability_min",
+            "postgresql_rpo_seconds_max",
+            "core_service_rto_seconds_max"
+          ],
+          "properties": {
+            "approved_by": {"const": "Fox"},
+            "approved_on": {"const": "2026-07-23"},
+            "deployment_profile": {"const": "small-team-managed"},
+            "core_api_monthly_availability_min": {"const": 0.995},
+            "postgresql_rpo_seconds_max": {"const": 300},
+            "core_service_rto_seconds_max": {"const": 3600}
+          }
+        },
+        "production_verification_status": {"const": "requires-phase4-validation"}
       }
     }
   }

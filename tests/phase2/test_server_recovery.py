@@ -67,7 +67,7 @@ class ServerRecoveryContractTest(unittest.TestCase):
         contract = json.loads(CONTRACT_PATH.read_text(encoding="utf-8"))
         schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
 
-        self.assertEqual(contract["schema_version"], "server-recovery.v1")
+        self.assertEqual(contract["schema_version"], "server-recovery.v2")
         self.assertTrue(contract["postgresql_backup"]["consistent_exported_snapshot"])
         self.assertFalse(contract["postgresql_backup"]["logical_backup_is_pitr"])
         self.assertTrue(contract["restore"]["target_must_be_empty"])
@@ -79,7 +79,19 @@ class ServerRecoveryContractTest(unittest.TestCase):
         self.assertFalse(contract["authority"]["ai_may_confirm_slo"])
         self.assertTrue(contract["authority"]["fox_confirmation_required"])
         self.assertFalse(contract["measurement"]["local_fixture_is_production_evidence"])
-        self.assertEqual(schema["properties"]["schema_version"]["const"], "server-recovery.v1")
+        target = contract["measurement"]["approved_internal_target"]
+        self.assertEqual(target["deployment_profile"], "small-team-managed")
+        self.assertEqual(target["core_api_monthly_availability_min"], 0.995)
+        self.assertEqual(target["postgresql_rpo_seconds_max"], 300)
+        self.assertEqual(target["core_service_rto_seconds_max"], 3600)
+        self.assertEqual(
+            contract["measurement"]["production_verification_status"],
+            "requires-phase4-validation",
+        )
+        self.assertEqual(
+            schema["properties"]["schema_version"]["const"],
+            "server-recovery.v2",
+        )
 
 
 class ServerRecoveryDrillTest(unittest.TestCase):

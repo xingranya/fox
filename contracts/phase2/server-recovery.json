@@ -1,5 +1,5 @@
 {
-  "schema_version": "server-recovery.v1",
+  "schema_version": "server-recovery.v2",
   "postgresql_backup": {
     "schema_version": "postgresql-backup.v1",
     "format": "pg_dump-custom",
@@ -45,6 +45,14 @@
   "measurement": {
     "report_schema_version": "server-recovery-report.v1",
     "local_fixture_is_production_evidence": false,
-    "production_slo_status": "candidate-requires-fox-confirmation"
+    "approved_internal_target": {
+      "approved_by": "Fox",
+      "approved_on": "2026-07-23",
+      "deployment_profile": "small-team-managed",
+      "core_api_monthly_availability_min": 0.995,
+      "postgresql_rpo_seconds_max": 300,
+      "core_service_rto_seconds_max": 3600
+    },
+    "production_verification_status": "requires-phase4-validation"
   }
 }
