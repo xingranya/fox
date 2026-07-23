@@ -10,7 +10,7 @@
 
 ## 当前结论
 
-- 当前活动方案为 5 阶段 49 项：Phase 0 和 Phase 1 已完成，F2.1-F2.9 已通过，当前执行 F2.10 恢复、故障演练和服务器阶段门；MCP/Skills、工作流接入和团队试点仍按后续阶段过门。
+- 当前活动方案为 5 阶段 49 项：Phase 0 和 Phase 1 已完成，F2.1-F2.9 已通过；F2.10 的恢复技术演练已经通过，正等待 Fox 确认内部 SLO/RPO/RTO 和部署档位。MCP/Skills、工作流接入和团队试点仍按后续阶段过门。
 - 旧 42 项服务器草案和 32 项本地价值验证方案均保留在 Git 历史中，不再作为当前依赖或完成度来源。
 - 当前主线不是通用项目管理、企业知识库或完整 RAG，而是长期品牌项目的状态与品牌认知协作层。
 - 公司定制版 OpenWork 是唯一员工客户端。Brand Project OS 是当前项目名，最终发行名可以另定；OpenCode Runtime、Sidecar 和本机桥接仍随同一安装包分发。
@@ -50,6 +50,7 @@
 - [F2.7 审计、Outbox/Inbox 和后台任务](../phase2/audit-outbox-inbox.md)
 - [F2.8 HTTP API 与 OpenAPI](../phase2/http-api-and-openapi.md)
 - [F2.9 可观测性、健康和告警](../phase2/observability-and-alerting.md)
+- [F2.10 服务器恢复演练与阶段门](../phase2/server-recovery-and-gate.md)
 - [BISHENG 接入评估](../analysis/bisheng-integration-evaluation.md)
 - [BISHENG 条件接入 SPEC](../plan/bisheng-integration-spec.md)
 - [ADR-0005：单一客户端与服务器权威服务](../adr/0005-single-client-server-authority.md)
@@ -78,8 +79,8 @@
 ## 当前状态
 
 **活动阶段**：Phase 2：服务器权威基础
-**活动任务**：F2.10：完成备份恢复、故障演练和服务器阶段门
-**阻塞项**：当前无业务阻塞；内部 macOS 包尚未签名、公证，仍不可向员工分发
+**活动任务**：F2.10：确认内部 SLO/RPO/RTO 和小团队部署档位，关闭服务器阶段门
+**阻塞项**：F2.10 技术演练已通过，等待 Fox 明确确认阶段门；内部 macOS 包尚未签名、公证，仍不可向员工分发
 **后续顺序**：F2.10 -> Phase 3 联网与集成 -> Phase 4 团队试点
 **规划检查点**：Phase 0、Phase 1 和 F2.1-F2.9 已通过，当前完成 26/49
 
@@ -116,7 +117,7 @@
 |:---|:---|
 | 活动阶段 | Phase 2 |
 | drift_score | 1 |
-| strategy | F2.9 重计划已完成；当前收口 F2.10 恢复、故障演练和服务器阶段门 |
+| strategy | F2.9 重计划已完成；F2.10 技术演练通过，等待 Fox 确认内部目标和部署档位 |
 | threshold_annotate | 2 |
 | threshold_replan | 4 |
 | threshold_rescope | 6 |
@@ -182,8 +183,8 @@
 
 ## 下一步
 
-1. 执行 F2.10 的 PostgreSQL、对象版本、投影重建、对账和故障恢复演练，记录内部 SLO/RPO/RTO 结果。
-2. 保持 F2.7 的“至少一次 + Inbox 去重 + 死信可重放”语义；后台投递不得重复改变正式状态，也不能把故障伪装成业务冲突。
+1. 请 Fox 确认 [F2.10 阶段门建议](../phase2/server-recovery-and-gate.md)：单应用节点、托管 PostgreSQL、版本化对象存储和独立备份域；内部目标为 99.5% 可用性、RPO 不高于 5 分钟、RTO 不高于 60 分钟等候选值。
+2. 确认后记录 F2.10 遥测、关闭 Phase 2，并进入 F3.1 的 SQLite 到 PostgreSQL/S3 一次性迁移和切换；未确认前不启动迁移。
 3. 保留 F1.10 的 SQLite、原件哈希和验收副本，供 F3.1 对账；在 F4.8 前不向员工分发未签名包。
 
 ## 会话日志
@@ -194,6 +195,7 @@
 | 2026-07-23 | F2.8 版本化 HTTP API 与 OpenAPI | 新增 `http-api.v1`、`http-error.v1`、OpenAPI 3.1 和可嵌入 ASGI 应用。Employee/Agent 路由分离，员工会话、项目授权、`Idempotency-Key`、`If-Match`、HMAC 游标、错误码、兼容窗口、限流和证据应用层回源均通过进程内契约测试；Agent 没有人工评审路由，客户端不直连 PostgreSQL/S3。专项 11 项、完整回归 271 项及 19 组子测试通过；未启动常驻 Web，未连接公司 OIDC 或正式资料。实际工作量 L，SUPER 10/10，未计划依赖 1，任务漂移 1，Phase 2 累计漂移达到 4，触发重计划提醒；F2.9 先补多副本可观测与共享限流边界。当前进入 F2.9。 |
 | 2026-07-23 | F2.9 自适应重计划 | F2.8 后 `drift_score=4` 达到 Phase 2 重计划阈值。保持 49 项总范围不变，将 F2.9 拆为观测契约、HTTP/健康接入、PostgreSQL 共享限流、故障/告警验证四个波次；重计划段的漂移计数归零，F2.10 继续等待 F2.9-D 证据。 |
 | 2026-07-23 | F2.9 可观测性、健康和告警 | 冻结 `observability.v1`、`trace-context.v1`、`metrics.v1`、`alert.v1`；HTTP 接入请求/关联/追踪 ID、业务定位字段、健康依赖和 Outbox 水位。PostgreSQL v11 共享限流只存 key 摘要；故障返回 503 `RATE_LIMIT_STORE_UNAVAILABLE`，不回退本地计数。专项观测 11 项、HTTP 15 项通过，编译检查通过；没有启动常驻服务或接入正式资料。实际工作量 L，SUPER 10/10，未计划依赖 1，重计划段 `drift_score` 由 0 变为 1，当前进入 F2.10。 |
+| 2026-07-23 | F2.10 恢复技术演练 | 新增 `postgresql-backup.v1`、`server-recovery.v1` 和安全报告；一致快照逻辑备份可恢复到空库，逐表摘要、事件序列、Proposal 生命周期、当前投影和明确 S3 VersionId 对账一致。归档篡改、非空目标、不可重放批准事件和缺失 ACTIVE 对象均阻断。专项 6 项、Phase 2 的 133 项测试和 292 项完整回归通过；逻辑备份不是 PITR，本机夹具不是生产 SLO 证据。当前等待 Fox 确认内部目标和部署档位，完成度仍为 26/49。 |
 | 2026-07-13 | 初始规划 | 核验 Zvec、Nubase、Open Notebook、FlowLong，形成个人本地方案初稿。 |
 | 2026-07-13 | 团队服务器范围变更 | 将目标改为 PostgreSQL/S3 团队服务器、远程 API/MCP、Web/PWA 和可靠性体系。 |
 | 2026-07-13 | Dify 范围变更 | 将 Dify 纳入外部组件 POC，形成 6 阶段 42 项未开始方案。 |

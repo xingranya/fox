@@ -1,0 +1,50 @@
+{
+  "schema_version": "server-recovery.v1",
+  "postgresql_backup": {
+    "schema_version": "postgresql-backup.v1",
+    "format": "pg_dump-custom",
+    "consistent_exported_snapshot": true,
+    "manifest_contains_row_content": false,
+    "manifest_contains_connection_secrets": false,
+    "archive_permissions": "0600",
+    "logical_backup_is_pitr": false
+  },
+  "restore": {
+    "target_must_be_empty": true,
+    "restore_in_place": false,
+    "single_transaction": true,
+    "full_table_digest_match_required": true,
+    "event_sequence_must_not_lag": true
+  },
+  "projection_rebuild": {
+    "source": "formal-events",
+    "state_projection_rebuilt": true,
+    "proposal_lifecycle_rebuilt": true,
+    "post_rebuild_snapshot_must_match": true
+  },
+  "object_versions": {
+    "bucket_versioning_required": true,
+    "explicit_version_id_required": true,
+    "active_and_retained_versions_hash_checked": true,
+    "silent_same_name_replacement": false,
+    "same_bucket_versioning_is_independent_backup": false
+  },
+  "faults": {
+    "tampered_archive_rejected": true,
+    "nonempty_target_rejected": true,
+    "nonreplayable_event_rejected": true,
+    "missing_active_object_rejected": true
+  },
+  "authority": {
+    "ai_may_select_production_recovery_point": false,
+    "ai_may_confirm_slo": false,
+    "fox_confirmation_required": true,
+    "production_pitr_required": true,
+    "production_backup_domain_must_be_independent": true
+  },
+  "measurement": {
+    "report_schema_version": "server-recovery-report.v1",
+    "local_fixture_is_production_evidence": false,
+    "production_slo_status": "candidate-requires-fox-confirmation"
+  }
+}

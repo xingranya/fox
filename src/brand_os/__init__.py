@@ -33,8 +33,21 @@ from .observability import (
 )
 from .postgresql_identity import PostgreSQLIdentityRepository
 from .postgresql_authorization import PostgreSQLProjectAuthorizationRepository
+from .postgresql_backup import (
+    POSTGRESQL_BACKUP_SCHEMA_VERSION,
+    POSTGRESQL_SNAPSHOT_SCHEMA_VERSION,
+    PostgreSQLBackupService,
+    PostgreSQLRecoverySnapshot,
+    PostgreSQLRestoreResult,
+)
 from .postgresql_consistency import PostgreSQLConflictSnapshotRepository
 from .secret_cipher import FernetSecretCipher
+from .server_recovery import (
+    SERVER_RECOVERY_REPORT_SCHEMA_VERSION,
+    RecoveryIntegrityError,
+    ServerRecoveryDrill,
+    ServerRecoveryDrillReport,
+)
 from .server_baseline import (
     SERVER_BOUNDARY,
     ServiceHealthReport,
@@ -67,12 +80,21 @@ __all__ = [
     "ProjectPrincipal",
     "ProjectRole",
     "PostgreSQLConflictSnapshotRepository",
+    "PostgreSQLBackupService",
+    "PostgreSQLRecoverySnapshot",
+    "PostgreSQLRestoreResult",
     "PostgreSQLProjectAuthorizationRepository",
     "PostgreSQLIdentityRepository",
+    "POSTGRESQL_BACKUP_SCHEMA_VERSION",
+    "POSTGRESQL_SNAPSHOT_SCHEMA_VERSION",
     "PostgreSQLRateLimiter",
     "RateLimitStoreUnavailable",
+    "RecoveryIntegrityError",
+    "SERVER_RECOVERY_REPORT_SCHEMA_VERSION",
     "ServerEnvironment",
     "ServerSettings",
+    "ServerRecoveryDrill",
+    "ServerRecoveryDrillReport",
     "ServiceHealthReport",
     "StructuredLogger",
     "TelemetryContext",

@@ -1,0 +1,142 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://brand-project-os.local/schemas/phase2/server-recovery.schema.json",
+  "title": "Brand Project OS 服务器恢复契约",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "postgresql_backup",
+    "restore",
+    "projection_rebuild",
+    "object_versions",
+    "faults",
+    "authority",
+    "measurement"
+  ],
+  "properties": {
+    "schema_version": {"const": "server-recovery.v1"},
+    "postgresql_backup": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "format",
+        "consistent_exported_snapshot",
+        "manifest_contains_row_content",
+        "manifest_contains_connection_secrets",
+        "archive_permissions",
+        "logical_backup_is_pitr"
+      ],
+      "properties": {
+        "schema_version": {"const": "postgresql-backup.v1"},
+        "format": {"const": "pg_dump-custom"},
+        "consistent_exported_snapshot": {"const": true},
+        "manifest_contains_row_content": {"const": false},
+        "manifest_contains_connection_secrets": {"const": false},
+        "archive_permissions": {"const": "0600"},
+        "logical_backup_is_pitr": {"const": false}
+      }
+    },
+    "restore": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "target_must_be_empty",
+        "restore_in_place",
+        "single_transaction",
+        "full_table_digest_match_required",
+        "event_sequence_must_not_lag"
+      ],
+      "properties": {
+        "target_must_be_empty": {"const": true},
+        "restore_in_place": {"const": false},
+        "single_transaction": {"const": true},
+        "full_table_digest_match_required": {"const": true},
+        "event_sequence_must_not_lag": {"const": true}
+      }
+    },
+    "projection_rebuild": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source",
+        "state_projection_rebuilt",
+        "proposal_lifecycle_rebuilt",
+        "post_rebuild_snapshot_must_match"
+      ],
+      "properties": {
+        "source": {"const": "formal-events"},
+        "state_projection_rebuilt": {"const": true},
+        "proposal_lifecycle_rebuilt": {"const": true},
+        "post_rebuild_snapshot_must_match": {"const": true}
+      }
+    },
+    "object_versions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "bucket_versioning_required",
+        "explicit_version_id_required",
+        "active_and_retained_versions_hash_checked",
+        "silent_same_name_replacement",
+        "same_bucket_versioning_is_independent_backup"
+      ],
+      "properties": {
+        "bucket_versioning_required": {"const": true},
+        "explicit_version_id_required": {"const": true},
+        "active_and_retained_versions_hash_checked": {"const": true},
+        "silent_same_name_replacement": {"const": false},
+        "same_bucket_versioning_is_independent_backup": {"const": false}
+      }
+    },
+    "faults": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tampered_archive_rejected",
+        "nonempty_target_rejected",
+        "nonreplayable_event_rejected",
+        "missing_active_object_rejected"
+      ],
+      "properties": {
+        "tampered_archive_rejected": {"const": true},
+        "nonempty_target_rejected": {"const": true},
+        "nonreplayable_event_rejected": {"const": true},
+        "missing_active_object_rejected": {"const": true}
+      }
+    },
+    "authority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ai_may_select_production_recovery_point",
+        "ai_may_confirm_slo",
+        "fox_confirmation_required",
+        "production_pitr_required",
+        "production_backup_domain_must_be_independent"
+      ],
+      "properties": {
+        "ai_may_select_production_recovery_point": {"const": false},
+        "ai_may_confirm_slo": {"const": false},
+        "fox_confirmation_required": {"const": true},
+        "production_pitr_required": {"const": true},
+        "production_backup_domain_must_be_independent": {"const": true}
+      }
+    },
+    "measurement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "report_schema_version",
+        "local_fixture_is_production_evidence",
+        "production_slo_status"
+      ],
+      "properties": {
+        "report_schema_version": {"const": "server-recovery-report.v1"},
+        "local_fixture_is_production_evidence": {"const": false},
+        "production_slo_status": {"const": "candidate-requires-fox-confirmation"}
+      }
+    }
+  }
+}

@@ -93,7 +93,7 @@ Codex / Claude / Dify / 其他 Agent
 | F2.7 | 实现审计、Outbox/Inbox 和后台任务边界 | P0 | L | F2.2、F2.6 | B | U、P、R | 原子提交、重复投递、乱序、死信、重放 | 已完成：`audit-outbox.v1`、PostgreSQL v10、事件/审批/投影/审计/Outbox 同事务、至少一次投递、Inbox 去重、死信和 Worker 最小权限；消费者不直接改正式表 |
 | F2.8 | 发布版本化 HTTP API 与 OpenAPI 契约 | P0 | L | F2.3-F2.7 | D | S、P、E、R | 已完成：OpenAPI 3.1、鉴权、分页、错误码、兼容窗口和限流 | `http-api.v1`；Desktop 只调 API；无直连 PostgreSQL/S3；人工与 Agent 路由分开且 Agent 无评审路由 |
 | F2.9 | 建立日志、指标、追踪、健康和告警 | P1 | L（重计划后分波次） | F2.7-F2.8 | D | S、E、R | 关联 ID、脱敏、指标基数、告警注入、共享限流故障注入 | 已完成：`observability.v1`、HTTP span、健康/Outbox 指标、告警去重和 PostgreSQL v11 共享限流；共享后端故障返回 503，不退回本地计数 |
-| F2.10 | 完成备份恢复、故障演练和服务器阶段门 | P0 | L | F2.2-F2.9 | Gate | U、E、R | PostgreSQL 恢复、对象版本恢复、投影重建、对账、故障注入 | 恢复后事件/投影/审批/原件哈希一致；形成经 Fox 确认的内部 SLO/RPO/RTO |
+| F2.10 | 完成备份恢复、故障演练和服务器阶段门 | P0 | L | F2.2-F2.9 | Gate | U、E、R | 技术验证已通过：一致逻辑备份、空库单事务恢复、全表摘要、对象 VersionId、投影重建和四类故障注入 | 技术证据见 [服务器恢复演练与阶段门](../phase2/server-recovery-and-gate.md)；仍待 Fox 确认内部 SLO/RPO/RTO 和部署档位后关闭 |
 
 ### F2.9 重计划后的执行波次
 
