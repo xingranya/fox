@@ -40,11 +40,11 @@
     "authorization_tables_exposed_to_runtime_role": false
   },
   "storage": {
-    "postgresql_schema_version": 10,
+    "postgresql_schema_version": 11,
     "membership_key": ["project_id", "employee_id"],
     "service_grant_key": ["project_id", "principal_id"],
     "authorization_events_append_only": true
   },
-  "deferred": ["http_routes", "openwork_login_ui", "workspace_multitenancy"],
+  "deferred": ["openwork_login_ui", "workspace_multitenancy"],
   "migrates_hongri_data": false
 }

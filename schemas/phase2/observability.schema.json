@@ -1,0 +1,151 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://brand-project-os.local/schemas/phase2/observability.schema.json",
+  "title": "Brand Project OS 可观测性契约",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "trace_context",
+    "logs",
+    "metrics",
+    "alerts",
+    "shared_rate_limit",
+    "authority"
+  ],
+  "properties": {
+    "schema_version": {"const": "observability.v1"},
+    "trace_context": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "request_header",
+        "correlation_header",
+        "w3c_trace_header",
+        "invalid_external_identifiers_are_replaced"
+      ],
+      "properties": {
+        "schema_version": {"const": "trace-context.v1"},
+        "request_header": {"const": "X-Request-ID"},
+        "correlation_header": {"const": "X-Correlation-ID"},
+        "w3c_trace_header": {"const": "traceparent"},
+        "invalid_external_identifiers_are_replaced": {"const": true}
+      }
+    },
+    "logs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "format",
+        "required_fields",
+        "max_string_length",
+        "max_depth",
+        "max_collection_items",
+        "never_record"
+      ],
+      "properties": {
+        "format": {"const": "json-lines"},
+        "required_fields": {
+          "type": "array",
+          "minItems": 8,
+          "uniqueItems": true,
+          "items": {"type": "string"}
+        },
+        "max_string_length": {"type": "integer", "minimum": 1, "maximum": 4096},
+        "max_depth": {"type": "integer", "minimum": 1, "maximum": 8},
+        "max_collection_items": {"type": "integer", "minimum": 1, "maximum": 100},
+        "never_record": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"type": "string"}
+        }
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "unknown_label_value",
+        "max_series_per_metric",
+        "fixed_names"
+      ],
+      "properties": {
+        "schema_version": {"const": "metrics.v1"},
+        "unknown_label_value": {"const": "other"},
+        "max_series_per_metric": {"type": "integer", "minimum": 1, "maximum": 1024},
+        "fixed_names": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"type": "string", "pattern": "^[a-z][a-z0-9_]+$"}
+        }
+      }
+    },
+    "alerts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "transitions",
+        "deduplicate_unchanged_state",
+        "default_rules"
+      ],
+      "properties": {
+        "schema_version": {"const": "alert.v1"},
+        "transitions": {
+          "type": "array",
+          "prefixItems": [{"const": "firing"}, {"const": "resolved"}],
+          "items": false
+        },
+        "deduplicate_unchanged_state": {"const": true},
+        "default_rules": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"type": "string"}
+        }
+      }
+    },
+    "shared_rate_limit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "backend",
+        "postgresql_schema_version",
+        "bucket_key_storage",
+        "failure_http_status",
+        "failure_code",
+        "fail_closed",
+        "fallback_to_process_local"
+      ],
+      "properties": {
+        "backend": {"const": "postgresql"},
+        "postgresql_schema_version": {"const": 11},
+        "bucket_key_storage": {"const": "sha256"},
+        "failure_http_status": {"const": 503},
+        "failure_code": {"const": "RATE_LIMIT_STORE_UNAVAILABLE"},
+        "fail_closed": {"const": true},
+        "fallback_to_process_local": {"const": false}
+      }
+    },
+    "authority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "telemetry_is_derived_runtime_data",
+        "may_approve_formal_state",
+        "may_overwrite_formal_state",
+        "outbox_payload_may_be_exported"
+      ],
+      "properties": {
+        "telemetry_is_derived_runtime_data": {"const": true},
+        "may_approve_formal_state": {"const": false},
+        "may_overwrite_formal_state": {"const": false},
+        "outbox_payload_may_be_exported": {"const": false}
+      }
+    }
+  }
+}

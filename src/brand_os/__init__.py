@@ -20,6 +20,17 @@ from .http_api import (
     build_openapi_document,
 )
 from .oidc_provider import OidcProviderAdapter
+from .observability import (
+    OBSERVABILITY_CONTRACT,
+    OBSERVABILITY_SCHEMA_VERSION,
+    MetricRegistry,
+    ObservabilityRuntime,
+    PostgreSQLRateLimiter,
+    RateLimitStoreUnavailable,
+    StructuredLogger,
+    TelemetryContext,
+    Tracer,
+)
 from .postgresql_identity import PostgreSQLIdentityRepository
 from .postgresql_authorization import PostgreSQLProjectAuthorizationRepository
 from .postgresql_consistency import PostgreSQLConflictSnapshotRepository
@@ -44,6 +55,10 @@ __all__ = [
     "HTTP_API_SCHEMA_VERSION",
     "HttpApplicationDependencies",
     "InMemoryRateLimiter",
+    "MetricRegistry",
+    "OBSERVABILITY_CONTRACT",
+    "OBSERVABILITY_SCHEMA_VERSION",
+    "ObservabilityRuntime",
     "OidcIdentityService",
     "OidcProviderAdapter",
     "PrincipalKind",
@@ -54,9 +69,14 @@ __all__ = [
     "PostgreSQLConflictSnapshotRepository",
     "PostgreSQLProjectAuthorizationRepository",
     "PostgreSQLIdentityRepository",
+    "PostgreSQLRateLimiter",
+    "RateLimitStoreUnavailable",
     "ServerEnvironment",
     "ServerSettings",
     "ServiceHealthReport",
+    "StructuredLogger",
+    "TelemetryContext",
+    "Tracer",
     "WriteConsistencyService",
     "WriteOutcome",
     "SERVER_BOUNDARY",

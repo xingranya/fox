@@ -16,6 +16,7 @@ import re
 import threading
 import time
 from collections.abc import Callable, Iterable, Mapping, Sequence
+from contextlib import nullcontext
 from dataclasses import asdict, dataclass, is_dataclass
 from datetime import datetime
 from io import BytesIO
@@ -58,6 +59,15 @@ from .object_evidence import (
     EvidencePermissionDenied,
     EvidenceRejectedError,
     EvidenceStateError,
+)
+from .observability import (
+    ObservabilityRuntime,
+    PostgreSQLRateLimiter,
+    RateLimitDecision,
+    RateLimitStoreUnavailable,
+    TelemetryContext,
+    new_telemetry_context,
+    telemetry_scope,
 )
 from .ports import LocalAccessStorePort
 from .server_baseline import build_liveness_report, build_readiness_report
@@ -136,13 +146,10 @@ HTTP_API_CONTRACT: dict[str, object] = {
         "employee_session_is_opaque": True,
         "agent_cannot_review": True,
         "client_cannot_access_postgresql_or_s3": True,
+        "shared_rate_limit_fail_closed": True,
         "remote_mcp_oauth_deferred_to": "F3.6",
     },
-    "deferred": [
-        "remote_mcp_oauth_and_mcp_command_identity",
-        "distributed_rate_limit_store",
-        "metrics_tracing_and_alerting",
-    ],
+    "deferred": ["remote_mcp_oauth_and_mcp_command_identity"],
 }
 
 
@@ -168,16 +175,6 @@ class ApiError(RuntimeError):
         self.headers = dict(headers or {})
 
 
-@dataclass(frozen=True, slots=True)
-class RateLimitDecision:
-    """一次限流检查的结果。"""
-
-    allowed: bool
-    limit: int
-    remaining: int
-    retry_after: int
-
-
 class RateLimiter(Protocol):
     """可替换的限流端口；生产多副本应注入共享实现。"""
 
@@ -193,6 +190,9 @@ class RateLimiter(Protocol):
 
 class InMemoryRateLimiter:
     """进程内固定窗口限流器，仅作为开发和单进程部署默认实现。"""
+
+    backend = "in_memory"
+    shared = False
 
     def __init__(self) -> None:
         self._lock = threading.Lock()
@@ -221,6 +221,8 @@ class InMemoryRateLimiter:
                 limit=limit,
                 remaining=remaining,
                 retry_after=retry_after,
+                backend=self.backend,
+                shared=False,
             )
 
 
@@ -258,6 +260,7 @@ class HttpApplicationDependencies:
     dependency_states: Callable[[], Mapping[str, bool | None]] | None = None
     agent_authenticator: AgentCredentialVerifier | None = None
     rate_limiter: RateLimiter | None = None
+    observability: ObservabilityRuntime | None = None
     cursor_secret: bytes | None = None
     max_page_size: int = MAX_PAGE_SIZE
 
@@ -266,6 +269,8 @@ class HttpApplicationDependencies:
             raise ValueError(f"max_page_size 必须位于 1 到 {MAX_PAGE_SIZE} 之间")
         if self.rate_limiter is None:
             self.rate_limiter = InMemoryRateLimiter()
+        if self.observability is None:
+            self.observability = ObservabilityRuntime()
 
 
 class CursorError(ValueError):
@@ -542,16 +547,23 @@ def _actor_for_principal(principal: ProjectPrincipal) -> Actor:
 
 
 class RequestContextMiddleware(BaseHTTPMiddleware):
-    """为每个请求生成关联 ID，并在入口处执行粗粒度限流。"""
+    """为每个请求生成关联 ID、执行限流并写入低基数 HTTP 遥测。"""
 
     def __init__(self, app, *, dependencies: HttpApplicationDependencies) -> None:
         super().__init__(app)
         self.dependencies = dependencies
 
     async def dispatch(self, request: Request, call_next):
-        incoming = request.headers.get("x-request-id")
-        request_id = incoming.strip() if incoming and REQUEST_ID_PATTERN.fullmatch(incoming.strip()) else f"req_{uuid4().hex}"
-        request.state.request_id = request_id
+        context = new_telemetry_context(
+            request_id=request.headers.get("x-request-id"),
+            correlation_id=request.headers.get("x-correlation-id"),
+            traceparent=request.headers.get("traceparent"),
+        )
+        request.state.request_id = context.request_id
+        request.state.correlation_id = context.correlation_id
+        request.state.trace_id = context.trace_id
+        request.state.span_id = context.span_id
+        request.state.rate_limit_store_failed = False
 
         path = request.url.path
         if path.startswith("/api/v1/employee/auth"):
@@ -563,43 +575,132 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
         else:
             bucket, limit = "public", 0
 
-        if limit and self.dependencies.rate_limiter is not None:
-            client = request.client.host if request.client is not None else "unknown"
-            decision = self.dependencies.rate_limiter.check(
-                client,
-                bucket,
-                limit=limit,
-                window_seconds=60,
+        started = time.perf_counter()
+        response = None
+        observability = self.dependencies.observability
+        trace_scope = (
+            observability.tracer.span(
+                "http.request",
+                context=context,
+                attributes={
+                    "method": request.method,
+                    "route_surface": observability.metrics.surface_for_path(path),
+                },
             )
-            request.state.rate_limit_decision = decision
-            if not decision.allowed:
-                error = ApiError(
-                    429,
-                    "RATE_LIMITED",
-                    "请求过于频繁，请稍后再试",
-                    details={"bucket": bucket},
-                    retryable=True,
-                    headers={"Retry-After": str(decision.retry_after)},
-                )
-                response = _json_response(
-                    request,
-                    _error_body(request, error),
-                    status_code=error.status_code,
-                    headers={
-                        "Retry-After": str(decision.retry_after),
-                        "X-RateLimit-Limit": str(decision.limit),
-                        "X-RateLimit-Remaining": str(decision.remaining),
-                    },
-                )
-                return response
-
-        response = await call_next(request)
-        response.headers.setdefault("X-Request-ID", request_id)
-        decision = getattr(request.state, "rate_limit_decision", None)
-        if decision is not None:
-            response.headers.setdefault("X-RateLimit-Limit", str(decision.limit))
-            response.headers.setdefault("X-RateLimit-Remaining", str(decision.remaining))
+            if observability is not None
+            else nullcontext(context)
+        )
+        with telemetry_scope(context), trace_scope:
+            try:
+                if limit and self.dependencies.rate_limiter is not None:
+                    client = request.client.host if request.client is not None else "unknown"
+                    try:
+                        decision = self.dependencies.rate_limiter.check(
+                            client,
+                            bucket,
+                            limit=limit,
+                            window_seconds=60,
+                        )
+                    except RateLimitStoreUnavailable:
+                        request.state.rate_limit_store_failed = True
+                        if observability is not None:
+                            observability.observe_rate_limit_store_error()
+                        error = ApiError(
+                            503,
+                            "RATE_LIMIT_STORE_UNAVAILABLE",
+                            "共享限流服务暂时不可用",
+                            retryable=True,
+                            headers={"Retry-After": "5"},
+                        )
+                        response = _json_response(
+                            request,
+                            _error_body(request, error),
+                            status_code=error.status_code,
+                            headers={"Retry-After": "5"},
+                        )
+                    else:
+                        request.state.rate_limit_decision = decision
+                        if not decision.allowed:
+                            if observability is not None:
+                                observability.metrics.inc(
+                                    "http_rate_limit_denied_total",
+                                    labels={"surface": bucket.split("_", 1)[0], "bucket": bucket},
+                                )
+                            error = ApiError(
+                                429,
+                                "RATE_LIMITED",
+                                "请求过于频繁，请稍后再试",
+                                details={"bucket": bucket},
+                                retryable=True,
+                                headers={"Retry-After": str(decision.retry_after)},
+                            )
+                            response = _json_response(
+                                request,
+                                _error_body(request, error),
+                                status_code=error.status_code,
+                                headers={
+                                    "Retry-After": str(decision.retry_after),
+                                    "X-RateLimit-Limit": str(decision.limit),
+                                    "X-RateLimit-Remaining": str(decision.remaining),
+                                },
+                            )
+                if response is None:
+                    response = await call_next(request)
+            except Exception:
+                if observability is not None:
+                    observability.request_finished(
+                        _telemetry_context_for_request(request, context),
+                        method=request.method,
+                        path=path,
+                        status_code=500,
+                        duration_seconds=max(0.0, time.perf_counter() - started),
+                        error_code="INTERNAL_ERROR",
+                    )
+                raise
+            finally:
+                if response is not None:
+                    response.headers.setdefault("X-Request-ID", context.request_id)
+                    response.headers.setdefault("X-Correlation-ID", context.correlation_id)
+                    response.headers.setdefault(
+                        "traceparent",
+                        f"00-{context.trace_id}-{context.span_id}-00",
+                    )
+                    decision = getattr(request.state, "rate_limit_decision", None)
+                    if decision is not None:
+                        response.headers.setdefault("X-RateLimit-Limit", str(decision.limit))
+                        response.headers.setdefault("X-RateLimit-Remaining", str(decision.remaining))
+                    if observability is not None:
+                        observability.request_finished(
+                            _telemetry_context_for_request(request, context),
+                            method=request.method,
+                            path=path,
+                            status_code=response.status_code,
+                            duration_seconds=max(0.0, time.perf_counter() - started),
+                            error_code=(
+                                "RATE_LIMITED"
+                                if response.status_code == 429
+                                else "RATE_LIMIT_STORE_UNAVAILABLE"
+                                if getattr(request.state, "rate_limit_store_failed", False)
+                                else None
+                            ),
+                        )
         return response
+
+
+def _telemetry_context_for_request(
+    request: Request,
+    context: TelemetryContext,
+) -> TelemetryContext:
+    """把路由中已确认的身份、项目和状态水位补入本次请求日志。"""
+
+    return context.with_business(
+        actor_kind=getattr(request.state, "actor_kind", None),
+        actor_id=getattr(request.state, "actor_id", None),
+        project_id=getattr(request.state, "project_id", None),
+        state_version=getattr(request.state, "state_version", None),
+        event_id=getattr(request.state, "event_id", None),
+        run_id=getattr(request.state, "run_id", None),
+    )
 
 
 class ApiExceptionMiddleware(BaseHTTPMiddleware):
@@ -787,6 +888,12 @@ class HttpApplication:
         except Exception:
             states = {}
         report = build_readiness_report(self.settings, dependency_states=states)
+        if self.dependencies.observability is not None:
+            for dependency in report.dependencies:
+                self.dependencies.observability.observe_dependency(
+                    dependency.name,
+                    dependency.status,
+                )
         status = 200 if report.status == "ready" else 503
         return _json_response(request, report.to_dict(), status_code=status)
 
@@ -903,6 +1010,8 @@ class HttpApplication:
                 headers={"WWW-Authenticate": 'Bearer realm="brand-project-os"'},
             ) from error
         request.state.employee_principal = principal
+        request.state.actor_kind = ActorKind.HUMAN.value
+        request.state.actor_id = principal.employee_id
         return principal, token
 
     def _agent_identity(self, request: Request) -> ProjectPrincipal:
@@ -924,6 +1033,8 @@ class HttpApplication:
         if not isinstance(principal, ProjectPrincipal) or principal.kind is PrincipalKind.EMPLOYEE:
             raise ApiError(403, "EMPLOYEE_TOKEN_NOT_ALLOWED", "员工会话不能用于 Agent 入口")
         request.state.agent_principal = principal
+        request.state.actor_kind = principal.kind.value
+        request.state.actor_id = principal.principal_id
         return principal
 
     def _authorize(
@@ -987,6 +1098,7 @@ class HttpApplication:
         action: ProjectAction = ProjectAction.PROJECT_READ,
     ) -> tuple[ProjectPrincipal, str, Mapping[str, object], int]:
         project_id = str(request.path_params["project_id"])
+        request.state.project_id = project_id
         if surface == "employee":
             principal, _ = self._employee_identity(request)
             project_principal = ProjectPrincipal(PrincipalKind.EMPLOYEE, principal.employee_id)
@@ -996,6 +1108,7 @@ class HttpApplication:
         store = self._store()
         project = dict(store.get_project(project_id))
         version = int(store.get_project_version(project_id))
+        request.state.state_version = version
         return project_principal, project_id, project, version
 
     async def employee_project(self, request: Request) -> Response:
@@ -1274,6 +1387,9 @@ class HttpApplication:
         command = result.result
         if command is None:
             raise ApiError(503, "WRITE_RESULT_UNAVAILABLE", "正式写结果缺失", retryable=True)
+        request.state.project_id = project_id
+        request.state.state_version = command.project_version
+        request.state.event_id = command.event_id
         status = 201 if result.outcome is WriteOutcome.COMMITTED else 200
         return _json_response(
             request,
@@ -1723,7 +1839,10 @@ __all__ = [
     "HTTP_API_SCHEMA_VERSION",
     "HttpApplicationDependencies",
     "InMemoryRateLimiter",
+    "ObservabilityRuntime",
+    "PostgreSQLRateLimiter",
     "RateLimitDecision",
+    "RateLimitStoreUnavailable",
     "build_http_app",
     "build_openapi_document",
 ]

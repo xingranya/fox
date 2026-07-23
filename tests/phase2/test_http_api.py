@@ -30,6 +30,13 @@ from brand_os.http_api import (
     build_openapi_document,
 )
 from brand_os.identity import InteractiveEmployeePrincipal
+from brand_os.observability import (
+    InMemorySink,
+    ObservabilityRuntime,
+    RateLimitStoreUnavailable,
+    StructuredLogger,
+    Tracer,
+)
 from brand_os.server_config import load_server_settings
 
 
@@ -61,7 +68,7 @@ def make_test_settings():
 class FakeStore:
     """只提供 HTTP 适配器需要的读取和 Proposal 命令。"""
 
-    schema_version = 10
+    schema_version = 11
 
     def __init__(self) -> None:
         self.version = 3
@@ -202,7 +209,20 @@ class AlwaysLimited:
         return RateLimitDecision(False, limit, 0, 7)
 
 
-def make_client(*, limiter=None, consistency=None):
+class AlwaysUnavailable:
+    """验证共享限流故障时返回 503，且不退回进程内计数。"""
+
+    def check(self, key, bucket, *, limit, window_seconds):
+        raise RateLimitStoreUnavailable("共享限流不可用")
+
+
+def make_client(
+    *,
+    limiter=None,
+    consistency=None,
+    observability=None,
+    dependency_states=None,
+):
     store = FakeStore()
     dependencies = HttpApplicationDependencies(
         store=store,
@@ -210,18 +230,22 @@ def make_client(*, limiter=None, consistency=None):
         authorization=AllowAuthorization(),  # type: ignore[arg-type]
         consistency=consistency or PassthroughConsistency(),
         settings=make_test_settings(),
-        dependency_states=lambda: {
-            "postgresql": True,
-            "schema": True,
-            "object_storage": True,
-            "oidc": True,
-        },
+        dependency_states=dependency_states
+        or (
+            lambda: {
+                "postgresql": True,
+                "schema": True,
+                "object_storage": True,
+                "oidc": True,
+            }
+        ),
         agent_authenticator=lambda token: (
             ProjectPrincipal(PrincipalKind.AI, "agent-1")
             if token == "agent-token"
             else ProjectPrincipal(PrincipalKind.EMPLOYEE, "Fox")
         ),
         rate_limiter=limiter,
+        observability=observability,
         cursor_secret=b"http-api-test-cursor-secret-32-bytes!!",
     )
     return TestClient(build_http_app(dependencies)), store
@@ -434,6 +458,84 @@ class HttpApiIntegrationTest(unittest.TestCase):
             self.assertEqual(response.headers["retry-after"], "7")
             self.assertEqual(response.json()["schema_version"], "http-error.v1")
             self.assertTrue(response.headers.get("x-request-id"))
+
+    def test_request_correlation_trace_headers_and_runtime_telemetry(self) -> None:
+        logs = InMemorySink()
+        traces = InMemorySink()
+        runtime = ObservabilityRuntime(
+            logger=StructuredLogger(logs),
+            tracer=Tracer(traces),
+        )
+        trace_id = "1" * 32
+        client, _ = make_client(observability=runtime)
+        with client:
+            response = client.get(
+                "/api/v1/agent/projects/hongri/state",
+                headers={
+                    "Authorization": "Bearer agent-token",
+                    "X-Request-ID": "request-1",
+                    "X-Correlation-ID": "correlation-1",
+                    "traceparent": f"00-{trace_id}-{'2' * 16}-01",
+                },
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers["x-request-id"], "request-1")
+        self.assertEqual(response.headers["x-correlation-id"], "correlation-1")
+        self.assertEqual(response.headers["traceparent"].split("-")[1], trace_id)
+        self.assertEqual(runtime.metrics.value("http_requests_total"), 1)
+        self.assertEqual(len(traces.records), 1)
+        self.assertEqual(traces.records[0]["name"], "http.request")
+        rendered_logs = json.dumps(logs.records, ensure_ascii=False)
+        self.assertNotIn("agent-token", rendered_logs)
+        self.assertEqual(logs.records[0]["actor_id"], "agent-1")
+        self.assertEqual(logs.records[0]["project_id"], "hongri")
+        self.assertEqual(logs.records[0]["state_version"], 3)
+
+    def test_readiness_updates_dependency_metrics_without_mislabeling_503(self) -> None:
+        logs = InMemorySink()
+        runtime = ObservabilityRuntime(logger=StructuredLogger(logs))
+        client, _ = make_client(
+            observability=runtime,
+            dependency_states=lambda: {
+                "postgresql": True,
+                "schema": True,
+                "object_storage": False,
+                "oidc": True,
+            },
+        )
+        with client:
+            response = client.get("/readyz")
+
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(
+            runtime.metrics.value(
+                "dependency_status",
+                labels={"dependency": "object_storage", "status": "down"},
+            ),
+            0,
+        )
+        self.assertEqual(runtime.metrics.value("rate_limit_store_errors_total"), 0)
+        self.assertNotEqual(logs.records[-1].get("error_code"), "RATE_LIMIT_STORE_UNAVAILABLE")
+
+    def test_shared_rate_limit_failure_returns_503_without_local_fallback(self) -> None:
+        runtime = ObservabilityRuntime()
+        client, _ = make_client(
+            limiter=AlwaysUnavailable(),
+            observability=runtime,
+        )
+        with client:
+            response = client.get(
+                "/api/v1/agent/projects/hongri/state",
+                headers={"Authorization": "Bearer agent-token"},
+            )
+
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(response.json()["code"], "RATE_LIMIT_STORE_UNAVAILABLE")
+        self.assertEqual(response.headers["retry-after"], "5")
+        self.assertTrue(response.headers.get("x-correlation-id"))
+        self.assertEqual(runtime.metrics.value("rate_limit_store_errors_total"), 1)
+        self.assertEqual(runtime.metrics.value("http_errors_total"), 1)
 
 
 if __name__ == "__main__":

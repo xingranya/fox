@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 from .sqlite_migrations import MIGRATIONS, Migration
 
 
-POSTGRESQL_SCHEMA_VERSION = 10
+POSTGRESQL_SCHEMA_VERSION = 11
 
 
 def _translate_statement(statement: str) -> str:
@@ -902,12 +902,33 @@ POSTGRESQL_AUDIT_OUTBOX_MIGRATION = Migration(
 )
 
 
+POSTGRESQL_SHARED_RATE_LIMIT_MIGRATION = Migration(
+    11,
+    "shared_rate_limit_buckets",
+    (
+        """
+        CREATE TABLE rate_limit_buckets (
+            bucket_key TEXT NOT NULL CHECK(length(bucket_key) = 64),
+            bucket_name TEXT NOT NULL CHECK(length(bucket_name) > 0),
+            window_started_at TEXT NOT NULL,
+            request_count INTEGER NOT NULL CHECK(request_count >= 0),
+            updated_at TEXT NOT NULL,
+            PRIMARY KEY(bucket_key, bucket_name)
+        )
+        """,
+        "CREATE INDEX idx_rate_limit_buckets_updated_at ON rate_limit_buckets(updated_at)",
+    ),
+)
+POSTGRESQL_RATE_LIMIT_MIGRATION = POSTGRESQL_SHARED_RATE_LIMIT_MIGRATION
+
+
 POSTGRESQL_MIGRATIONS = (
     *_SHARED_POSTGRESQL_MIGRATIONS,
     POSTGRESQL_OBJECT_EVIDENCE_MIGRATION,
     POSTGRESQL_OIDC_IDENTITY_MIGRATION,
     POSTGRESQL_PROJECT_AUTHORIZATION_MIGRATION,
     POSTGRESQL_AUDIT_OUTBOX_MIGRATION,
+    POSTGRESQL_SHARED_RATE_LIMIT_MIGRATION,
 )
 
 
@@ -980,6 +1001,8 @@ __all__ = [
     "POSTGRESQL_OIDC_IDENTITY_MIGRATION",
     "POSTGRESQL_PROJECT_AUTHORIZATION_MIGRATION",
     "POSTGRESQL_AUDIT_OUTBOX_MIGRATION",
+    "POSTGRESQL_SHARED_RATE_LIMIT_MIGRATION",
+    "POSTGRESQL_RATE_LIMIT_MIGRATION",
     "POSTGRESQL_SCHEMA_VERSION",
     "apply_postgresql_migrations",
 ]

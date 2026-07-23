@@ -159,7 +159,7 @@ stateDiagram-v2
 
 F2.6 已完成当前并发实现：命令级 advisory lock 和项目行锁串行化正式版本推进；冲突报告从批准事件重建正式状态，并核对当前投影。当前没有自动合并冲突，也不会把数据库或投影异常转换成 409。F2.8 已将一致性结果接入版本化 HTTP 路由和 OpenAPI；F2.7 已完成 Outbox/Inbox、审计和后台任务边界。详见 [F2.6 幂等、乐观锁和冲突差异](../phase2/write-consistency-and-conflicts.md)、[F2.7 审计、Outbox/Inbox 和后台任务](../phase2/audit-outbox-inbox.md) 与 [F2.8 HTTP API 与 OpenAPI](../phase2/http-api-and-openapi.md)。
 
-## Phase 2+：Outbox 与消费者
+## Phase 2+：Outbox、观测与消费者
 
 Worker 使用 FOR UPDATE SKIP LOCKED 领取 Outbox，采用至少一次投递：
 
@@ -169,6 +169,8 @@ Worker 使用 FOR UPDATE SKIP LOCKED 领取 Outbox，采用至少一次投递：
 - 消息低于目标对象当前版本时忽略；发现事件版本缺口时暂停该聚合并补放。
 - Worker 在外部写成功、确认前崩溃时，重放不得创建重复索引、重复通知或重复工作流。
 - Outbox 积压、最老消息年龄和失败率进入监控；核心事务不等待 Zvec、Dify、Notebook 或 FlowLong。
+- `collect_outbox_metrics()` 只输出 pending 数、最老消息年龄、未解决死信和过期租约，不输出 Payload；告警只在 firing/resolved 状态变化时发送。
+- 多副本限流使用 PostgreSQL v11 窗口表，key 以 SHA-256 保存；共享存储不可用时 fail closed，不退回进程内计数。
 
 ## Phase 2+：S3 文件与对象存储
 

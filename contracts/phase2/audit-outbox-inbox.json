@@ -1,6 +1,6 @@
 {
   "schema_version": "audit-outbox.v1",
-  "postgresql_schema_version": 10,
+  "postgresql_schema_version": 11,
   "delivery_semantics": "at_least_once",
   "formal_transaction": {
     "event_audit_outbox_atomic": true,
@@ -44,7 +44,6 @@
   "deferred": [
     "production_worker_process",
     "http_status_endpoint",
-    "metrics_and_alerts",
     "dify_flowlong_bisheng_consumers"
   ],
   "migrates_hongri_data": false

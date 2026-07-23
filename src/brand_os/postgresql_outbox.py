@@ -48,6 +48,23 @@ def _parse_json(value: object, fallback: object = None) -> object:
         return fallback if fallback is not None else value
 
 
+def _parse_timestamp(value: object) -> datetime | None:
+    """解析数据库时间；损坏值不参与运行指标。"""
+
+    if isinstance(value, datetime):
+        result = value
+    elif isinstance(value, str):
+        try:
+            result = datetime.fromisoformat(value)
+        except ValueError:
+            return None
+    else:
+        return None
+    if result.tzinfo is None:
+        result = result.replace(tzinfo=UTC)
+    return result.astimezone(UTC)
+
+
 class OutboxDeliveryConflict(RuntimeError):
     """消息不存在、租约不匹配或状态不允许当前投递。"""
 
@@ -997,6 +1014,95 @@ class PostgreSQLOutboxMixin:
             return [dict(row) for row in connection.execute(statement, parameters).fetchall()]
         finally:
             connection.close()
+
+    def collect_outbox_metrics(
+        self,
+        *,
+        project_id: str | None = None,
+    ) -> list[Mapping[str, object]]:
+        """返回不含 Payload 的队列水位、死信和过期租约统计。"""
+
+        connection = self._connect()
+        try:
+            consumers = {
+                str(row["consumer_name"])
+                for row in connection.execute(
+                    "SELECT consumer_name FROM outbox_consumers ORDER BY consumer_name"
+                ).fetchall()
+            }
+            message_statement = """
+                SELECT consumer_name, status, created_at, lease_until
+                FROM outbox_messages
+            """
+            message_parameters: list[object] = []
+            if project_id is not None:
+                message_statement += " WHERE project_id = ?"
+                message_parameters.append(project_id)
+            messages = connection.execute(
+                message_statement,
+                message_parameters,
+            ).fetchall()
+
+            dead_statement = """
+                SELECT consumer_name, COUNT(*) AS dead_letter_count
+                FROM dead_letter_messages
+                WHERE resolved_at IS NULL
+            """
+            dead_parameters: list[object] = []
+            if project_id is not None:
+                dead_statement += " AND project_id = ?"
+                dead_parameters.append(project_id)
+            dead_statement += " GROUP BY consumer_name"
+            dead_counts = {
+                str(row["consumer_name"]): int(row["dead_letter_count"])
+                for row in connection.execute(dead_statement, dead_parameters).fetchall()
+            }
+        finally:
+            connection.close()
+
+        now = datetime.now(UTC)
+        summary: dict[str, dict[str, object]] = {
+            consumer: {
+                "consumer": consumer,
+                "pending": 0,
+                "oldest_age_seconds": 0.0,
+                "dead_letter_count": dead_counts.get(consumer, 0),
+                "expired_lease_count": 0,
+            }
+            for consumer in consumers | set(dead_counts)
+        }
+        oldest_by_consumer: dict[str, datetime] = {}
+        for row in messages:
+            consumer = str(row["consumer_name"])
+            consumers.add(consumer)
+            item = summary.setdefault(
+                consumer,
+                {
+                    "consumer": consumer,
+                    "pending": 0,
+                    "oldest_age_seconds": 0.0,
+                    "dead_letter_count": dead_counts.get(consumer, 0),
+                    "expired_lease_count": 0,
+                },
+            )
+            status = str(row["status"])
+            if status in {"PENDING", "RETRY", "CLAIMED"}:
+                item["pending"] = int(item["pending"]) + 1
+                created_at = _parse_timestamp(row["created_at"])
+                if created_at is not None:
+                    current_oldest = oldest_by_consumer.get(consumer)
+                    if current_oldest is None or created_at < current_oldest:
+                        oldest_by_consumer[consumer] = created_at
+            lease_until = _parse_timestamp(row["lease_until"])
+            if status == "CLAIMED" and lease_until is not None and lease_until < now:
+                item["expired_lease_count"] = int(item["expired_lease_count"]) + 1
+
+        for consumer, oldest in oldest_by_consumer.items():
+            summary[consumer]["oldest_age_seconds"] = max(
+                0.0,
+                (now - oldest).total_seconds(),
+            )
+        return [summary[consumer] for consumer in sorted(summary)]
 
     def _lock_claimed_message(
         self,

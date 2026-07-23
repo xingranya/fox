@@ -2,7 +2,7 @@
 
 > 状态：已完成
 > 机器契约：`audit-outbox.v1`
-> PostgreSQL Schema：v10
+> PostgreSQL Schema：v11（v10 为本轮 Outbox 迁移）
 > 当前范围：一次性本地 PostgreSQL 集成验证；没有启动生产 Worker，也没有迁移鸿日或鸿喜达资料
 
 ## 这次交付的边界
@@ -75,9 +75,11 @@ sequenceDiagram
 
 没有启动生产 Web、数据库常驻服务、Docker、桌面应用或 Worker；临时 PostgreSQL 仅由测试按模块启动并在结束后清理。
 
+F2.9 已补上 `collect_outbox_metrics()`。它只读取消费者、状态、创建时间和租约时间，向观测运行时提供 pending 数、最老消息年龄、未解决死信和过期租约，不把 Payload 放进指标或日志。
+
 ## 后续边界
 
 - F2.8：把这些应用服务能力发布为版本化 HTTP API/OpenAPI，加入请求关联 ID、分页和限流。
-- F2.9：把 Outbox 积压、最老消息年龄、租约和死信接入指标、日志、追踪和告警。
+- F2.9 已完成：把 Outbox 积压、最老消息年龄、租约和死信接入指标、日志、追踪和告警，详见[可观测性、健康和告警](observability-and-alerting.md)。
 - F2.10：做数据库、对象版本、投影和派生任务的联合恢复演练。
 - Phase 3：再逐项接入 Zvec、Open Notebook、Nubase、FlowLong、Dify 和可能的 BISHENG；任何适配器都必须可禁用、可重建并回退到 NoOp。

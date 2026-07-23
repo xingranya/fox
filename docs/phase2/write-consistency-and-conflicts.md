@@ -2,7 +2,7 @@
 
 > 状态：已完成
 > 机器契约：`write-consistency.v1`、`write-conflict.v1`
-> 任务实现基线：PostgreSQL v9；当前服务器 Schema 已由 F2.7 升至 v10
+> 任务实现基线：PostgreSQL v9；当前服务器 Schema 已由 F2.9 升至 v11
 
 ## 这次解决了什么
 

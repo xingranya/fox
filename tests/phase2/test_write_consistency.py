@@ -115,7 +115,8 @@ class WriteConsistencyContractTest(unittest.TestCase):
             contract["requirements"]["current_projection_verified_against_events"]
         )
         self.assertFalse(contract["requirements"]["unknown_failures_become_conflicts"])
-        self.assertIn("http_route", contract["deferred"])
+        self.assertNotIn("http_route", contract["deferred"])
+        self.assertNotIn("openapi", contract["deferred"])
         self.assertIn("mcp_command_identity", contract["deferred"])
         self.assertFalse(contract["migrates_hongri_data"])
         self.assertEqual(

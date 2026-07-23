@@ -69,4 +69,4 @@ OpenWork 只承担三个职责：展示当前状态与证据、启动/观察 Age
 | 服务器依赖 | `required_server_components` 为空；Phase 1 不依赖 PostgreSQL、S3、OIDC、Docker 或外部组件 |
 | OpenWork 边界 | 可替换、无业务批准权、不保存正式状态；`OW-L0` 已有条件通过，F1.9 默认离线补丁与安全门已完成 |
 
-本交接后的 F1.1-F1.10 已完成本地工作空间、SQLite 权威事件、来源版本、会议增量、Proposal、证据回源、Task Packet、CLI/MCP，以及 OpenWork 离线、安全、品牌、单安装包和鸿日桌面业务旅程。F2.1-F2.8 已完成服务器边界、PostgreSQL 权威存储、S3 原件准入、OIDC 员工会话、项目 RBAC/RLS、写一致性、审计/Outbox/Inbox 和版本化 HTTP/OpenAPI；当前进入 F2.9 可观测性与告警。
+本交接后的 F1.1-F1.10 已完成本地工作空间、SQLite 权威事件、来源版本、会议增量、Proposal、证据回源、Task Packet、CLI/MCP，以及 OpenWork 离线、安全、品牌、单安装包和鸿日桌面业务旅程。F2.1-F2.9 已完成服务器边界、PostgreSQL 权威存储、S3 原件准入、OIDC 员工会话、项目 RBAC/RLS、写一致性、审计/Outbox/Inbox、版本化 HTTP/OpenAPI 和可观测性；当前进入 F2.10 恢复与服务器阶段门。

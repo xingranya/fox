@@ -1,0 +1,80 @@
+{
+  "schema_version": "observability.v1",
+  "trace_context": {
+    "schema_version": "trace-context.v1",
+    "request_header": "X-Request-ID",
+    "correlation_header": "X-Correlation-ID",
+    "w3c_trace_header": "traceparent",
+    "invalid_external_identifiers_are_replaced": true
+  },
+  "logs": {
+    "format": "json-lines",
+    "required_fields": [
+      "schema_version",
+      "timestamp",
+      "level",
+      "event",
+      "request_id",
+      "correlation_id",
+      "trace_id",
+      "span_id"
+    ],
+    "max_string_length": 256,
+    "max_depth": 3,
+    "max_collection_items": 20,
+    "never_record": [
+      "authorization",
+      "cookie",
+      "token",
+      "secret",
+      "password",
+      "api_key",
+      "private_key",
+      "prompt",
+      "body",
+      "payload",
+      "raw_content",
+      "signed_url",
+      "model_key"
+    ]
+  },
+  "metrics": {
+    "schema_version": "metrics.v1",
+    "unknown_label_value": "other",
+    "max_series_per_metric": 256,
+    "fixed_names": [
+      "http_requests_total",
+      "http_request_duration_seconds",
+      "http_errors_total",
+      "http_rate_limit_denied_total",
+      "dependency_status",
+      "outbox_pending_messages",
+      "outbox_oldest_age_seconds",
+      "outbox_dead_letter_messages",
+      "worker_lease_expiry_total",
+      "rate_limit_store_errors_total",
+      "alert_events_total"
+    ]
+  },
+  "alerts": {
+    "schema_version": "alert.v1",
+    "transitions": ["firing", "resolved"],
+    "deduplicate_unchanged_state": true,
+    "default_rules": ["outbox_stale", "rate_limit_store_unavailable"]
+  },
+  "shared_rate_limit": {
+    "backend": "postgresql",
+    "postgresql_schema_version": 11,
+    "bucket_key_storage": "sha256",
+    "failure_http_status": 503,
+    "failure_code": "RATE_LIMIT_STORE_UNAVAILABLE",
+    "fail_closed": true,
+    "fallback_to_process_local": false
+  },
+  "authority": {
+    "telemetry_is_derived_runtime_data": true,
+    "may_approve_formal_state": false,
+    "may_overwrite_formal_state": false,
+    "outbox_payload_may_be_exported": false
+  }
+}

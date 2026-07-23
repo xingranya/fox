@@ -177,6 +177,7 @@ class PostgreSQLStoreBase(SQLiteStoreBase):
             "inbox_messages",
             "dead_letter_messages",
             "background_worker_leases",
+            "rate_limit_buckets",
         )
         with self._connect() as connection:
             applied = {
@@ -191,7 +192,7 @@ class PostgreSQLStoreBase(SQLiteStoreBase):
                     """
                     SELECT table_name FROM information_schema.tables
                     WHERE table_schema = current_schema()
-                      AND table_name IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                      AND table_name IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     required_tables,
                 )

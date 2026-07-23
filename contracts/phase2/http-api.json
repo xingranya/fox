@@ -56,11 +56,8 @@
     "employee_session_is_opaque": true,
     "agent_cannot_review": true,
     "client_cannot_access_postgresql_or_s3": true,
+    "shared_rate_limit_fail_closed": true,
     "remote_mcp_oauth_deferred_to": "F3.6"
   },
-  "deferred": [
-    "remote_mcp_oauth_and_mcp_command_identity",
-    "distributed_rate_limit_store",
-    "metrics_tracing_and_alerting"
-  ]
+  "deferred": ["remote_mcp_oauth_and_mcp_command_identity"]
 }

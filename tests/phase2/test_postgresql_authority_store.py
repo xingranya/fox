@@ -114,10 +114,10 @@ class PostgreSQLAuthorityStoreTest(unittest.TestCase):
         )
 
     def test_versioned_migrations_are_repeatable_and_verified(self) -> None:
-        self.assertEqual(self.store.schema_version, 10)
+        self.assertEqual(self.store.schema_version, 11)
         self.assertTrue(self.store.quick_check())
         reopened = PostgreSQLCanonicalStore(self.dsn)
-        self.assertEqual(reopened.schema_version, 10)
+        self.assertEqual(reopened.schema_version, 11)
 
         with psycopg.connect(self.dsn, autocommit=True) as connection:
             connection.execute(
@@ -431,9 +431,9 @@ class PostgreSQLAuthorityContractTest(unittest.TestCase):
 
     def test_contract_keeps_single_authority_and_deferred_boundaries(self) -> None:
         contract = json.loads(CONTRACT_PATH.read_text(encoding="utf-8"))
-        self.assertEqual(contract["schema_version"], "postgresql-authority.v5")
+        self.assertEqual(contract["schema_version"], "postgresql-authority.v6")
         self.assertEqual(
-            contract["migration_versions"], [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+            contract["migration_versions"], [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
         )
         self.assertEqual(contract["object_evidence_contract"], "object-evidence.v1")
         self.assertEqual(contract["oidc_identity_contract"], "oidc-identity.v1")
@@ -442,12 +442,13 @@ class PostgreSQLAuthorityContractTest(unittest.TestCase):
             "project-authorization.v1",
         )
         self.assertEqual(contract["audit_outbox_contract"], "audit-outbox.v1")
+        self.assertEqual(contract["observability_contract"], "observability.v1")
         self.assertEqual(contract["formal_write_store"], "postgresql")
         self.assertFalse(contract["dual_write"])
         self.assertFalse(contract["migrates_hongri_data"])
         self.assertEqual(
             set(contract["deferred"]),
-            {"http_api", "data_cutover"},
+            {"data_cutover"},
         )
 
 
