@@ -13,7 +13,7 @@
 
 Fox 同时明确了客户端边界：员工只安装公司定制版 OpenWork。Brand Project OS 不再另做一个客户端；它是同一产品中的业务能力和服务器服务。
 
-Brand Project OS 是当前项目名，不是已锁定的最终发行品牌。后续改名只更新产品标识和服务命名，不改变本 ADR 的单一客户端、服务器权威和权限边界。
+2026-07-23，Fox 通过 [ADR-0006](0006-foxwork-name-and-chinese-ui.md) 将客户端发行名固定为 FoxWork，并要求员工界面只使用简体中文。这不改变本 ADR 的单一客户端、服务器权威和权限边界。
 
 ## 决策
 
@@ -34,7 +34,7 @@ Brand Project OS 是当前项目名，不是已锁定的最终发行品牌。后
 
 ```mermaid
 flowchart LR
-    EMP["员工"] --> DESKTOP["Brand Project OS Desktop\n基于 OpenWork"]
+    EMP["员工"] --> DESKTOP["FoxWork\n公司定制 OpenWork"]
     DESKTOP --> LOCAL["OpenCode / Sidecar / 本机权限桥接"]
     DESKTOP --> API["Brand Project OS API"]
 

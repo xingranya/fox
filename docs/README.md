@@ -1,13 +1,14 @@
 # Brand Project OS 规格文档
 
-本目录保存产品、架构、数据治理、测试和执行 SPEC。当前目标是交付 FoxWork：员工只使用公司定制版 OpenWork，服务器运行 Brand Project OS Service；AI 只能提出候选，正式变化必须由授权人员确认并留痕。`Brand Project OS` 是当前项目名，最终发行名可以另定。
+本目录保存产品、架构、数据治理、测试和执行 SPEC。当前目标是交付 FoxWork：员工只使用这个基于 OpenWork 的公司客户端，服务器运行 Brand Project OS Service；AI 只能提出候选，正式变化必须由授权人员确认并留痕。FoxWork 的员工界面只使用简体中文，不提供语言切换或英文回退。
 
 当前完成 28/49 项。Phase 0、Phase 1 和 Phase 2 已完成，F3.1 已完成，下一项是 F3.2。Fox 已批准小团队托管部署，以及 99.5% 月可用性、PostgreSQL RPO 不高于 5 分钟、核心服务 RTO 不高于 60 分钟的内部目标；这些目标仍需 Phase 4 实测。远程 MCP/Skills、Dify 和四个开源组件按 Phase 3 的顺序接入。
 
 ## 当前结论
 
 - 第一用户：Fox；第一验证项目：鸿日。
-- 员工唯一客户端：基于 OpenWork 的公司定制版；最终发行名不影响单一客户端边界。
+- 员工唯一客户端：FoxWork，基于 OpenWork 的公司定制版。
+- 员工界面：只使用简体中文，不提供语言切换；缺失文案不得回退为英文或内部键名。
 - 单一安装包：OpenCode Runtime、Sidecar 和本机桥接随客户端交付。
 - 团队后端：Brand Project OS Service，不是第二个员工软件。
 - 团队权威：PostgreSQL 事件/审批/投影和对象存储原件版本。
@@ -21,6 +22,7 @@
 - [ADR-0003：Phase 0-1 本地验证与业务语义](adr/0003-local-first-hongri-validation.md)
 - [ADR-0004：公司定制 OpenWork 是唯一员工客户端](adr/0004-openwork-single-client.md)
 - [ADR-0005：单一客户端与服务器权威服务](adr/0005-single-client-server-authority.md)
+- [ADR-0006：FoxWork 发行名与简体中文界面](adr/0006-foxwork-name-and-chinese-ui.md)
 - [ADR-0001：旧服务器候选决策，已被 ADR-0005 取代](adr/0001-team-server-authority.md)
 - [ADR-0002：旧 OpenWork 候选决策，已被 ADR-0004 取代](adr/0002-openwork-primary-client.md)
 

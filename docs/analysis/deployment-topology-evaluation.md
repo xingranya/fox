@@ -2,11 +2,11 @@
 
 ## 当前结论
 
-2026-07-22，Fox 批准“公司定制 OpenWork 唯一员工客户端 + 公司服务器权威服务”。Brand Project OS 是当前项目名，最终发行名可以调整，但员工不能面对两个软件。
+2026-07-22，Fox 批准“公司定制 OpenWork 唯一员工客户端 + 公司服务器权威服务”。2026-07-23，客户端发行名固定为 FoxWork，员工界面固定使用简体中文；员工不能面对两个软件。
 
 | 部分 | 当前决定 |
 |:---|:---|
-| 员工客户端 | 基于 OpenWork 的公司发行版；最终发行名待定 |
+| 员工客户端 | FoxWork，基于 OpenWork 的公司发行版；只提供简体中文界面 |
 | 本机运行 | OpenCode Runtime、Sidecar、文件/终端/桌面桥接随安装包 |
 | 业务后端 | Brand Project OS Service，部署在公司服务器 |
 | 正式状态 | Phase 1 SQLite；Phase 3 切换后 PostgreSQL 唯一写入权威 |
@@ -33,7 +33,7 @@ MCP Gateway 调用应用服务。它不能直写 PostgreSQL，也不能通过服
 ```mermaid
 flowchart TB
     subgraph DEVICE["员工电脑"]
-        DESKTOP["Brand Project OS Desktop\n公司定制 OpenWork"]
+        DESKTOP["FoxWork\n公司定制 OpenWork"]
         RUNTIME["OpenCode Runtime / Sidecar"]
         BRIDGE["本机文件 / 终端 / 桌面桥接"]
         CACHE["缓存 / 草稿 / 运行态"]

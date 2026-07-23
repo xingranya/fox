@@ -21,7 +21,7 @@ Zvec、Open Notebook、Nubase、Dify 和 FlowLong 已进入 Phase 3 的独立适
 | M06 | 品牌 Agent 宪法与工作模式 | 场景 3 | 品牌角色、品味规则、模式选择 | 探索协议或执行规格 | `S绿 U绿 P绿 E绿 R绿` |
 | M07 | Task Packet 上下文装配 | 场景 2、3、5 | 当前状态、模式、任务、证据 | 不可变版本 Task Packet | `S绿 U绿 P绿 E绿 R绿` |
 | M08 | 多模型本地入口 | 场景 5 | Task Packet、模型选择 | Codex/Claude 可读取的 API/MCP/CLI 响应 | `S绿 U绿 P绿 E绿 R绿` |
-| M09 | Brand Project OS Desktop | 场景 1、4、6 | 当前状态、Proposal、证据、运行结果 | 查看、确认、驳回、回源和任务入口 | `S黄 U绿 P绿 E黄 R绿` |
+| M09 | FoxWork | 场景 1、4、6 | 当前状态、Proposal、证据、运行结果 | 查看、确认、驳回、回源和任务入口 | `S黄 U绿 P绿 E黄 R绿` |
 
 ## 依赖方向
 
@@ -109,7 +109,7 @@ M00 黄金测试与 BrandBench 横向验证 M01-M09
 - **验证**：固定 Packet 下事实、决定和证据必须一致；差异主要来自推理质量和表达。
 - **边界**：不暴露批准、任意数据库写入、原件删除和项目规则切换。
 
-### M09 Brand Project OS Desktop
+### M09 FoxWork
 
 - **责任**：让 Fox 最短路径查看当前状态、待确认变化、证据和 AI 工作结果。
 - **最小视图**：当前、待确认、证据、任务/模式和 AI 工作。

@@ -7,10 +7,11 @@
 - 取代：[ADR-0002](0002-openwork-primary-client.md) 的条件性候选结论
 - 保留：[ADR-0003](0003-local-first-hongri-validation.md) 的人工确认和本地价值验证规则
 - 配套：[ADR-0005](0005-single-client-server-authority.md) 的服务器权威与团队部署决策
+- 命名与语言：[ADR-0006](0006-foxwork-name-and-chinese-ui.md)
 
 ## 决策
 
-1. 员工唯一需要安装的软件是公司定制版 OpenWork。Brand Project OS 是当前项目名，公司可以更换最终发行名称、图标、AppID 和协议，但客户端代码基础和主要交互界面就是 OpenWork，不再另做一个 Web 或桌面客户端。
+1. 员工唯一需要安装的软件是公司定制版 OpenWork。2026-07-23 起发行名固定为 FoxWork，员工界面只使用简体中文；客户端代码基础和主要交互界面仍是 OpenWork，不再另做一个 Web 或桌面客户端。
 2. Brand Project OS 是 OpenWork 内的业务能力层，负责当前状态、证据、会议增量、Task Packet、Proposal 和人工确认。它不是员工需要单独安装或打开的第二个软件。
 3. OpenCode Runtime、Sidecar、本机文件桥接、终端桥接和必要的本地服务随同一个 OpenWork 安装包分发。它们可以作为后台进程运行，但不能要求员工再安装、登录或管理另一个客户端。
 4. MCP Gateway、Skills 目录和版本化 Brand Project OS API 可以部署在公司服务器。定制 OpenWork 连接这些服务；Codex、Claude 等其他 Agent 平台也可以连接同一组 MCP/Skills，但这些入口只用于辅助，不是员工完成日常工作的第二套主界面。
@@ -23,7 +24,7 @@
 
 ```text
 员工
-  -> 安装并打开公司定制版 OpenWork
+  -> 安装并打开 FoxWork
        -> 内置 OpenCode Runtime / Sidecar
        -> 受控访问本机文件、终端和桌面能力
        -> 连接公司 Brand Project OS API / MCP / Skills
@@ -41,6 +42,7 @@ Codex、Claude 等其他 Agent
 - 服务器 MCP 与本机工具使用不同权限边界；远程工具不能任意读取本机文件。
 - OpenWork 被卸载或运行数据被清理时，正式项目状态和证据仍可从权威层恢复。
 - MCP、Skills、CLI 和其他 Agent 输出不能绕过人工确认改变正式状态。
+- 员工可见界面只显示简体中文，没有语言选择或英文回退。
 
 ## 非目标
 

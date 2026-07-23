@@ -10,7 +10,8 @@
 
 - 当前第一用户是 Fox，第一验证项目是鸿日。
 - 当前批准路线是“单一员工客户端 + 公司服务器权威服务”。本地纵向切片仍先完成，但服务器化不再是待决定候选。
-- 员工唯一需要安装的软件是公司定制版 OpenWork。文档暂用 Brand Project OS 作为项目名，最终发行名可以另定；改名不得引出第二个 Web、PWA 或桌面客户端。
+- 员工唯一需要安装的软件是公司定制版 OpenWork，发行名固定为 FoxWork。Brand Project OS Service 是其背后的业务服务，不是第二个 Web、PWA 或桌面客户端。
+- FoxWork 面向员工的界面、提示、安装说明和错误信息只使用简体中文，不提供语言切换，也不得因翻译缺失回退显示英文或内部键名。
 - OpenCode Runtime、Sidecar 和本机能力桥接随同一个安装包分发。它们是客户端后台运行时，不是第二个产品，也不是正式业务数据源。
 - Brand Project OS Service 部署在公司服务器，承载正式业务 API、权威事件与审批、证据元数据、MCP Gateway、Skills 目录和工作流适配器。
 - MCP 是 AI 访问协议，不是数据库或业务核心。定制 OpenWork 通过版本化业务 API完成员工交互；Codex、Claude、Dify 等通过受控 MCP/Skills 使用同一业务能力。
