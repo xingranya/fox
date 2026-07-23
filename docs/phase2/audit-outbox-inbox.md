@@ -79,7 +79,7 @@ F2.9 已补上 `collect_outbox_metrics()`。它只读取消费者、状态、创
 
 ## 后续边界
 
-- F2.8：把这些应用服务能力发布为版本化 HTTP API/OpenAPI，加入请求关联 ID、分页和限流。
+- F2.8 已完成：把这些应用服务能力发布为版本化 HTTP API/OpenAPI，加入请求关联 ID、分页和限流。
 - F2.9 已完成：把 Outbox 积压、最老消息年龄、租约和死信接入指标、日志、追踪和告警，详见[可观测性、健康和告警](observability-and-alerting.md)。
-- F2.10：做数据库、对象版本、投影和派生任务的联合恢复演练。
+- F2.10 已完成：数据库、对象版本、投影和派生任务的联合恢复演练通过。
 - Phase 3：再逐项接入 Zvec、Open Notebook、Nubase、FlowLong、Dify 和可能的 BISHENG；任何适配器都必须可禁用、可重建并回退到 NoOp。

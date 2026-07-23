@@ -2,7 +2,7 @@
 
 本目录保存产品、架构、数据治理、测试和执行 SPEC。`Brand Project OS` 是当前项目名，最终发行名可以另定。当前路线由 2026-07-22 的正式 rescope 确定：员工只使用公司定制版 OpenWork；公司服务器服务向 Desktop 和其他 Agent 提供同一业务能力。
 
-当前完成 26/49 项。Phase 0、Phase 1 和 F2.1-F2.9 已完成，活动任务是 F2.10。服务器配置、PostgreSQL 权威存储、S3 兼容原件准入、OIDC 员工会话、项目权限、并发冲突差异、版本化 HTTP/OpenAPI、审计/Outbox/Inbox 和可观测性已经完成；远程 MCP/Skills、Dify 和四个开源组件仍按 Phase 3 的顺序接入。
+当前完成 27/49 项。Phase 0、Phase 1 和 Phase 2 已完成，活动任务是 F3.1。Fox 已批准小团队托管部署，以及 99.5% 月可用性、PostgreSQL RPO 不高于 5 分钟、核心服务 RTO 不高于 60 分钟的内部目标；这些目标仍需 Phase 4 实测。远程 MCP/Skills、Dify 和四个开源组件按 Phase 3 的顺序接入。
 
 ## 当前结论
 
@@ -86,6 +86,7 @@
 - [F2.7 审计、Outbox/Inbox 和后台任务边界](phase2/audit-outbox-inbox.md)
 - [F2.8 版本化 HTTP API 与 OpenAPI](phase2/http-api-and-openapi.md)
 - [F2.9 可观测性、健康和告警](phase2/observability-and-alerting.md)
+- [F2.10 服务器恢复演练与阶段门](phase2/server-recovery-and-gate.md)
 
 ## 外部组件
 

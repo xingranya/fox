@@ -66,9 +66,9 @@ PostgreSQL 返回行同时支持字段名和数字位置，保证现有映射、
 ## 后续边界
 
 - F2.3 已增加 S3 兼容原件版本和准入状态机，详见[对象原件准入](object-evidence-store.md)。
-- F2.4 已增加 OIDC 员工身份与服务器会话；F2.5 继续增加项目权限和 RLS，当前 `allowed_reviewers` 仍只是 F2.2 的领域权限基线。
-- F2.6 增加 API 级并发冲突差异，不把数据库异常直接暴露给客户端。
+- F2.4 已增加 OIDC 员工身份与服务器会话；F2.5 已增加项目权限和 RLS，`allowed_reviewers` 只保留为 F2.2 的领域权限基线。
+- F2.6 已增加应用级并发冲突差异，不把数据库异常直接暴露给客户端。
 - F2.7 已增加审计、Outbox/Inbox 和后台任务边界，详见[审计、Outbox/Inbox 和后台任务](audit-outbox-inbox.md)。
 - F2.9 已增加可观测性契约、Outbox 水位和 v11 共享限流，详见[可观测性、健康和告警](observability-and-alerting.md)。
-- F2.10 完成 PostgreSQL 备份恢复和故障演练。
+- F2.10 已完成 PostgreSQL 备份恢复和故障演练。
 - F3.1 才执行 SQLite 到 PostgreSQL/S3 的一次性迁移和正式切换。

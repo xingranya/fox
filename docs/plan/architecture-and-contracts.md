@@ -2,7 +2,7 @@
 
 > 当前生效路线：公司定制 OpenWork 唯一员工客户端 + Brand Project OS Service<br>
 > 权威决策：[ADR-0005](../adr/0005-single-client-server-authority.md)<br>
-> Phase 1：本地 SQLite 纵切，已完成；F2.1-F2.9 已通过，F2.10 技术演练通过并等待 Fox 确认阶段门；Phase 2-4：服务器权威、联网客户端和团队试点
+> Phase 1 和 Phase 2 已完成；Fox 已批准小团队托管部署与内部 SLO/RPO/RTO 目标；当前进入 F3.1 一次性迁移与权威切换
 
 ## 架构结论
 
@@ -77,13 +77,13 @@ F2.8 发布 `http-api.v1`、`http-error.v1` 和 OpenAPI 3.1。实现位于 `src/
 
 完整路由和兼容窗口见 [F2.8 HTTP API 与 OpenAPI](../phase2/http-api-and-openapi.md) 及 `contracts/phase2/http-api.json`。
 
-### F2.10 服务器恢复演练（技术验证已完成，阶段门待确认）
+### F2.10 服务器恢复演练（已完成）
 
 F2.10 新增 `postgresql-backup.v1` 和 `server-recovery.v1`。PostgreSQL 备份在导出快照事务中同时生成 custom-format 归档与逐表摘要；恢复只允许进入空数据库，并用单事务恢复、全表摘要和事件序列水位阻止部分恢复或原地覆盖。
 
 恢复库随后从正式事件重建 Proposal 生命周期和当前状态，重建后的全库摘要必须与备份点相同。对象存储按数据库登记的明确 VersionId 校验大小和 SHA-256；同名文件、当前版本或删除标记都不能替代缺失的正式版本。归档篡改、非空目标、不可重放的批准事件和缺失 ACTIVE 对象都会阻断。
 
-本地隔离演练已经通过，但逻辑备份不是 PITR，同桶版本控制也不是独立备份域。生产 RPO/RTO、恢复点选择和切换必须由 Fox 确认，并在 Phase 4 用托管 PostgreSQL、连续 WAL、独立备份域和真实数据量复测。完整记录见 [F2.10 服务器恢复演练与阶段门](../phase2/server-recovery-and-gate.md)。
+本地隔离演练已经通过，但逻辑备份不是 PITR，同桶版本控制也不是独立备份域。Fox 已批准小团队托管部署，以及 99.5% 月可用性、PostgreSQL RPO 不高于 5 分钟、核心服务 RTO 不高于 60 分钟的内部目标。Phase 4 仍须用托管 PostgreSQL、连续 WAL、独立备份域和真实数据量复测。完整记录见 [F2.10 服务器恢复演练与阶段门](../phase2/server-recovery-and-gate.md)。
 
 完整边界见：
 

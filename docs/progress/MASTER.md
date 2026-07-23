@@ -10,7 +10,7 @@
 
 ## 当前结论
 
-- 当前活动方案为 5 阶段 49 项：Phase 0 和 Phase 1 已完成，F2.1-F2.9 已通过；F2.10 的恢复技术演练已经通过，正等待 Fox 确认内部 SLO/RPO/RTO 和部署档位。MCP/Skills、工作流接入和团队试点仍按后续阶段过门。
+- 当前活动方案为 5 阶段 49 项：Phase 0、Phase 1 和 Phase 2 已完成。Fox 已批准小团队托管部署档位，以及 99.5% 月可用性、PostgreSQL RPO 不高于 5 分钟、核心服务 RTO 不高于 60 分钟的内部目标；当前进入 F3.1 一次性迁移与权威切换。上述目标仍需 Phase 4 用真实部署验证，不代表已经达到生产 SLO。
 - 旧 42 项服务器草案和 32 项本地价值验证方案均保留在 Git 历史中，不再作为当前依赖或完成度来源。
 - 当前主线不是通用项目管理、企业知识库或完整 RAG，而是长期品牌项目的状态与品牌认知协作层。
 - 公司定制版 OpenWork 是唯一员工客户端。Brand Project OS 是当前项目名，最终发行名可以另定；OpenCode Runtime、Sidecar 和本机桥接仍随同一安装包分发。
@@ -63,26 +63,26 @@
 |:---|:---|---:|---:|:---|:---|
 | 0 | 边界、协议与黄金测试先行 | 7 | 7 | 100% | 一页边界、鸿日样本、分类标准、品牌 Agent 协议、10-20 黄金用例与 BrandBench |
 | 1 | 单一客户端本地纵向切片 | 10 | 10 | 100% | 本地领域核心、CLI/MCP、OpenWork 单安装包和鸿日桌面闭环 |
-| 2 | 服务器权威基础 | 10 | 9 | 90% | PostgreSQL、对象存储、OIDC/RBAC、一致性、API、审计、观测和恢复 |
+| 2 | 服务器权威基础 | 10 | 10 | 100% | PostgreSQL、对象存储、OIDC/RBAC、一致性、API、审计、观测和恢复 |
 | 3 | 客户端联网与集成 | 13 | 0 | 0% | Desktop 联网、MCP、Skills、Dify、Zvec、Open Notebook、Nubase、FlowLong |
 | 4 | 团队试点与生产准入 | 9 | 0 | 0% | 真实团队工作、并发、故障恢复、安全、SLO、签名分发和 Go/No-Go |
-| **合计** |  | **49** | **26** | **53%** | 当前执行 F2.10，后续阶段依次过门 |
+| **合计** |  | **49** | **27** | **55%** | Phase 2 已关闭，当前执行 F3.1 |
 
 ## 阶段清单
 
 - [x] Phase 0：边界、协议与黄金测试先行（7/7）- [详情](phase-0-boundary-and-bench.md)
 - [x] Phase 1：单一客户端本地纵向切片（10/10）- [详情](phase-1-hongri-local-prototype.md)
-- [ ] Phase 2：服务器权威基础（9/10）- [详情](phase-2-server-authority-foundation.md)
+- [x] Phase 2：服务器权威基础（10/10）- [详情](phase-2-server-authority-foundation.md)
 - [ ] Phase 3：客户端联网、MCP、Skills 与工作流（0/13）- [详情](phase-3-connected-client-and-integrations.md)
 - [ ] Phase 4：团队试点与生产准入（0/9）- [详情](phase-4-team-pilot-and-production-gate.md)
 
 ## 当前状态
 
-**活动阶段**：Phase 2：服务器权威基础
-**活动任务**：F2.10：确认内部 SLO/RPO/RTO 和小团队部署档位，关闭服务器阶段门
-**阻塞项**：F2.10 技术演练已通过，等待 Fox 明确确认阶段门；内部 macOS 包尚未签名、公证，仍不可向员工分发
-**后续顺序**：F2.10 -> Phase 3 联网与集成 -> Phase 4 团队试点
-**规划检查点**：Phase 0、Phase 1 和 F2.1-F2.9 已通过，当前完成 26/49
+**活动阶段**：Phase 3：客户端联网、MCP、Skills 与工作流
+**活动任务**：F3.1：SQLite 到 PostgreSQL/S3 的一次性迁移和权威切换
+**阻塞项**：无；真实鸿日资料尚未迁移，先用临时 SQLite、PostgreSQL 和 Moto S3 完成迁移、对账、冻结与回滚演练
+**后续顺序**：F3.1 -> OpenWork 联网闭环 -> MCP/Skills/Dify 与外部组件 -> F3.13
+**规划检查点**：Phase 0、Phase 1 和 Phase 2 已通过，当前完成 27/49；内部 macOS 包尚未签名、公证，仍不可向员工分发
 
 ## 治理状态
 
@@ -115,14 +115,14 @@
 
 | 字段 | 当前值 |
 |:---|:---|
-| 活动阶段 | Phase 2 |
-| drift_score | 1 |
-| strategy | F2.9 重计划已完成；F2.10 技术演练通过，等待 Fox 确认内部目标和部署档位 |
-| threshold_annotate | 2 |
-| threshold_replan | 4 |
-| threshold_rescope | 6 |
-| total_tasks | 10 |
-| completed_tasks | 9 |
+| 活动阶段 | Phase 3 |
+| drift_score | 0 |
+| strategy | 一次性迁移先行；客户端、Agent/工作流和外部组件按依赖分 Lane 接入 |
+| threshold_annotate | 3 |
+| threshold_replan | 6 |
+| threshold_rescope | 8 |
+| total_tasks | 13 |
+| completed_tasks | 0 |
 | last_updated | 2026-07-23 |
 
 ### 各阶段阈值
@@ -169,6 +169,7 @@
 | F2.7 | L | L | 0 | 10/10 | +1 | 0 | 0 |
 | F2.8 | L | L | 0 | 10/10 | +1 | 1 | 1 |
 | F2.9 | L（重计划后） | L | 0 | 10/10 | +1 | 1 | 1 |
+| F2.10 | L | L | 0 | 10/10 | +1 | 0 | 0 |
 
 ## Rescope 追踪
 
@@ -177,15 +178,15 @@
 | 初始本地草案 | 个人本地 29 项 | 未开始 | 本地知识与 AI 接入 | 被团队服务器方案替代 |
 | 团队服务器方案 | 6 阶段 / 42 项 | 0/42，未开始 | OpenWork Electron + PostgreSQL/S3 团队服务器先行 | 被本次 rescope 替代；逐项映射保留在任务分解 |
 | 本地价值验证方案 | 4 阶段 / 32 项 | 15/32 时 rescope | Fox/鸿日、本地单用户、黄金测试与真实工作先行 | Phase 0 和 F1.1-F1.8 保留；未开始的旧 Phase 2/3 被取代 |
-| 单一客户端 + 服务器权威服务 | 5 阶段 / 49 项 | 26/49，执行中 | OpenWork 唯一客户端、公司服务器权威、MCP/Skills/工作流和团队试点 | 当前活动方案 |
+| 单一客户端 + 服务器权威服务 | 5 阶段 / 49 项 | 27/49，执行中 | OpenWork 唯一客户端、公司服务器权威、MCP/Skills/工作流和团队试点 | 当前活动方案 |
 
 服务器、身份、一致性、恢复、Dify 和四个开源组件已进入正式实施顺序。外部组件仍需逐项证明收益；“拒绝并使用 NoOp”是合法结果。
 
 ## 下一步
 
-1. 请 Fox 确认 [F2.10 阶段门建议](../phase2/server-recovery-and-gate.md)：单应用节点、托管 PostgreSQL、版本化对象存储和独立备份域；内部目标为 99.5% 可用性、RPO 不高于 5 分钟、RTO 不高于 60 分钟等候选值。
-2. 确认后记录 F2.10 遥测、关闭 Phase 2，并进入 F3.1 的 SQLite 到 PostgreSQL/S3 一次性迁移和切换；未确认前不启动迁移。
-3. 保留 F1.10 的 SQLite、原件哈希和验收副本，供 F3.1 对账；在 F4.8 前不向员工分发未签名包。
+1. 执行 F3.1 的 SQLite 到 PostgreSQL/S3 一次性迁移：先用临时数据完成导出、导入、ID/事件/审批/投影/来源/哈希对账、写入冻结和回滚演练。
+2. 真实 F1.10 基线只使用副本做只读核验；切换完成前不写真实鸿日资料，不建立 SQLite/PostgreSQL 双写。
+3. Phase 4 用真实部署验证已批准的 99.5% 月可用性、RPO 不高于 5 分钟和 RTO 不高于 60 分钟；在 F4.8 前不向员工分发未签名包。
 
 ## 会话日志
 
@@ -194,8 +195,9 @@
 | 2026-07-23 | F2.7 审计、Outbox/Inbox 和后台任务 | 新增 `audit-outbox.v1`、PostgreSQL v10、追加式事件审计、按消费者 Outbox、租约领取、聚合顺序、Inbox 去重、重试、死信、重放和 Worker 最小权限。消费者不写正式表，正式状态在消费者停机或失败时仍可查询。专项 7 项、Phase 2 全量 101 项及 14 组子测试、完整回归 260 项及 19 组子测试通过；未迁移正式资料，临时 PostgreSQL 已退出。实际工作量 L，SUPER 10/10，未计划依赖 0，任务漂移 0，Phase 2 累计漂移保持 3，当前进入 F2.8。 |
 | 2026-07-23 | F2.8 版本化 HTTP API 与 OpenAPI | 新增 `http-api.v1`、`http-error.v1`、OpenAPI 3.1 和可嵌入 ASGI 应用。Employee/Agent 路由分离，员工会话、项目授权、`Idempotency-Key`、`If-Match`、HMAC 游标、错误码、兼容窗口、限流和证据应用层回源均通过进程内契约测试；Agent 没有人工评审路由，客户端不直连 PostgreSQL/S3。专项 11 项、完整回归 271 项及 19 组子测试通过；未启动常驻 Web，未连接公司 OIDC 或正式资料。实际工作量 L，SUPER 10/10，未计划依赖 1，任务漂移 1，Phase 2 累计漂移达到 4，触发重计划提醒；F2.9 先补多副本可观测与共享限流边界。当前进入 F2.9。 |
 | 2026-07-23 | F2.9 自适应重计划 | F2.8 后 `drift_score=4` 达到 Phase 2 重计划阈值。保持 49 项总范围不变，将 F2.9 拆为观测契约、HTTP/健康接入、PostgreSQL 共享限流、故障/告警验证四个波次；重计划段的漂移计数归零，F2.10 继续等待 F2.9-D 证据。 |
-| 2026-07-23 | F2.9 可观测性、健康和告警 | 冻结 `observability.v1`、`trace-context.v1`、`metrics.v1`、`alert.v1`；HTTP 接入请求/关联/追踪 ID、业务定位字段、健康依赖和 Outbox 水位。PostgreSQL v11 共享限流只存 key 摘要；故障返回 503 `RATE_LIMIT_STORE_UNAVAILABLE`，不回退本地计数。专项观测 11 项、HTTP 15 项通过，编译检查通过；没有启动常驻服务或接入正式资料。实际工作量 L，SUPER 10/10，未计划依赖 1，重计划段 `drift_score` 由 0 变为 1，当前进入 F2.10。 |
-| 2026-07-23 | F2.10 恢复技术演练 | 新增 `postgresql-backup.v1`、`server-recovery.v1` 和安全报告；一致快照逻辑备份可恢复到空库，逐表摘要、事件序列、Proposal 生命周期、当前投影和明确 S3 VersionId 对账一致。归档篡改、非空目标、不可重放批准事件和缺失 ACTIVE 对象均阻断。专项 6 项、Phase 2 的 133 项测试和 292 项完整回归通过；逻辑备份不是 PITR，本机夹具不是生产 SLO 证据。当前等待 Fox 确认内部目标和部署档位，完成度仍为 26/49。 |
+| 2026-07-23 | F2.9 可观测性、健康和告警 | 冻结 `observability.v1`、`trace-context.v1`、`metrics.v1`、`alert.v1`；HTTP 接入请求/关联/追踪 ID、业务定位字段、健康依赖和 Outbox 水位。PostgreSQL v11 共享限流只存 key 摘要；故障返回 503 `RATE_LIMIT_STORE_UNAVAILABLE`，不回退本地计数。专项观测 11 项、HTTP 15 项通过，编译检查通过；没有启动常驻服务或接入正式资料。实际工作量 L，SUPER 10/10，未计划依赖 1，重计划段 `drift_score` 由 0 变为 1，随后进入 F2.10。 |
+| 2026-07-23 | F2.10 恢复技术演练 | 新增 `postgresql-backup.v1`、`server-recovery.v1` 和安全报告；一致快照逻辑备份可恢复到空库，逐表摘要、事件序列、Proposal 生命周期、当前投影和明确 S3 VersionId 对账一致。归档篡改、非空目标、不可重放批准事件和缺失 ACTIVE 对象均阻断。专项 6 项、Phase 2 的 133 项测试和 292 项完整回归通过；逻辑备份不是 PITR，本机夹具不是生产 SLO 证据。当次技术提交结束时人工阶段门尚未确认，阶段完成度暂为 26/49。 |
+| 2026-07-23 | F2.10 人工阶段门与 Phase 2 关闭 | Fox 明确批准小团队托管部署档位：单应用节点、托管 PostgreSQL、版本化对象存储和独立备份域；批准 99.5% 月可用性、PostgreSQL RPO 不高于 5 分钟、核心服务 RTO 不高于 60 分钟作为内部目标。F2.10 遥测为 L/L、SUPER 10/10、变化 +1、未计划依赖 0、任务漂移 0；Phase 2 重计划段最终 `drift_score=1`，10/10 关闭，当前进入 F3.1。批准目标尚未经过生产验证，Phase 4 仍须实测。 |
 | 2026-07-13 | 初始规划 | 核验 Zvec、Nubase、Open Notebook、FlowLong，形成个人本地方案初稿。 |
 | 2026-07-13 | 团队服务器范围变更 | 将目标改为 PostgreSQL/S3 团队服务器、远程 API/MCP、Web/PWA 和可靠性体系。 |
 | 2026-07-13 | Dify 范围变更 | 将 Dify 纳入外部组件 POC，形成 6 阶段 42 项未开始方案。 |
