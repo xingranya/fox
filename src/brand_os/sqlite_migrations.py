@@ -848,6 +848,34 @@ MIGRATIONS = (
             "CREATE INDEX idx_agent_runs_task ON agent_runs(project_id, task_id, started_at)",
         ),
     ),
+    Migration(
+        8,
+        "authority_data_cutover_guard",
+        (
+            """
+            CREATE TABLE authority_cutovers (
+                cutover_id TEXT PRIMARY KEY CHECK(length(cutover_id) > 0),
+                manifest_sha256 TEXT CHECK(
+                    manifest_sha256 IS NULL OR length(manifest_sha256) = 64
+                ),
+                source_snapshot_sha256 TEXT CHECK(
+                    source_snapshot_sha256 IS NULL OR length(source_snapshot_sha256) = 64
+                ),
+                source_schema_version INTEGER NOT NULL CHECK(source_schema_version >= 7),
+                status TEXT NOT NULL CHECK(status IN ('PREPARING','ACTIVE','ABORTED')),
+                operator_id TEXT NOT NULL CHECK(length(operator_id) > 0),
+                started_at TEXT NOT NULL,
+                completed_at TEXT,
+                failure_reason TEXT
+            )
+            """,
+            """
+            CREATE UNIQUE INDEX idx_authority_cutovers_single_freeze
+            ON authority_cutovers((1))
+            WHERE status IN ('PREPARING','ACTIVE')
+            """,
+        ),
+    ),
 )
 
 

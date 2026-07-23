@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from .sqlite_base import (
     MIN_SQLITE_VERSION,
+    AuthorityCutoverReadOnly,
     BusinessPermissionDenied,
     CanonicalStoreError,
     ProjectNotFound,
@@ -37,6 +38,7 @@ class SQLiteCanonicalStore(
 
 __all__ = [
     "MIN_SQLITE_VERSION",
+    "AuthorityCutoverReadOnly",
     "BusinessPermissionDenied",
     "CanonicalStoreError",
     "ProjectNotFound",

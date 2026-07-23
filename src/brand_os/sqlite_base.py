@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import sqlite3
+from urllib.parse import quote
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import asdict, replace
 from datetime import UTC, datetime
@@ -57,6 +58,10 @@ class BusinessPermissionDenied(CanonicalStoreError):
     """表示操作者没有改变正式业务状态的权限。"""
 
 
+class AuthorityCutoverReadOnly(CanonicalStoreError):
+    """表示本地库已经进入服务器切换冻结期或只读期。"""
+
+
 def canonical_json(value: object) -> str:
     """生成可重复计算摘要的 JSON。"""
 
@@ -81,17 +86,91 @@ class SQLiteStoreBase:
         self.database_path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
         self.allowed_reviewers = frozenset(allowed_reviewers)
         with self._connect() as connection:
-            apply_migrations(connection, MIGRATIONS)
-        self.database_path.chmod(0o600)
+            if not self._cutover_is_frozen(connection):
+                apply_migrations(connection, MIGRATIONS)
+        self.database_path.chmod(
+            0o400
+            if self._cutover_status() in {"PREPARING", "ACTIVE"}
+            else 0o600
+        )
 
     def _connect(self) -> sqlite3.Connection:
-        connection = sqlite3.connect(self.database_path, timeout=5, isolation_level=None)
+        status = self._cutover_status()
+        if status in {"PREPARING", "ACTIVE"}:
+            uri = f"file:{quote(self.database_path.as_posix(), safe='/')}?mode=ro"
+            connection = sqlite3.connect(
+                uri,
+                uri=True,
+                timeout=5,
+                isolation_level=None,
+            )
+        else:
+            connection = sqlite3.connect(
+                self.database_path,
+                timeout=5,
+                isolation_level=None,
+            )
         connection.row_factory = sqlite3.Row
         connection.execute("PRAGMA foreign_keys = ON")
         connection.execute("PRAGMA busy_timeout = 5000")
-        connection.execute("PRAGMA synchronous = FULL")
-        connection.execute("PRAGMA journal_mode = WAL")
+        if status in {"PREPARING", "ACTIVE"}:
+            connection.execute("PRAGMA query_only = ON")
+        else:
+            connection.execute("PRAGMA synchronous = FULL")
+            connection.execute("PRAGMA journal_mode = WAL")
         return connection
+
+    def _cutover_status(self) -> str | None:
+        """读取切换守卫；读取损坏时阻断写入。"""
+
+        if not self.database_path.exists():
+            return None
+        uri = f"file:{quote(self.database_path.as_posix(), safe='/')}?mode=ro"
+        try:
+            with sqlite3.connect(uri, uri=True, timeout=5) as connection:
+                table = connection.execute(
+                    """
+                    SELECT 1 FROM sqlite_master
+                    WHERE type = 'table' AND name = 'authority_cutovers'
+                    """
+                ).fetchone()
+                if table is None:
+                    return None
+                row = connection.execute(
+                    """
+                    SELECT status FROM authority_cutovers
+                    WHERE status IN ('PREPARING','ACTIVE')
+                    ORDER BY started_at DESC LIMIT 1
+                    """
+                ).fetchone()
+                return None if row is None else str(row[0])
+        except sqlite3.DatabaseError as error:
+            raise AuthorityCutoverReadOnly("无法安全读取本地切换守卫") from error
+
+    @staticmethod
+    def _cutover_is_frozen(connection: sqlite3.Connection) -> bool:
+        """判断当前连接是否已处于切换冻结或激活状态。"""
+
+        try:
+            table = connection.execute(
+                """
+                SELECT 1 FROM sqlite_master
+                WHERE type = 'table' AND name = 'authority_cutovers'
+                """
+            ).fetchone()
+            if table is None:
+                return False
+            return (
+                connection.execute(
+                    """
+                    SELECT 1 FROM authority_cutovers
+                    WHERE status IN ('PREPARING','ACTIVE') LIMIT 1
+                    """
+                ).fetchone()
+                is not None
+            )
+        except sqlite3.DatabaseError:
+            return True
 
     @property
     def schema_version(self) -> int:
@@ -160,6 +239,8 @@ class SQLiteStoreBase:
         """开始写事务；其他关系型适配器可在此增加命令级串行化。"""
 
         del context, command_name
+        if self._cutover_status() in {"PREPARING", "ACTIVE"}:
+            raise AuthorityCutoverReadOnly("SQLite 已冻结，不能继续写入正式状态")
         connection.execute("BEGIN IMMEDIATE")
 
     def _append_event(

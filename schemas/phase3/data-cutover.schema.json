@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://brand-project-os.local/schemas/phase3/data-cutover.schema.json",
+  "title": "Brand Project OS 一次性数据切换清单",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "cutover_id",
+    "created_at",
+    "source_schema_version",
+    "source_snapshot_sha256",
+    "tables",
+    "evidence",
+    "excluded_tables",
+    "manifest_sha256"
+  ],
+  "properties": {
+    "schema_version": {"const": "data-cutover.v1"},
+    "cutover_id": {"type": "string", "pattern": "^CUT-[A-Z0-9][A-Z0-9_-]{2,63}$"},
+    "created_at": {"type": "string", "format": "date-time"},
+    "source_schema_version": {"type": "integer", "minimum": 7},
+    "source_snapshot_sha256": {"$ref": "#/$defs/sha256"},
+    "tables": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/table"}
+    },
+    "evidence": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/evidence"}
+    },
+    "excluded_tables": {
+      "type": "array",
+      "items": {"type": "string"},
+      "uniqueItems": true
+    },
+    "manifest_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "table": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "file", "columns", "row_count", "sha256"],
+      "properties": {
+        "name": {"type": "string"},
+        "file": {"type": "string", "pattern": "^tables/[0-9]{2}-[a-z0-9_]+\\.jsonl$"},
+        "columns": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+        "row_count": {"type": "integer", "minimum": 0},
+        "sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "project_id",
+        "logical_source_id",
+        "source_version_id",
+        "sha256",
+        "size_bytes",
+        "media_type",
+        "confidentiality",
+        "original_filename"
+      ],
+      "properties": {
+        "project_id": {"type": "string", "minLength": 1},
+        "logical_source_id": {"type": "string", "minLength": 1},
+        "source_version_id": {"type": "string", "minLength": 1},
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "size_bytes": {"type": "integer", "minimum": 0},
+        "media_type": {"type": "string", "minLength": 1},
+        "confidentiality": {"enum": ["P0", "P1", "P2", "P3"]},
+        "original_filename": {"type": "string", "minLength": 1}
+      }
+    }
+  }
+}

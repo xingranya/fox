@@ -37,7 +37,7 @@
     "next_event_version"
   ],
   "state_change_kinds": ["ADDED", "REMOVED", "MODIFIED"],
-  "postgresql_schema_version": 11,
+  "postgresql_schema_version": 12,
   "deferred": [
     "mcp_command_identity"
   ],

@@ -10,6 +10,12 @@ from .authorization import (
     ProjectRole,
 )
 from .consistency import ConflictCode, WriteConsistencyService, WriteOutcome
+from .data_cutover import (
+    DataCutoverIntegrityError,
+    DataCutoverManifest,
+    DataCutoverReport,
+    DataCutoverService,
+)
 from .identity import InteractiveEmployeePrincipal, OidcIdentityService
 from .http_api import (
     HTTP_API_CONTRACT,
@@ -62,6 +68,10 @@ __all__ = [
     "WorkspaceSettings",
     "ConfidentialityLevel",
     "ConflictCode",
+    "DataCutoverIntegrityError",
+    "DataCutoverManifest",
+    "DataCutoverReport",
+    "DataCutoverService",
     "FernetSecretCipher",
     "InteractiveEmployeePrincipal",
     "HTTP_API_CONTRACT",

@@ -8,7 +8,7 @@
   "audit_outbox_contract": "audit-outbox.v1",
   "observability_contract": "observability.v1",
   "formal_write_store": "postgresql",
-  "migration_versions": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+  "migration_versions": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
   "transaction": {
     "event_approval_projection_atomic": true,
     "idempotency_key_binds_request_digest": true,
@@ -29,5 +29,5 @@
   },
   "dual_write": false,
   "migrates_hongri_data": false,
-  "deferred": ["data_cutover"]
+  "deferred": []
 }

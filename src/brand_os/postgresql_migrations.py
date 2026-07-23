@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 from .sqlite_migrations import MIGRATIONS, Migration
 
 
-POSTGRESQL_SCHEMA_VERSION = 11
+POSTGRESQL_SCHEMA_VERSION = 12
 
 
 def _translate_statement(statement: str) -> str:
@@ -922,6 +922,63 @@ POSTGRESQL_SHARED_RATE_LIMIT_MIGRATION = Migration(
 POSTGRESQL_RATE_LIMIT_MIGRATION = POSTGRESQL_SHARED_RATE_LIMIT_MIGRATION
 
 
+POSTGRESQL_DATA_CUTOVER_MIGRATION = Migration(
+    12,
+    "one_time_data_cutover",
+    (
+        """
+        CREATE TABLE data_cutover_runs (
+            cutover_id TEXT PRIMARY KEY CHECK(length(cutover_id) > 0),
+            manifest_sha256 TEXT NOT NULL UNIQUE CHECK(length(manifest_sha256) = 64),
+            source_snapshot_sha256 TEXT NOT NULL CHECK(length(source_snapshot_sha256) = 64),
+            source_schema_version INTEGER NOT NULL CHECK(source_schema_version >= 7),
+            status TEXT NOT NULL CHECK(status IN ('PREPARED','ACTIVE','ROLLED_BACK')),
+            operator_id TEXT NOT NULL CHECK(length(operator_id) > 0),
+            table_count INTEGER NOT NULL CHECK(table_count > 0),
+            row_count INTEGER NOT NULL CHECK(row_count >= 0),
+            evidence_count INTEGER NOT NULL CHECK(evidence_count >= 0),
+            report_json TEXT,
+            started_at TEXT NOT NULL,
+            activated_at TEXT,
+            rolled_back_at TEXT,
+            failure_reason TEXT
+        )
+        """,
+        """
+        CREATE UNIQUE INDEX idx_data_cutover_single_active
+        ON data_cutover_runs((1))
+        WHERE status = 'ACTIVE'
+        """,
+        """
+        CREATE TABLE data_cutover_source_evidence (
+            cutover_id TEXT NOT NULL,
+            project_id TEXT NOT NULL,
+            source_version_id TEXT NOT NULL,
+            evidence_version_id TEXT NOT NULL UNIQUE,
+            sha256 TEXT NOT NULL CHECK(length(sha256) = 64),
+            object_version_id TEXT NOT NULL CHECK(length(object_version_id) > 0),
+            created_at TEXT NOT NULL,
+            PRIMARY KEY(cutover_id, project_id, source_version_id),
+            FOREIGN KEY(cutover_id) REFERENCES data_cutover_runs(cutover_id) ON DELETE RESTRICT,
+            FOREIGN KEY(project_id, source_version_id)
+                REFERENCES source_versions(project_id, source_version_id) ON DELETE RESTRICT,
+            FOREIGN KEY(evidence_version_id)
+                REFERENCES evidence_object_versions(version_id) ON DELETE RESTRICT
+        )
+        """,
+        "CREATE INDEX idx_data_cutover_evidence_project ON data_cutover_source_evidence(project_id, source_version_id)",
+        """
+        ALTER TABLE data_cutover_source_evidence ENABLE ROW LEVEL SECURITY;
+        ALTER TABLE data_cutover_source_evidence FORCE ROW LEVEL SECURITY;
+        CREATE POLICY data_cutover_source_evidence_select
+        ON data_cutover_source_evidence FOR SELECT USING (
+            brand_os_has_project_action(project_id, 'PROJECT_READ', 'P0')
+        )
+        """,
+    ),
+)
+
+
 POSTGRESQL_MIGRATIONS = (
     *_SHARED_POSTGRESQL_MIGRATIONS,
     POSTGRESQL_OBJECT_EVIDENCE_MIGRATION,
@@ -929,6 +986,7 @@ POSTGRESQL_MIGRATIONS = (
     POSTGRESQL_PROJECT_AUTHORIZATION_MIGRATION,
     POSTGRESQL_AUDIT_OUTBOX_MIGRATION,
     POSTGRESQL_SHARED_RATE_LIMIT_MIGRATION,
+    POSTGRESQL_DATA_CUTOVER_MIGRATION,
 )
 
 
@@ -1005,4 +1063,5 @@ __all__ = [
     "POSTGRESQL_RATE_LIMIT_MIGRATION",
     "POSTGRESQL_SCHEMA_VERSION",
     "apply_postgresql_migrations",
+    "POSTGRESQL_DATA_CUTOVER_MIGRATION",
 ]

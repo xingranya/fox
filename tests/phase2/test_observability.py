@@ -160,7 +160,7 @@ class ObservabilityContractTest(unittest.TestCase):
         self.assertFalse(contract["authority"]["may_approve_formal_state"])
 
     def test_shared_rate_limit_migration_is_versioned_and_does_not_store_raw_key(self) -> None:
-        self.assertEqual(POSTGRESQL_SCHEMA_VERSION, 11)
+        self.assertEqual(POSTGRESQL_SCHEMA_VERSION, 12)
         self.assertEqual(POSTGRESQL_RATE_LIMIT_MIGRATION.version, 11)
         ddl = "\n".join(POSTGRESQL_RATE_LIMIT_MIGRATION.statements)
         self.assertIn("CREATE TABLE rate_limit_buckets", ddl)

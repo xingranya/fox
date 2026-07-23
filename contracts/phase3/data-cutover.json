@@ -1,0 +1,63 @@
+{
+  "schema_version": "data-cutover.v1",
+  "mode": "one_time",
+  "source": {
+    "store": "sqlite",
+    "minimum_schema_version": 7,
+    "freeze_before_export": true,
+    "read_only_after_activation": true,
+    "may_resume_after_failed_cutover": true
+  },
+  "target": {
+    "formal_write_store": "postgresql",
+    "evidence_store": "versioned_s3_compatible",
+    "must_be_empty": true,
+    "dual_write": false,
+    "dual_primary": false
+  },
+  "included_sqlite_migrations": [1, 2, 3, 4, 5, 6],
+  "excluded_local_runtime_tables": [
+    "runtime_commands",
+    "runtime_tasks",
+    "runtime_mode_switches",
+    "task_packets",
+    "agent_runs"
+  ],
+  "reconciliation": {
+    "preserve_ids": true,
+    "preserve_event_positions": true,
+    "compare_all_exported_tables": true,
+    "compare_project_versions": true,
+    "compare_human_actions": true,
+    "compare_state_projection": true,
+    "compare_source_versions": true,
+    "verify_source_unchanged": true,
+    "require_explicit_s3_version_id": true,
+    "require_sha256_match": true
+  },
+  "manifest": {
+    "immutable": true,
+    "canonical_json": true,
+    "table_files_hashed": true,
+    "additional_properties": false
+  },
+  "rollback": {
+    "before_activation": "delete_imported_target_rows_and_created_object_versions_then_unfreeze_source",
+    "after_activation": "forbidden_use_recovery_procedure",
+    "preserve_failure_record": true
+  },
+  "authority": {
+    "human_approval_preserved": true,
+    "agent_may_activate_cutover": false,
+    "workflow_may_activate_cutover": false,
+    "operator_confirmation_required": true,
+    "local_runtime_data_is_formal_state": false
+  },
+  "test_scope": {
+    "temporary_sqlite": true,
+    "temporary_postgresql": true,
+    "moto_s3": true,
+    "migrates_hongri_data": false,
+    "production_slo_confirmed": false
+  }
+}

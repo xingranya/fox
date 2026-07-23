@@ -178,7 +178,10 @@ class PostgreSQLStoreBase(SQLiteStoreBase):
             "dead_letter_messages",
             "background_worker_leases",
             "rate_limit_buckets",
+            "data_cutover_runs",
+            "data_cutover_source_evidence",
         )
+        placeholders = ", ".join("?" for _ in required_tables)
         with self._connect() as connection:
             applied = {
                 int(row[0]): str(row[1])
@@ -192,8 +195,9 @@ class PostgreSQLStoreBase(SQLiteStoreBase):
                     """
                     SELECT table_name FROM information_schema.tables
                     WHERE table_schema = current_schema()
-                      AND table_name IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    """,
+                      AND table_name IN ("""
+                    + placeholders
+                    + ")",
                     required_tables,
                 )
             }

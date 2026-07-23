@@ -90,7 +90,7 @@ class SQLiteMigrationTest(unittest.TestCase):
                     apply_migrations(connection, MIGRATIONS), MIGRATIONS[-1].version
                 )
                 versions = [row[0] for row in connection.execute("SELECT version FROM schema_migrations")]
-                self.assertEqual(versions, [1, 2, 3, 4, 5, 6, 7])
+                self.assertEqual(versions, [1, 2, 3, 4, 5, 6, 7, 8])
             finally:
                 connection.close()
 
@@ -262,7 +262,7 @@ class SQLiteMigrationTest(unittest.TestCase):
                             '2026-07-22T00:00:00+00:00')
                     """
                 )
-                self.assertEqual(apply_migrations(connection, MIGRATIONS), 7)
+                self.assertEqual(apply_migrations(connection, MIGRATIONS[:7]), 7)
                 tables = {
                     row[0]
                     for row in connection.execute(

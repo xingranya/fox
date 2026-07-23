@@ -1,8 +1,8 @@
 # Brand Project OS 规格文档
 
-本目录保存产品、架构、数据治理、测试和执行 SPEC。`Brand Project OS` 是当前项目名，最终发行名可以另定。当前路线由 2026-07-22 的正式 rescope 确定：员工只使用公司定制版 OpenWork；公司服务器服务向 Desktop 和其他 Agent 提供同一业务能力。
+本目录保存产品、架构、数据治理、测试和执行 SPEC。当前目标是交付 FoxWork：员工只使用公司定制版 OpenWork，服务器运行 Brand Project OS Service；AI 只能提出候选，正式变化必须由授权人员确认并留痕。`Brand Project OS` 是当前项目名，最终发行名可以另定。
 
-当前完成 27/49 项。Phase 0、Phase 1 和 Phase 2 已完成，活动任务是 F3.1。Fox 已批准小团队托管部署，以及 99.5% 月可用性、PostgreSQL RPO 不高于 5 分钟、核心服务 RTO 不高于 60 分钟的内部目标；这些目标仍需 Phase 4 实测。远程 MCP/Skills、Dify 和四个开源组件按 Phase 3 的顺序接入。
+当前完成 28/49 项。Phase 0、Phase 1 和 Phase 2 已完成，F3.1 已完成，下一项是 F3.2。Fox 已批准小团队托管部署，以及 99.5% 月可用性、PostgreSQL RPO 不高于 5 分钟、核心服务 RTO 不高于 60 分钟的内部目标；这些目标仍需 Phase 4 实测。远程 MCP/Skills、Dify 和四个开源组件按 Phase 3 的顺序接入。
 
 ## 当前结论
 
@@ -37,6 +37,7 @@
 - [开源组件评估](analysis/open-source-evaluation.md)
 - [OpenWork 唯一客户端评估](analysis/openwork-client-evaluation.md)
 - [BISHENG 后续接入评估](analysis/bisheng-integration-evaluation.md)
+- [F3.1 SQLite 到 PostgreSQL/S3 一次性迁移](phase3/data-cutover.md)
 - [OpenWork OW-L0 技术选型记录](phase1/openwork-ow-l0-evaluation.md)
 
 ## 活动计划

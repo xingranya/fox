@@ -2,7 +2,7 @@
 
 > 当前生效路线：公司定制 OpenWork 唯一员工客户端 + Brand Project OS Service<br>
 > 权威决策：[ADR-0005](../adr/0005-single-client-server-authority.md)<br>
-> Phase 1 和 Phase 2 已完成；Fox 已批准小团队托管部署与内部 SLO/RPO/RTO 目标；当前进入 F3.1 一次性迁移与权威切换
+> Phase 1 和 Phase 2 已完成，F3.1 已完成；Fox 已批准小团队托管部署与内部 SLO/RPO/RTO 目标；当前进入 F3.2 OpenWork 联网闭环
 
 ## 架构结论
 

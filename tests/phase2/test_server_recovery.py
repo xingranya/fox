@@ -197,7 +197,7 @@ class ServerRecoveryDrillTest(unittest.TestCase):
         ).read_text(encoding="utf-8")
         manifest = json.loads(manifest_text)
         self.assertEqual(manifest["schema_version"], "postgresql-backup.v1")
-        self.assertEqual(manifest["snapshot"]["database_schema_version"], 11)
+        self.assertEqual(manifest["snapshot"]["database_schema_version"], 12)
         self.assertNotIn(self.source_database, manifest_text)
         self.assertNotIn("恢复演练项目", manifest_text)
         self.assertNotIn("postgresql://", manifest_text)

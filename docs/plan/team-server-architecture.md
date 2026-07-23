@@ -1,10 +1,10 @@
 # 团队服务器架构
 
 > 状态：已批准，按 Phase 2-4 分阶段实施<br>
-> 当前进度：Phase 2 已完成，当前执行 F3.1 一次性迁移与权威切换<br>
+> 当前进度：Phase 2 已完成，F3.1 已完成，当前执行 F3.2 OpenWork 联网闭环<br>
 > 当前生效决策：[ADR-0005：单一客户端与服务器权威服务](../adr/0005-single-client-server-authority.md)
 
-F2.1-F2.9 已完成服务器边界、PostgreSQL v1-v11、S3 原件准入、OIDC、RBAC/RLS、一致性、API、审计、Outbox/Inbox、共享限流和可观测性。F2.10 已完成一致备份、空库恢复、事件重建、原件 VersionId 对账和故障阻断；Fox 已批准小团队托管部署及内部 SLO/RPO/RTO 目标。当前仍不启动常驻服务，不执行公司 S3/OIDC 初始化，也不迁移鸿日正式数据；F3.1 先完成临时环境迁移与回滚演练。
+F2.1-F2.9 已完成服务器边界、PostgreSQL v1-v11、S3 原件准入、OIDC、RBAC/RLS、一致性、API、审计、Outbox/Inbox、共享限流和可观测性。F2.10 已完成一致备份、空库恢复、事件重建、原件 VersionId 对账和故障阻断；Fox 已批准小团队托管部署及内部 SLO/RPO/RTO 目标。F3.1 已用临时环境完成迁移与回滚演练，当前仍不启动常驻服务、不执行公司 S3/OIDC 初始化，也不迁移鸿日正式数据；F3.2 先完成测试 OIDC、项目选择和服务器连接。
 
 旧可视化交付：[可编辑 Draw.io 源文件](../diagrams/team-server-architecture.drawio)；[嵌入源数据的 PNG](../diagrams/team-server-architecture.drawio.png)。旧图包含轻量 Web 等已取消边界，只作历史参考；当前拓扑以本文和 ADR-0005 为准，后续需单独更新图文件。
 

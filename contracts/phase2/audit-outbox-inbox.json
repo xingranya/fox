@@ -1,6 +1,6 @@
 {
   "schema_version": "audit-outbox.v1",
-  "postgresql_schema_version": 11,
+  "postgresql_schema_version": 12,
   "delivery_semantics": "at_least_once",
   "formal_transaction": {
     "event_audit_outbox_atomic": true,
