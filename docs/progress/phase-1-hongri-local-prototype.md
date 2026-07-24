@@ -86,7 +86,7 @@
   - 测试期望：App/Desktop/Server/Orchestrator 测试和类型检查、Electron IPC/导航/网络/权限测试、真实 `.app` 产物扫描和安装烟测。
   - 治理影响：固化唯一客户端、单安装包、上游出口、品牌和许可证边界。
   - 验收：员工只安装一个公司定制 OpenWork；OpenCode Runtime/Sidecar 随包；默认无上游遥测、Cloud、模型目录、更新和宽松外联；不另做第二个客户端。
-  - 备注：2026-07-22 完成。正式 fork 的 `brand-os/f1.9-offline-shell` 用 9 个独立提交完成默认关闭遥测、Den/Cloud、模型目录和更新，统一公司工作名、Bundle ID、深链和数据目录，收紧 Electron Sandbox、IPC、导航、外链、权限、网络与打包边界，并移除核心离线界面的外部图标 CDN。`Brand Project OS.app` 构建成功；8 帧 fraimz 全部通过，实际包无 PostHog Key、未包含鸿日资料，旧上游地址只用于迁移识别且默认配置为空、网络策略不放行。App 370 项通过；Desktop 100 项通过、1 项平台条件跳过；App、Desktop、Server、Orchestrator 类型检查通过。最终提交 `7cf9b229` 已推送。内部包尚未签名和公证，不能向员工分发；签名分发仍由 F4.8 验收。实际工作量 L，SUPER 10/10，发现外部图标 CDN 这一项未计划依赖，任务漂移 1，Phase 1 累计漂移 3。详见 [OW-L0 技术选型记录](../phase1/openwork-ow-l0-evaluation.md)。
+  - 备注：2026-07-22 完成。正式 fork 的 `brand-os/f1.9-offline-shell` 用 9 个独立提交完成默认关闭遥测、Den/Cloud、模型目录和更新，统一公司工作名、Bundle ID、深链和数据目录，收紧 Electron Sandbox、IPC、导航、外链、权限、网络与打包边界，并移除核心离线界面的外部图标 CDN。`Brand Project OS.app` 构建成功；8 帧 fraimz 全部通过，实际包无 PostHog Key、未包含鸿日资料，旧上游地址只用于迁移识别且默认配置为空、网络策略不放行。App 370 项通过；Desktop 100 项通过、1 项平台条件跳过；App、Desktop、Server、Orchestrator 类型检查通过。最终提交 `7cf9b229` 已推送。内部包尚未签名和公证，不能向员工分发；当前签名分发由 F4.9 验收。实际工作量 L，SUPER 10/10，发现外部图标 CDN 这一项未计划依赖，任务漂移 1，Phase 1 累计漂移 3。详见 [OW-L0 技术选型记录](../phase1/openwork-ow-l0-evaluation.md)。
 
 - [x] **F1.10：接入鸿日业务纵切并通过 fraimz、黄金集和本地 E2E**
   - 优先级 / 工作量 / Lane：P0 / XL / E

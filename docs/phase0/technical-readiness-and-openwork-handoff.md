@@ -1,5 +1,7 @@
 # Phase 0 技术实施就绪与 OpenWork 交接
 
+> 历史记录：本文冻结 Phase 0 到 Phase 1 的本地实施边界。2026-07-24 的当前路线已采用 OpenWork Den，并进入 F3.3；本文关于“不批准 Den/服务器”的句子只描述当时阶段门，不能覆盖 ADR-0007 和当前 56 项计划。
+
 ## 当前判断
 
 Phase 0 技术实施就绪门已经通过，可以开始 Phase 1。本结论只批准本地单用户纵切，不表示 OpenWork 已接入，也不批准团队服务器、外部工作流或数据外发。
@@ -69,4 +71,4 @@ OpenWork 只承担三个职责：展示当前状态与证据、启动/观察 Age
 | 服务器依赖 | `required_server_components` 为空；Phase 1 不依赖 PostgreSQL、S3、OIDC、Docker 或外部组件 |
 | OpenWork 边界 | 可替换、无业务批准权、不保存正式状态；`OW-L0` 已有条件通过，F1.9 默认离线补丁与安全门已完成 |
 
-本交接后的 F1.1-F1.10 已完成本地工作空间、SQLite 权威事件、来源版本、会议增量、Proposal、证据回源、Task Packet、CLI/MCP，以及 OpenWork 离线、安全、品牌、单安装包和鸿日桌面业务旅程。Phase 2 已完成服务器边界、PostgreSQL 权威存储、S3 原件准入、OIDC 员工会话、项目 RBAC/RLS、写一致性、审计/Outbox/Inbox、版本化 HTTP/OpenAPI、可观测性和恢复阶段门；F3.1 已完成一次性迁移与权威切换，当前进入 F3.2 OpenWork 联网闭环。
+本交接后的 F1.1-F1.10 已完成本地工作空间、SQLite 权威事件、来源版本、会议增量、Proposal、证据回源、Task Packet、CLI/MCP，以及 OpenWork 离线、安全、品牌、单安装包和鸿日桌面业务旅程。Phase 2 已完成服务器权威基础，F3.1 已完成一次性迁移与权威切换演练，F3.2 已通过 Den 源码、许可、自托管、单组织、Skills、模型和 MCP 技术门；当前执行 F3.3 Den 与远程 Worker 生产部署基线。

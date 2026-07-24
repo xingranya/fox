@@ -1,142 +1,117 @@
 # 部署拓扑评估
 
-## 当前结论
+> 评估结论：采用“小团队托管部署 + FoxWork 唯一客户端 + Den 控制面 + Brand OS 业务面”  
+> 当前任务：F3.3  
+> 内部目标：99.5% 月可用性、PostgreSQL RPO <= 5 分钟、核心 RTO <= 60 分钟，待 Phase 4 实测
 
-2026-07-22，Fox 批准“公司定制 OpenWork 唯一员工客户端 + 公司服务器权威服务”。2026-07-23，客户端发行名固定为 FoxWork，员工界面固定使用简体中文；员工不能面对两个软件。
+## 方案比较
 
-| 部分 | 当前决定 |
-|:---|:---|
-| 员工客户端 | FoxWork，基于 OpenWork 的公司发行版；只提供简体中文界面 |
-| 本机运行 | OpenCode Runtime、Sidecar、文件/终端/桌面桥接随安装包 |
-| 业务后端 | Brand Project OS Service，部署在公司服务器 |
-| 正式状态 | Phase 1 SQLite；Phase 3 切换后 PostgreSQL 唯一写入权威 |
-| 原始证据 | Phase 1 本地内容寻址快照；切换后 S3 兼容对象存储版本 |
-| AI 接入 | MCP Gateway、Skills 和 CLI/API；其他 Agent 是辅助入口 |
-| 工作流 | Dify 正式适配；FlowLong 等组件逐项评估、可禁用 |
-| 第二客户端 | 不建设 Web/PWA 或另一个桌面客户端 |
+| 方案 | 优点 | 关键问题 | 结论 |
+|:---|:---|:---|:---|
+| 只在 Fox 本机运行 | 最快、成本低 | 团队不能稳定共享，单机故障和账号能力无法统一 | 只保留 Phase 1 验证成果 |
+| 只部署 MCP | AI 接入简单 | 没有账号、事务、证据、审批、对象版本、恢复和员工业务 API | 拒绝 |
+| 自建全部账号/MCP/Skills/模型控制面 | 许可完全自控 | 重复 OpenWork Den 已有功能，交付和运维成本高 | 第三次 rescope 后退出 |
+| 只部署 Den | 登录即用、AI 能力完整 | 没有品牌业务权威、多媒体证据链和人工确认 | 不完整 |
+| Den + Brand OS | 复用成熟控制面，保留业务权威和证据 | 需要身份联邦、双服务运维和一致撤权 | **当前采用** |
+| 完整 Kubernetes/高可用集群 | 扩展和自动化能力强 | 对几人团队过重，增加故障与运维面 | 首发不采用 |
 
-## 为什么不能“只部署 MCP”
-
-MCP 解决 Agent 如何调用工具，不负责保存权威事件、做事务、处理并发、校验人工身份或恢复数据。服务器至少包含以下部分：
-
-- 领域应用服务和版本化 HTTP API；
-- MCP Gateway 与 Skills 目录；
-- PostgreSQL 事件、审批、投影和审计；
-- 对象存储原件版本和 SHA-256；
-- OIDC、RBAC/RLS、幂等、乐观锁和 Outbox；
-- 备份、恢复、监控和告警。
-
-MCP Gateway 调用应用服务。它不能直写 PostgreSQL，也不能通过服务账号执行人工批准。
-
-## 目标拓扑
+## 当前拓扑
 
 ```mermaid
 flowchart TB
-    subgraph DEVICE["员工电脑"]
-        DESKTOP["FoxWork\n公司定制 OpenWork"]
-        RUNTIME["OpenCode Runtime / Sidecar"]
-        BRIDGE["本机文件 / 终端 / 桌面桥接"]
-        CACHE["缓存 / 草稿 / 运行态"]
-        DESKTOP --> RUNTIME
-        DESKTOP --> BRIDGE
-        DESKTOP --> CACHE
-    end
+    USER["员工"] --> FOXWORK["FoxWork"]
+    FOXWORK --> ENTRY["公司统一入口\n内网 HTTP 或 HTTPS"]
+    ENTRY --> DENWEB["Den Web"]
+    DENWEB --> DENAPI["Den API"]
+    DENAPI --> MYSQL[("Den MySQL")]
+    DENAPI --> REMOTE["远程工作区 / Den Worker"]
 
-    subgraph COMPANY["公司服务器"]
-        EDGE["HTTPS 入口"]
-        API["Brand Project OS API"]
-        MCP["MCP Gateway / Skills"]
-        APP["领域应用服务"]
-        PG[("PostgreSQL\n事件 / 审批 / 投影 / 审计")]
-        OBJ[("S3 兼容对象存储\n原件版本 / SHA-256")]
-        JOB["Outbox / Worker"]
-        OBS["日志 / 指标 / 追踪 / 备份"]
+    ENTRY --> BRANDAPI["Brand OS API"]
+    DENAPI -->|"第一方 OAuth/OIDC"| BRANDAPI
+    BRANDAPI --> PG[("PostgreSQL")]
+    BRANDAPI --> S3[("S3 原件")]
+    PG --> WORKER["Outbox / 多媒体 Worker"]
+    WORKER --> OPTIONAL["Dify / Zvec / Notebook / Nubase / FlowLong"]
 
-        EDGE --> API --> APP
-        EDGE --> MCP --> APP
-        APP --> PG
-        APP --> OBJ
-        PG --> JOB
-        APP --> OBS
-    end
-
-    DESKTOP --> EDGE
-    AGENT["Codex / Claude / Dify / 其他 Agent"] --> EDGE
-    JOB --> ADAPTERS["Zvec / Open Notebook / Nubase / FlowLong"]
-    ADAPTERS -. "派生结果 / Proposal" .-> APP
+    DENAPI -->|"MCP / Skills / 模型 / 策略"| FOXWORK
+    FOXWORK --> LOCAL["OpenCode / Sidecar / 本机桥接"]
 ```
 
-## 权威与运行态
+只给 FoxWork 一个公司入口。Den API、Brand OS 内部服务、MySQL、PostgreSQL、S3 管理端、Worker 和可选组件留在私网。员工不填写内部地址或 Token。
 
-| 数据 | 权威位置 | 删除后影响 |
-|:---|:---|:---|
-| 原始文件版本和哈希 | 对象存储 + PostgreSQL 元数据 | 不可删除；按保留策略恢复 |
-| 人工批准事件和当前状态 | PostgreSQL | 必须从备份和事件恢复 |
-| OpenWork/OpenCode Session | 员工设备或运行服务 | 可删除，不影响正式状态 |
-| 客户端缓存和离线草稿 | 员工设备 | 可删除；未提交草稿可能丢失，但不能影响正式状态 |
-| Zvec/FTS、摘要、Notebook、Memory | 派生层 | 可重建或停用 |
-| Dify/FlowLong 流程实例 | 协调层 | 可对账、重试或回退内置流程，不能定义正式状态 |
+## 为什么仍需要两个服务
 
-## 数据一致性
+Den 擅长“谁能登录、属于哪个组织、能用哪些 AI 能力”。Brand OS 擅长“项目现在是什么状态、资料是否可信、AI 提议了什么、谁批准了什么”。
 
-正式写入只走一个方向：
+把两者强行合并会产生两个问题：
 
-```text
-员工交互或 Agent Proposal
-  -> 应用服务鉴权和 Schema
-  -> idempotency_key + expected_version
-  -> 单事务写入事件、审批、投影、审计、Outbox
-  -> 返回新状态版本
-```
+1. 用 Den Session/Workspace 代替正式项目事件，清理会话就丢业务真相；
+2. 为品牌业务改造 Den 内部 Schema，导致上游同步、许可和数据迁移全部耦合。
 
-- 并发版本冲突返回 409 和差异，不做最后写入覆盖。
-- Agent、MCP、Skill、Dify 和服务账号只能创建 Proposal。
-- 离线 Desktop 只保存草稿。恢复联网后以最新版本重新生成差异。
-- SQLite 到 PostgreSQL 采用一次性迁移和写入冻结；服务器接受新写入后不允许回升本地旧库。
+因此两者通过 OAuth/OIDC、版本化 API、MCP 和稳定映射协作，不共享业务表。
 
-## 稳定性档位
+## 数据位置
 
-| 档位 | 拓扑 | 用途 | 进入条件 |
+| 数据 | 位置 | 是否权威 |
+|:---|:---|:---:|
+| Den 用户、组织、团队、远程工作区和能力授权 | MySQL | 仅控制面权威 |
+| Brand OS 员工绑定、项目角色和映射审计 | PostgreSQL | 是 |
+| 正式事件、审批和投影 | PostgreSQL | 是 |
+| 原件版本、SHA-256 和 VersionId | PostgreSQL + S3 | 是 |
+| OpenWork/Den/OpenCode Session | 客户端或 Den 自有存储 | 否 |
+| OCR、转写、摘要、索引和 Memory | 派生存储 | 否 |
+| FoxWork 缓存和草稿 | 员工设备 | 否 |
+
+## 内网 HTTP 选择
+
+用户已明确公司内网可以不使用 HTTPS。技术方案允许管理员为私网/VPN/覆盖网络配置 HTTP 公司入口，FoxWork 不再硬性拒绝 `http://`。
+
+这不是全局降级：入口不能公开到互联网，仍保留 PKCE、state/nonce、来源与回调校验、短期令牌、撤权、系统钥匙串和日志脱敏。公网或不可信网络必须 HTTPS，禁止以 `--ignore-certificate-errors` 或任意来源白名单替代正确配置。
+
+## 部署档位
+
+| 档位 | 服务形态 | 用途 | 状态 |
 |:---|:---|:---|:---|
-| 开发/集成 | 单 API、PostgreSQL、对象存储；隔离测试数据 | CI、迁移、故障注入和恢复演练 | F2.1 后 |
-| 小团队试点 | 应用节点、托管 PostgreSQL/对象存储、独立备份域 | 第一批内部成员 | F2.10 与 F3.13 通过 |
-| 高可用 | 多应用节点、负载均衡、多可用区数据库和对象版本 | 试点负载达到升级门 | F4.7 测量后由 Fox 批准 |
+| 隔离开发/验收 | 单机 Den/远程 Worker/Brand OS/临时数据库，合成数据 | 构建、契约和故障注入 | F3.2 已使用 Den，远程 Worker 待 F3.3 |
+| 小团队托管 | 统一入口、Den Web/API、受管 MySQL、可替换远程 Worker、Brand OS API/Worker、托管 PostgreSQL/S3、独立备份域 | 第一批内部员工 | 已批准，F3.3-F4.10 验证 |
+| 高可用 | 多应用节点、多可用区数据库、冗余入口和 Worker 池 | 活跃人数/负载/SLO 触发后 | 待试点决定 |
 
-高可用不是“多起一个数据库进程”。没有成熟故障转移、仲裁和恢复体系时，额外副本会增加脑裂风险。初期也不默认引入 Kubernetes。
+首发不使用 Kubernetes，不自建不成熟的数据库集群。托管数据库与对象存储降低小团队运维风险，但不能替代恢复演练。
 
-Fox 已于 2026-07-23 批准“小团队托管部署”为当前档位。这里的批准不跳过 F3.13：Phase 3 联网产品门通过前，仍不向团队接入生产资料。
+## 故障分析
 
-## 故障行为
-
-| 故障 | Desktop 行为 | 服务端行为 |
+| 故障 | 员工看到 | 系统行为 |
 |:---|:---|:---|
-| API 不可达 | 显示最后水位，进入只读/草稿 | 告警并恢复；不返回伪成功 |
-| PostgreSQL 不可达 | 禁止正式提交 | API 失去就绪，写入停止 |
-| 对象存储不可达 | 已登记状态可读，新原件上传暂停 | 上传保持隔离状态，不形成 ACTIVE 证据 |
-| OpenCode/Sidecar 故障 | 状态与证据仍可用，AI 工作暂停 | 不影响业务 API 就绪 |
-| Zvec/Dify/Notebook 等故障 | 显示功能降级 | 回退 FTS/直接 Worker/内置流程，核心事务继续 |
-| 客户端版本故障 | 回滚上一签名版本 | API 保持一个兼容窗口 |
+| Den 不可用 | 无法新登录或更新公司能力 | 已有 Brand OS 短期会话按过期策略运行，不能永久延长 |
+| Brand OS API 不可用 | 显示最后同步时间，只读/草稿 | 正式提交停止，不返回伪成功 |
+| MySQL 不可用 | Den 失去就绪 | 不从 PostgreSQL 猜测账号或权限 |
+| PostgreSQL 不可用 | 项目正式写入停止 | API 失去核心就绪，等待恢复 |
+| S3 不可用 | 上传/回源失败可见 | 不创建缺失对象的 ACTIVE 证据 |
+| Worker 停止 | 资料显示排队或延迟 | 正式状态仍可读写，恢复后追平 |
+| Den 远程 Worker 停止 | 远程 Agent 任务停止或排队 | FoxWork 显示真实状态，不回退为未授权本机执行，不损坏业务权威 |
+| OpenCode/Sidecar 停止 | AI 工作暂停 | 状态、证据和 Proposal 仍可使用 |
+| 可选组件停止 | 相应能力降级 | 回退 FTS/直接 Worker/内置待办或 NoOp |
 
-## 初始内部目标
+## 稳定性与恢复
 
-以下数值已由 Fox 批准为内部目标，不是已达成指标或外部承诺：
+- Den MySQL、PostgreSQL 和 S3 分别备份、分别恢复，再对账稳定身份和项目映射。
+- PostgreSQL 使用连续 WAL 与空库恢复；S3 按明确 VersionId 和 SHA-256 核对。
+- F2.10 的逻辑备份证明恢复契约，不等于生产 PITR 已完成。
+- Den MySQL 与远程 Worker 的恢复/运行目标在 F3.3 测量，F4.8 由 Fox 批准。
+- 发布先扩展服务端契约，再升级 Den/Brand OS，最后灰度 FoxWork；破坏性收缩延迟一个周期。
+- 单节点允许明确维护窗口，但必须能回滚应用、恢复数据并给员工可理解状态。
 
-| 指标 | 初始目标 |
-|:---|:---|
-| 核心 API 月可用性 | 小团队档不低于 99.5% |
-| 读取接口 P95 | 不高于 500 ms |
-| 非 AI 写入 P95 | 不高于 1 s |
-| Outbox 追平 P95 | 不高于 5 s |
-| PostgreSQL RPO | 不高于 5 分钟 |
-| 核心服务 RTO | 不高于 60 分钟 |
+## 扩容条件
 
-目标必须由 Phase 4 的真实部署、负载测试、监控和隔离恢复演练证明。AI 生成时延按模型单独统计，不混入核心 API SLO。
+满足任一条件再评估高可用：活跃员工超过 5 人、连续 30 天正式使用、月可用性接近 99.5% 下限、CPU/连接池连续超过 70%、核心 P95 超标、处理队列持续积压、恢复演练超过目标。
+
+扩容只改变运行拓扑，不改变 Den/Brand OS 数据职责或人工批准边界。
 
 ## 阶段判断
 
-- Phase 1：不启动服务器也能完成本地纵切；这保证业务语义和客户端不被基础设施绑死。
-- Phase 2：建立权威存储、身份权限、一致性、API、审计和恢复。
-- Phase 3：完成一次性迁移、Desktop 联网、MCP/Skills/Dify 和外部适配。
-- Phase 4：用真实成员、并发和故障数据决定小团队或高可用档位。
+- F3.3：先把 Den Web/API/MySQL 与远程 Worker 从“局部能跑”变成“可部署、可恢复、可升级”。
+- F3.4-F3.6：完成自助注册、单账号、员工端/管理员后台全中文、身份联邦和远程工作区/项目映射。
+- F3.7-F3.19：完成资料、业务、AI 能力和端到端联网产品门。
+- F4.1-F4.10：用真实成员、并发、故障、容量和更新证据决定生产 Go/No-Go；每个大阶段只在阶段门通过后同步 Wiki。
 
-部署已进入批准路线，但每一阶段仍需独立通过。没有恢复、权限和一致性证据时，不能因为服务器能启动就宣称稳定。
+服务器能启动不等于稳定，登录能跳回 FoxWork也不等于公司连接完成。必须以账号状态、项目权限、能力授权、资料处理、恢复和撤权的端到端结果验收。

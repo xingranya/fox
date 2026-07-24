@@ -1,174 +1,168 @@
-# 开源组件评估
+# 外部组件评估
 
-核验日期：2026-07-22。本文保留此前对 OpenWork、Zvec、Nubase、Open Notebook、FlowLong 和 Dify 的技术/许可研究，但依据最新产品范围重新排序。
+> 核验基线：2026-07-24  
+> 评估原则：先解决明确问题；每项只接一个端口；可禁用、可替换、可退出；不得承担业务权威
 
-## 当前决策
+## 当前排序
 
-| 项目 | CURRENT 定位 | 当前状态 |
-|:---|:---|:---|
-| OpenWork | 唯一员工客户端；OpenCode 作 Agent 运行时 | 已采用，F1.9-F1.10 完成发布与业务纵切门 |
-| Zvec | `SearchIndexPort` | Phase 3 独立评估/适配；可拒绝并回退 PostgreSQL FTS |
-| Open Notebook | `ContentProcessingPort` | Phase 3 独立评估/适配；只产派生内容 |
-| Nubase | `MemoryPort` | Phase 3 独立评估/适配；不得保存正式状态 |
-| Dify | `AIWorkflowPort` | Phase 3 正式接入任务；只读或创建 Proposal |
-| FlowLong | `ApprovalWorkflowPort` | Phase 3 许可门后评估；只路由人的待办 |
+| 组件 | 当前定位 | 任务 | 状态 |
+|:---|:---|:---|:---|
+| OpenWork 客户端 | FoxWork 唯一员工客户端 | F1.9-F1.10、F3.4-F3.13 | 已采用 |
+| OpenWork Den | 账号、组织、远程工作区和 AI 控制面 | F3.2-F3.6、F3.11-F3.13 | F3.2 采用门已通过，远程 Worker 待 F3.3 |
+| Dify | `AIWorkflowPort` | F3.14 | 计划接入 |
+| Zvec | `SearchIndexPort` | F3.15 | 评估后可拒绝 |
+| Open Notebook | `ContentProcessingPort` | F3.16 | 评估后可部分采用或拒绝 |
+| Nubase | `MemoryPort` | F3.17 | 评估后可拒绝 |
+| FlowLong | `ApprovalWorkflowPort` | F3.18 | 许可与需求门后可拒绝 |
+| BISHENG | `AIWorkflowPort` 候选 | Phase 4 后另行 rescope | 不计入当前 56 项 |
 
-以下标签仅属于 2026-07-13 的旧范围，不再是当前任务状态：
+## 统一采用规则
 
-- `not-approved-for-current-mvp`
-- `review-after-hongri-pilot`
+1. 必须解决鸿日或团队试点中已经观测到的瓶颈。
+2. 组件内部对象不能进入 Brand OS 领域核心。
+3. 关闭组件后，原件、当前状态、Task Packet、Proposal 和审批历史完整。
+4. 输出只形成 Artifact、Proposal 或流程状态，不能自动改变正式状态。
+5. 授权、数据外发、日志、备份、升级和退出必须有自动化或演练证据。
+6. 星数、功能列表和演示效果不能替代金标、BrandBench 和真实使用。
 
-Phase 3 仍以直接实现和 NoOp 作为每个组件的对照。组件必须单独证明收益、许可、隐私、稳定性和退出；进入计划不等于必须采用。
+## OpenWork 与 Den
 
-## 评估原则
+### 价值
 
-1. 组件必须解决鸿日试点中已经观测到的问题，而不是只展示能力丰富。
-2. 每个组件只实现一个版本化端口，不把内部对象泄漏进核心。
-3. 关闭或删除组件后，原件、当前状态、Task Packet、Proposal 和 Fox 确认记录仍完整。
-4. 模型、索引、Notebook、Memory 和工作流输出都只能成为候选，不能自动改变状态。
-5. 采用必须同时通过质量、隐私、许可、稳定性、成本和退出对比。
-6. BrandBench 和鸿日黄金用例优先于星数、演示效果和功能列表。
+- OpenWork 提供成熟的 Electron/React 客户端、Session、终端、文件、工具权限和 OpenCode 运行体验；
+- Den 提供自助注册登录、单组织、成员/团队、远程工作区、桌面交接、MCP、Skills、共享模型和策略管理；
+- 两者一起解决普通员工“不懂模型配置、MCP 和 CLI”的使用门槛。
 
-## OpenWork
+### 许可
 
-### 现场事实
+- `ee/**` 外是 MIT；
+- Den 所在 `ee/**` 是 FSL-1.1-MIT，属于源码可见企业版；
+- 当前允许公司内部使用、复制和修改，限制对外竞争服务；
+- 内部分发也保留许可与版权；每个版本两周年后转 MIT。
 
-- 固定稳定发布为 [`v0.17.36@ddf3e482`](https://github.com/different-ai/openwork/tree/ddf3e482d2fdf3a374d0fbf4e23e01467a3014fc)，2026-07-20 发布；`dev` 会继续变化，不进入采用基线。
-- `ee/` 外代码为 MIT；`ee/` 使用 FSL-1.1-MIT。证据见 [根 LICENSE](https://github.com/different-ai/openwork/blob/ddf3e482d2fdf3a374d0fbf4e23e01467a3014fc/LICENSE) 和 [`ee/LICENSE`](https://github.com/different-ai/openwork/blob/ddf3e482d2fdf3a374d0fbf4e23e01467a3014fc/ee/LICENSE)。
-- 客户端是 React 19 + Vite + Electron 35，并深度依赖 `@opencode-ai/sdk`。
-- OpenWork Server 的 Token、SQLite、Session、内存/JSONL 状态适合 Agent 运行控制，不是品牌业务状态库。
-- OW-L0 已完成本地构建、许可证和网络出口核验。社区切片不依赖 `ee/**`，但上游默认仍带 PostHog、Den/Cloud、模型目录、上游更新、OpenWork AppID/协议及宽松 ATS；必须先打补丁再接真实资料。
+### 采用边界
 
-### Phase 1-3 目标
+- 采用 FoxWork 客户端和 Den 控制面；
+- 不采用 Den MySQL、Worker 文件系统或 OpenWork Session 作为品牌业务权威；
+- 不复用 Den Session Token 直通 Brand OS；
+- 不把 Den 组织管理员自动映射为项目审批人；
+- 远程 Worker 是必验运行面，但必须经可替换端口接入；未证明 Daytona/Render 前不得虚报完成或把其内部数据作为业务权威。
 
-- 复用 React/Electron 壳显示当前状态、待确认、证据、工作模式和 AI 任务；
-- 复用 Session、Skills/MCP、终端、文件和模型选择体验；
-- 让 Codex、Claude 或 OpenCode 通过同一 Task Packet 工作；
-- 证明 OpenCode Tool Permission 与 Fox 的业务确认完全分开；
-- 证明停用 OpenWork 后本地核心数据和 AI 入口仍然可用。
-
-### 仍不采用
-
-- 不部署 OpenWork Den/`ee/**`，不把 OpenWork Server 当作业务服务；
-- OIDC、RBAC 和公司更新链按独立任务实现，不混入 OpenWork Session；
-- 不把 OpenWork SQLite、Session 或 Permission 作为项目真相；
-- 不先进行大规模品牌重构和三平台生产分发；
-- 不承诺 OpenWork 替代所有 Agent 引擎，底层当前仍是 OpenCode。
-
-详细结论见[OpenWork 唯一客户端评估](openwork-client-evaluation.md)和[OW-L0 技术选型记录](../phase1/openwork-ow-l0-evaluation.md)。
-
-## Zvec
-
-### 可用价值
-
-- 中文 BM25/Jieba、稠密/稀疏向量、过滤和混合检索；
-- 适合作为可重建索引，对比本地全文和结构化关系查询。
-
-### 为什么放在 Phase 3
-
-- 鸿日首要问题是内容有效性、证据和替代关系，不是单纯召回不足；
-- CURRENT 单用户可以先用 SQLite/本地全文建立可解释基线；
-- 进程内单写和部署差异只在服务器/多 Worker 阶段成为实际问题。
-
-### 采用门
-
-在相同鸿日金标和 Task Packet 下，显著提升召回且不降低当前有效性判断、证据回源率和可重建性。否则保留本地全文基线。
-
-## Open Notebook
-
-### 可用价值
-
-- `content-core` 的 PDF、Office、网页、音视频和 OCR 处理；
-- 来源、笔记、引用和研究式交互可作为参考。
-
-### 为什么放在 Phase 3
-
-- CURRENT 先验证鸿日真实资料的最小直接解析和回源；
-- 完整应用会引入独立数据库、模型配置和研究状态；
-- Notebook 的摘要、笔记和 Transformation 不能成为当前状态。
-
-### 采用门
-
-优先按 `ContentProcessingPort` 评估单项解析能力；完整 sidecar 只有在真实研究工作证明需要时才评估。任何 MCP 创建/更新/删除能力都需允许列表包装。
-
-## Nubase
-
-### 可用价值
-
-- Auth、Storage、Memory、Gateway 等平台能力可按端口分别研究。
-
-### 为什么放在 Phase 3
-
-- CURRENT 不需要团队 Auth、远程 Storage 或平台网关；
-- early-stage 和 PITR/HA 缺口与本地价值验证无关；
-- 自动 Memory ADD/UPDATE/DELETE 与 Fox 人工状态确认冲突。
-
-### 采用门
-
-只做单能力 POC，不整体替换平台；必须证明项目隔离、数据导出、禁用和退出，Memory 永远无权改变正式状态。
+详细证据见 [OpenWork/Den 评估](openwork-client-evaluation.md) 和 [F3.2 技术门](../phase3/openwork-den-self-host-gate.md)。
 
 ## Dify
 
-### 可用价值
+### 解决的问题
 
-- 可视化 Prompt、模型路由、Workflow、运行日志和结构化生成；
-- 可用于会议候选、Task Packet 草案、内容分类和 BrandBench 批处理。
+提供可视化 Prompt、模型路由、工作流、运行日志和人工可维护的 AI 编排，让不熟悉代码的团队也能管理部分固定流程。
 
-### 为什么放在 Phase 3
+### 接入方式
 
-- CURRENT 可以用直接模型调用更快验证协议和品牌质量；
-- Dify 自托管会带来自己的数据库、Redis、Worker、插件和 Sandbox；
-- 平台能力可能掩盖 Task Packet、工作模式和状态闸门本身的问题。
+- 只实现 `AIWorkflowPort`；
+- 输入最小 Task Packet 或明确 Artifact；
+- 使用独立服务身份，不持有员工会话；
+- 回调带签名、幂等键、任务和项目范围；
+- 输出经 Schema 校验后只形成 Artifact/Proposal；
+- 超时、取消、重试、外发和 NoOp 回退可见。
 
-### 许可与采用门
+### 风险
 
-Dify 使用带附加条件的修改版 Apache-2.0；源码多租户和前端品牌存在许可边界。Phase 3 只通过 `AIWorkflowPort` 对比直接 Worker，输入最小 Task Packet，输出经 Schema 校验后只形成 Proposal。未经书面授权不做源码多租户或白标前端。
+Dify 自托管仍包含自身数据库、Redis、Worker、插件和 Sandbox。外部模型、插件与 HTTP 节点仍属于数据外发。修改版 Apache-2.0 的多租户/品牌边界需要正式分发前复核。
 
-## FlowLong
+## Zvec
 
-### 可用价值
+### 解决的问题
 
-- 多人会签、或签、转办、委派和复杂组织路由。
+提供中文 BM25/Jieba、稠密/稀疏向量、过滤和混合检索，可能改善大量资料中的召回。
 
-### 为什么放在 Phase 3
+### 当前基线
 
-- CURRENT 只有 Fox 一个确认人，本地状态机已经足够；
-- Java/MySQL/设计器增加完全无关的运行面；
-- AI 审批和超时自动通过与产品人工判断原则冲突；
-- 附加许可需要独立书面结论。
+PostgreSQL FTS + 结构化关系 + 权限回源。Zvec 只存稳定 ID、派生字段、项目和索引水位，不保存正式状态。
 
 ### 采用门
 
-F3.12 先确认真实多人流程和许可，再以 `ApprovalWorkflowPort` 隔离 POC。FlowLong 只路由人的任务，最终状态仍由核心根据具名人工结果写入。
+在相同鸿日金标和 Task Packet 下，召回、准确率或延迟相对 PostgreSQL FTS 有可测提升，并保持项目过滤、撤权、回源和可重建。否则拒绝采用。
 
-## Dify、FlowLong 与 OpenWork 的分工
+## Open Notebook
 
-| 问题 | 组件 | 永久边界 |
+### 解决的问题
+
+其内容处理能力覆盖 PDF、Office、网页、音视频、OCR、来源与引用，可作为多媒体解析方案参考或适配器。
+
+### 接入方式
+
+- 优先复用解析能力，不嵌入第二套 Notebook 前端；
+- 通过 `ContentProcessingPort` 传入明确原件版本；
+- 输出绑定页码、幻灯片、时间码、处理器版本和原件哈希；
+- 自身数据库、笔记、摘要和 Transformation 只作派生数据。
+
+### 采用门
+
+与 Brand OS 直接解析基线比较支持格式、来源定位、失败隔离、成本、升级和导出。若完整 sidecar 增加的运行面大于解析收益，只复用单项能力或拒绝采用。
+
+## Nubase
+
+### 解决的问题
+
+可评估其 Memory 能力是否能减少员工和 Agent 的重复偏好说明。Auth、Storage、Gateway 与当前已采用 Den/PostgreSQL/S3 重叠，不整体替换。
+
+### 风险与采用门
+
+自动 ADD/UPDATE/DELETE 可能把模型推断污染成项目事实。Memory 必须项目隔离、可查看、可删除、可导出、可回源，且永远不进入当前状态或人工审批。若相对 Task Packet 和显式偏好没有可测收益，拒绝采用。
+
+## FlowLong
+
+### 解决的问题
+
+适合多人会签、或签、转办、委派和复杂组织路由。当前团队人数很少，Brand OS 内置待确认队列已能完成首版。
+
+### 接入方式
+
+- 只实现 `ApprovalWorkflowPort`，只路由人的待办；
+- 回调由 Brand OS 重新鉴权、校验项目、状态版本和幂等键；
+- 超时不能自动批准；服务身份不能最终化 Proposal；
+- 最终正式事件仍由 Brand OS 应用用例提交。
+
+### 采用门
+
+先证明真实多人流程存在，再通过许可、部署、撤回、超时、重复回调和越权测试。否则保持内置队列。
+
+## BISHENG
+
+BISHENG 保留为 Phase 4 后候选，用于比较文档解析和确定性工作流。它不计入当前 56 项，不形成第二套前端、不直连 PostgreSQL/S3、不承担账号或人工批准。只有试点证明 F3.8/F3.14 的直接基线不足，且 Fox 单独批准 rescope 后才启动。
+
+## 组件分工
+
+| 问题 | 首选组件 | 永久边界 |
 |:---|:---|:---|
-| Agent 会话、工具、文件和终端运行 | OpenWork/OpenCode | Tool Permission 只批准工具执行，不批准业务状态 |
-| 模型/Prompt/AI 计算编排 | Dify | 输出只形成 Proposal |
-| 多人任务路由 | FlowLong | 流程结果需回到核心复核 |
-| 当前状态、证据、模式切换和最终确认 | Brand Project OS 核心 + 有权限员工 | 任何外部组件都不能替代 |
+| 员工客户端与本机 Agent | FoxWork/OpenCode | Session 和 Tool Permission 不是业务真相 |
+| 账号、组织、远程工作区、MCP、Skills、模型 | OpenWork Den | 不保存原件或业务审批 |
+| 项目状态、证据、Proposal | Brand OS + PostgreSQL/S3 | 只有具名员工可最终确认 |
+| AI 工作流 | Dify 或直接 Worker | 输出只形成 Artifact/Proposal |
+| 检索 | PostgreSQL FTS，可选 Zvec | 命中回权威层复核 |
+| 内容处理 | Brand OS Worker，可选 Open Notebook | 派生结果绑定原件版本和定位 |
+| 运行记忆 | 可选 Nubase | 不进入当前状态 |
+| 人工待办路由 | Brand OS，可选 FlowLong | 最终批准仍由 Brand OS 完成 |
 
-核心旅程只依赖 Brand Project OS Service 和唯一客户端；其余组件必须可以关闭。
-
-## Phase 3 统一决策门
+## 统一决策门
 
 | 门 | 通过条件 | 未通过时 |
 |:---|:---|:---|
-| 真实需求门 | 鸿日使用记录证明直接基线存在明确瓶颈 | 不做 POC |
-| 质量门 | 相同金标、Task Packet 和数据下显著优于基线 | 保留直接实现 |
-| 真相门 | 组件关闭后当前状态、证据和确认历史完整 | 拒绝采用 |
-| 隐私门 | 数据范围、外发、凭据和日志可审计 | 只用脱敏样本或拒绝 |
-| 许可门 | 内部使用、修改、分发和未来产品形态有书面结论 | 不集成/不分发 |
-| 稳定门 | 故障、升级、导出、重建和取消可验证 | 继续隔离 POC |
-| 退出门 | 能在限定时间内切回直接基线且无业务数据迁移 | 拒绝采用 |
+| 真实需求 | 已观测到直接基线瓶颈 | 不做 POC |
+| 质量 | 同一数据和金标下显著更好 | 保留基线 |
+| 权威 | 关闭组件后正式数据完整 | 拒绝采用 |
+| 权限 | 项目隔离、服务身份、撤权和审计通过 | 不接真实资料 |
+| 隐私 | 外发、保留、密钥和日志可枚举 | 脱敏样本或拒绝 |
+| 许可 | 内部使用、修改和分发边界清楚 | 不集成/不分发 |
+| 稳定 | 超时、取消、重试、升级和恢复可验证 | 继续隔离 |
+| 退出 | 可在限定时间切回基线，无业务迁移 | 拒绝采用 |
 
-## 最终排序
+## 实施顺序
 
-1. Phase 1：完成 OpenWork 唯一客户端、鸿日黄金用例和本地纵切。
-2. Phase 2：完成服务器权威、身份权限、一致性和恢复。
-3. Phase 3：Dify 正式适配；Zvec、Open Notebook、Nubase、FlowLong 分别评估，逐项采用或拒绝。
-4. Phase 4：在真实团队负载下复核所有已采用组件的稳定性、成本和退出能力。
+1. F3.3-F3.6：先完成 Den/远程 Worker 部署、FoxWork 自助注册与单登录、员工端/管理员后台中文、身份联邦和项目映射。
+2. F3.7-F3.13：再完成多媒体业务闭环和公司 AI 能力目录。
+3. F3.14：接入 Dify。
+4. F3.15-F3.18：逐项评估 Zvec、Open Notebook、Nubase、FlowLong，可采用或拒绝。
+5. F3.19/F4：端到端和真实团队复核所有已采用组件。
 
-明确禁止把安装六个项目当作 MVP 进度，或让任何组件保存/批准鸿日当前状态。
+禁止把“安装多个开源项目”当作进度，也禁止为可选组件推迟单账号和品牌业务主线。

@@ -1,44 +1,63 @@
 # 治理面解析
 
+> 当前解析日期：2026-07-24  
+> 追踪模式：`LOCAL_ONLY`  
+> 活动任务真源：`docs/plan/task-breakdown.md`（5 阶段 56 项）
+
 ## 指令面
 
 | 指令面 | 状态 | 作用 | 明确边界 |
 |:---|:---|:---|:---|
-| `AGENTS.md` | 已解析 | 跨开发代理共享工程规则 | 不定义运行时品牌角色，不保存鸿日业务事实 |
-| `CLAUDE.md` | 已解析 | Claude Code 专用适配 | 只补充 Claude 的读取和提案约束，不复制共享工程规则 |
-| `docs/plan/runtime-brand-agent-and-meeting-protocol.md` | 当前规范 | 运行时品牌角色、会议解释与工作模式 | 不规定代码架构、部署和开发命令 |
-| 鸿日项目级 Agent 规则 | Phase 0 待建立 | 当前目标、已批准方向、开放问题与本轮非目标 | 必须从权威状态生成或版本化维护，不得与开发规则混放 |
-| `.cursor/rules/` | 不存在 | Cursor 规则 | 本轮不创建 |
-| `.windsurf/` | 不存在 | Windsurf 规则 | 本轮不创建 |
-| `.clinerules*` | 不存在 | Cline 规则 | 本轮不创建 |
-| `.codex/` | 不存在 | Codex 项目配置 | 仅在 Phase 1 接口确定后创建无密钥配置示例 |
+| `AGENTS.md` | 当前共享指令 | 架构、数据、测试、中文界面和协作规则 | 不保存品牌项目事实，不替代运行时品牌协议 |
+| `CLAUDE.md` | Claude Code 专用适配 | 补充 Claude 的仓库读取与提案边界 | 不复制或覆盖共享指令 |
+| `docs/plan/runtime-brand-agent-and-meeting-protocol.md` | 当前运行时规范 | 品牌角色、会议解释、信息类型和工作模式 | 不规定部署、代码结构或开发命令 |
+| `docs/adr/` | 技术决定 | 记录架构选择、原因和替代关系 | 当前以 ADR-0008/0007/0006/0005 为优先 |
+| `docs/progress/MASTER.md` | 进度入口 | 完成度、当前任务、漂移和遥测 | 不保存业务正式状态 |
+| `docs/plan/task-breakdown.md` | 任务真源 | 当前 56 项、依赖、测试和阶段门 | 历史任务只能在 rescope 表中出现 |
+| `.cursor/rules/`、`.windsurf/`、`.clinerules*`、项目 `.codex/` | 当前不存在 | 平台规则 | 未经用户要求不创建 |
 
 ## Memory 面
 
-| 字段 | 值 |
+| 字段 | 当前值 |
 |:---|:---|
-| 原生项目 Memory 可用 | 未确认 |
-| 已解析 Memory 面 | 不可用，不写入 |
-| 仓库回退 Memory 获批 | 否 |
-| 说明 | 业务事实进入权威事件与状态层；SPEC 进度进入 `docs/progress/MASTER.md`；未经用户明确授权不创建仓库内 Memory 文件 |
+| 原生项目 Memory | 未作为本项目权威面使用 |
+| 仓库回退 Memory | 未获批准，不创建 |
+| 跨会话进度 | `docs/progress/MASTER.md` 与阶段进度文件 |
+| 业务事实 | PostgreSQL/S3 权威层；Phase 1 SQLite 只读归档 |
 
-聊天记忆、模型摘要、OpenWork/OpenCode 会话和第三方 Memory 只能辅助运行，不能替代 Task Packet、权威状态或证据。
+聊天记忆、模型摘要、OpenWork/Den/OpenCode Session、Nubase Memory 和 Skill 只辅助运行，不能替代 Task Packet、业务权威或证据。
 
 ## 当前真相面
 
-| 内容 | 当前权威面 |
+| 内容 | 权威位置 |
 |:---|:---|
-| 原始内容与文件版本 | 鸿日本地原始资料、不可变副本、SHA-256 和来源清单 |
-| 正式事实、决定、约束和状态变化 | 经 Fox 人工确认的权威事件日志 |
-| 当前状态 | 从权威事件重建的本地状态投影 |
-| 开放观点、假设、选项与倾向 | 探索层记录，不得自动进入正式状态 |
-| 新会议解释结果 | 增量 Proposal、冲突与待确认队列 |
-| 项目执行进度 | `docs/progress/MASTER.md` 与阶段文件 |
-| 技术决策 | `docs/adr/`；ADR-0003 约束当前路线，ADR-0001/0002 按其状态复审 |
-| 检索索引、模型摘要、第三方工作流 | 可重建派生数据，不是权威面 |
+| Den 账号、组织、团队、远程工作区和 AI 能力授权 | Den MySQL |
+| 品牌项目员工绑定、项目角色和映射审计 | Brand OS PostgreSQL |
+| 原始内容与文件版本 | S3 VersionId、SHA-256、来源元数据；Phase 1 本地证据只读归档 |
+| 正式事实、决定、约束和状态变化 | 具名员工批准的 PostgreSQL 事件与人工动作 |
+| 当前状态 | 从权威事件生成、可重建的 PostgreSQL 投影 |
+| 观点、假设、选项、倾向和新会议解释 | 工作层 Artifact/Proposal，不自动正式化 |
+| 技术决策 | `docs/adr/`，当前 ADR-0008/0007/0006/0005 优先 |
+| SPEC 活动进度 | `docs/progress/MASTER.md` + 阶段文件 |
+| 检索、摘要、转写、Notebook、Memory、工作流 | 可重建派生数据 |
 
-当前可以用 SQLite 或其他轻量结构化存储实现以上语义，但“SQLite 文件”本身不是独立真相定义。领域事件、审批、版本和证据关系必须通过版本化 Schema 表达，以便未来迁移而不改变业务含义。
+Den 与 Brand OS 各自在自己的职责内权威，但不能成为双主：Den 不定义业务正式状态，Brand OS 不定义 Den 密码、组织或模型授权。
 
-## 远期真相面候选
+## 文档状态规则
 
-2026-07-22 后，团队服务器、PostgreSQL、对象存储、OIDC、RLS、Outbox 和恢复已进入 Phase 2-4 活动计划。Phase 3 通过一次性迁移替换本地适配器；替换不得创造第二真相源或改变人工批准边界。权威决策见 ADR-0005。
+- `docs/analysis/`：说明当前问题、技术事实、风险和组件边界；
+- `docs/plan/`：当前活动架构、接口、任务、依赖和验收；
+- `docs/progress/`：执行状态和遥测；
+- `docs/phase*/`：已完成任务的实施证据，历史编号不覆盖活动计划；
+- `docs/adr/`：稳定决策及其替代关系。
+
+历史文档中的“不部署 Den”“自建团队连接”“当前 49 项”只作追溯。若文档同时描述历史与当前，必须显式标明日期和已被 ADR-0007/ADR-0008/56 项方案替代。
+
+## 更新规则
+
+1. 完成任务前先记录执行遥测，再更新阶段文件和 `MASTER.md`。
+2. 新稳定架构规则同时更新对应 ADR 和 `AGENTS.md`；未经用户批准不创建仓库 Memory。
+3. 代码、Schema 或权限行为变化必须更新相关 SPEC 和自动化测试。
+4. OpenWork/Den 上游事实固定 tag/SHA、许可证和现场证据，不能引用漂移的 `dev` 作为当前基线。
+5. 业务事实不写入开发指令、Skill 或模型记忆；它们通过权威状态和 Task Packet 提供。
+6. GitHub Wiki 只在大阶段完成并通过阶段门后，从对应提交统一同步；普通任务和中间 SPEC 校准只更新仓库文档。

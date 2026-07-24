@@ -1,175 +1,154 @@
 # 项目概览
 
-> 状态：Phase 0-1 分析基线。2026-07-22 的产品拓扑已由 [ADR-0005](../adr/0005-single-client-server-authority.md) 更新为“公司定制 OpenWork 唯一员工客户端 + 公司服务器权威服务”。本文出现的 `future-candidate`、`not-approved-for-current-mvp` 和 `review-after-hongri-pilot` 只记录第一次 rescope，不再决定当前实施顺序。当前任务以[任务分解](../plan/task-breakdown.md)为准。
+> 分析基线：2026-07-24 第三次 rescope  
+> 当前状态：29/56，F3.3 进行中  
+> 活动路线：FoxWork + OpenWork Den + Brand Project OS Service
 
-## 当前结论
+## 项目定义
 
-Brand Project OS 是面向长期品牌项目的状态与品牌认知协作系统。员工使用基于 OpenWork 的唯一客户端，正式业务能力部署在公司服务器。
+FoxWork 是给公司内部员工使用的 AI 工作客户端。员工只安装这一个应用，在公司 Den 入口自助注册并登录一套账号，就能进入唯一公司组织、获授权远程工作区，使用公司下发的模型/MCP/Skills，并访问获授权的品牌项目工作区。首次访问 Brand OS 时由可信 Den 身份建立内部映射，不要求管理员再创建一套账号，也不自动授予项目权限。
+
+Brand Project OS 是 FoxWork 背后的品牌项目业务能力。它让员工和不同 AI 共同知道：现在有效的事实、决定和约束是什么；结论来自哪份资料或哪句原话；新会议提出了什么变化；哪些变化仍需人确认。它不是第二个软件，也不建立第二套登录。
+
+## 第一阶段用户与范围
 
 | 项 | 当前结论 |
 |:---|:---|
-| 当前状态 | **CURRENT** |
 | 第一用户 | Fox |
 | 第一验证项目 | 鸿日 |
-| 当前工作空间 | `/Users/fox/work` |
-| 当前形态 | 单一 OpenWork 客户端 + 公司服务器业务服务 + MCP/Skills |
-| 当前目的 | 保留正确理解与人工确认规则，让团队和不同 AI 使用同一正式状态 |
+| 第一批团队 | 公司内部数名员工，允许在公司 Den 入口自助注册 |
+| 员工客户端 | FoxWork，公司定制版 OpenWork；员工界面和 Den 管理员后台全部使用简体中文 |
+| 账号与 AI 控制面 | 公司自托管 OpenWork Den |
+| 业务权威服务 | Brand Project OS Service |
+| 当前部署档位 | 小团队托管部署，待 Phase 4 实测 |
+| 当前任务 | F3.3 Den 与远程 Worker 生产部署基线 |
 
-以下旧标签已在 2026-07-22 失效，仅用于识别历史文案：
+鸿喜达资料在 F3.19 安全与联网产品门通过前不进入正式系统。FoxWork 全量团队文件同步、NAS、个人工作区和 PPT 合版仍是独立需求线。
 
-- `future-candidate`
-- `not-approved-for-current-mvp`
-- `review-after-hongri-pilot`
+## 真实工作场景
 
-当前实施顺序见[任务分解](../plan/task-breakdown.md)和[里程碑](../plan/milestones.md)。Phase 1 的迁移前边界见[鸿日本地纵切边界](hongri-local-mvp-boundary.md)。
-
-## 产品定义
-
-产品要让 Fox 和不同 AI 共同知道：
-
-- 什么是不可改写的原始证据；
-- 什么是事实、观点、假设、选项、方向倾向、决定、约束和开放问题；
-- 项目当前处于哪个阶段、本轮具体要做什么；
-- 本轮处于探索协议还是执行规格；
-- 当前有效内容为何有效，过期内容被什么替代；
-- 重要结论来自哪份文件、哪场会议、谁的哪句原话；
-- AI 提出了什么变化，Fox 最终确认、修改或驳回了什么。
-
-产品不是通用项目管理软件、企业知识库、纯向量 RAG、团队文件同步平台，也不是一套先完成生产基础设施再寻找业务价值的系统。
-
-## 六个真实场景
-
-| 场景 | 正确行为 | 禁止行为 |
+| 场景 | 系统应做 | 系统不能做 |
 |:---|:---|:---|
-| 会议中的“不要”未必是红线 | 识别会议模式和时间性质，保留原话，生成待确认分类 | 自动写成决定、永久约束或 Deadline |
-| 文件都在但版本可能错误 | 先读当前状态和任务，再按关系查证据与原文 | 仅按相似度采用过期方案 |
-| 品牌策略不是直接计算答案 | 保留矛盾，提出不同战略领地和代价 | 过早形成唯一结论或直接跳到口号 |
-| 新会议不应重写历史 | 增量提取变化、冲突、行动和原话证据 | 全量重总结后静默覆盖当前状态 |
-| 换模型不应重讲项目 | Codex、Claude 等读取同一 Task Packet | 各自用聊天记忆维护一套项目事实 |
-| 服务器路线已批准但不能跳阶段 | F1.9/F1.10 已通过，当前按 Phase 2-4 建设和验收 | 把服务器部署当成后续阶段已经通过 |
+| 会议中的“不要”未必是红线 | 识别会议模式、时间性质和原话，生成待确认分类 | 自动写成永久约束或决定 |
+| 文件都在但版本不一定对 | 先读当前状态，再按关系回源 | 仅按相似度采用过期方案 |
+| 品牌策略不是直接计算答案 | 保留矛盾，给出真正不同的选择与代价 | 过早制造唯一答案或直接跳口号 |
+| 新会议不应重写历史 | 只提取增量、冲突、替代和行动候选 | 全量重总结并静默覆盖 |
+| 换模型不应重讲项目 | 所有模型读取同一不可变 Task Packet | 各自用聊天记忆维护项目事实 |
+| 团队成员不懂 AI 工程 | 登录即得到项目、模型、MCP 和 Skills | 要员工填写 Token、Provider 或 API 地址 |
+| 多媒体资料需要可追溯分析 | 上传原件、显示处理状态、按页码/时间码回源 | 把 OCR/摘要当原件或自动写正式状态 |
 
-## 当前工作协议
+## 工作协议
 
 ### 探索协议
 
-用于研究、洞察、策略和创意方向。AI 应保留矛盾、重构问题、提出假设、发展真正不同的选择并说明获得与放弃；不得自行收口、把倾向升级成决定或用完整交付掩盖策略缺口。
+用于研究、洞察、策略和创意方向。AI 应保留矛盾、提出假设、形成实质不同的选择并说明取舍；不能自行收口、把倾向升级成决定，或用结构完整掩盖策略空洞。
 
 ### 执行规格
 
-用于 Fox 已批准方向后的命名、文案、PPT 和物料。AI 必须服从已批准事实、方向、格式、禁区和验收标准；不得重新发明战略或把废案带回主线。
+用于已批准方向后的命名、文案、PPT 和物料。AI 必须遵守批准事实、方向、格式、禁区和验收标准；不能重开战略或把废案带回主线。
 
-模式切换必须由 Fox 显式确认。同一 Task Packet 必须记录 `work_mode`，模型不能因为信息充分或多数模型一致而自行切换。
+工作模式由具名员工登记和切换。模型、工作流或多数意见不能替代该动作。
 
-## CURRENT 本地架构
+## 当前系统架构
 
 ```mermaid
 flowchart TB
-    FOX["Fox"]
-    UI["公司定制 OpenWork\n唯一员工客户端"]
-    SOURCE["/Users/fox/work\n鸿日只读原件"]
-    CORE["本地项目认知核心\n分类、关系、当前状态、Proposal"]
-    STORE[("轻量结构化存储\nSQLite 或等价实现")]
-    PACKET["版本化 Task Packet"]
-    MCP["本地 API / MCP / CLI"]
-    MODE["品牌 Agent 宪法\n探索协议 / 执行规格"]
-    CODEX["Codex"]
-    CLAUDE["Claude"]
+    EMP["员工"] --> FOXWORK["FoxWork\n唯一员工客户端"]
+    FOXWORK --> DEN["OpenWork Den\n账号、组织、远程工作区、AI 能力"]
+    DEN --> DENDB[("MySQL 控制面")]
+    DEN --> REMOTE["远程工作区 / Den Worker"]
 
-    SOURCE --> CORE
-    CORE --> STORE
-    STORE --> CORE
-    MODE --> PACKET
-    CORE --> PACKET --> MCP
-    MCP --> CODEX
-    MCP --> CLAUDE
-    CODEX --> UI
-    CLAUDE --> UI
-    FOX --> UI
-    UI -->|"确认/修改/驳回"| CORE
+    FOXWORK --> API["Brand Project OS API"]
+    API --> CORE["项目业务核心\n证据、状态、Proposal、Task Packet"]
+    CORE --> PG[("PostgreSQL 业务权威")]
+    CORE --> S3[("S3 原件版本")]
+    PG --> WORKER["Outbox / 多媒体 Worker"]
+
+    DEN -->|"第一方 OAuth/OIDC"| API
+    DEN -->|"公司能力目录"| FOXWORK
+    AGENTS["Codex / Claude / Den Agent / Dify"] --> MCP["Brand OS MCP"] --> API
+    FOXWORK --> LOCAL["OpenCode / Sidecar / 本机桥接"]
 ```
 
-CURRENT 约束：
+## 当前完成情况
 
-- 原始文件只读，保存稳定路径、哈希、来源、时间和版本；
-- SQLite 或等价轻量存储可以承载当前单用户状态，不因此承诺未来生产数据库；
-- 新会议只产生增量 Proposal，Fox 确认后才改变当前状态；
-- 每个关键结论能回到原件、会议、发言人和时间点；
-- Codex 与 Claude 读取同一个不可变 Task Packet 版本；
-- OpenWork 是唯一员工客户端基础，OpenCode 是 Agent 运行时；两者都不是业务真相源。
+### 已完成
 
-## 当前模块
+- Phase 0：品牌语义、会议模式、黄金用例、BrandBench 和一票否决；
+- Phase 1：SQLite 权威纵切、原件/证据、增量会议、Proposal、Task Packet、CLI/stdio MCP、FoxWork 本地闭环；
+- Phase 2：PostgreSQL/S3、OIDC 基线、项目授权/RLS、并发冲突、Outbox、HTTP API、观测和恢复；
+- F3.1：SQLite 到 PostgreSQL/S3 一次性迁移与回滚演练；
+- F3.2：Den 源码、许可、构建、自托管、单组织注册、Skills、模型和 MCP 技术门。
 
-1. 鸿日黄金测试集与 BrandBench；
-2. 原始资料与来源索引；
-3. 会议增量解释；
-4. 当前项目状态；
-5. 证据、决定与开放问题关系；
-6. 状态变更 Proposal 和 Fox 确认队列；
-7. 品牌 Agent 宪法与工作模式；
-8. Task Packet 与 Codex/Claude 固定读取入口；
-9. 公司定制 OpenWork 中的查看、确认和证据回源界面。
+### 正在实施
 
-详细职责见[目标模块清单](module-inventory.md)。
+- F3.3：Den Web/API/MySQL/远程 Worker 的可重复部署、密钥、迁移、健康、备份、升级和回滚。
 
-## 当前技术基线
+### 尚未完成
 
-| 层 | CURRENT 建议 | 选择理由 | 升级条件 |
-|:---|:---|:---|:---|
-| 工作空间 | `/Users/fox/work` 的鸿日资料 | 直接验证真实工作，不复制出虚假样本世界 | Fox 确认需要可移植工作空间后再抽象 |
-| 原件 | 本地文件只读 + SHA-256/元数据索引 | 最小成本保留证据和版本 | 出现跨设备或团队共享后评估对象存储 |
-| 结构化状态 | SQLite 或同等轻量数据库 | 支持单用户关系、版本和增量变更 | 多人并发、远程或运维需求成立后评估 PostgreSQL |
-| 检索 | 结构化过滤 + 本地全文基线 | 先验证当前有效性和关系，而非堆向量能力 | 金标证明召回不足后再评估向量/Zvec |
-| AI 入口 | 本地 API、MCP 或 CLI | 让不同模型读取同一 Task Packet | 团队远程需求成立后再评估远程 API/OAuth |
-| 界面 | 公司定制 OpenWork，单一安装包 | Fox 能查看、确认、驳回和打开证据 | F1.9 完成离线、安全、品牌和打包；F1.10 通过鸿日桌面旅程 |
+- FoxWork、Den 员工页面和管理员后台全量中文、单账号登录与旧团队连接移除；
+- Den 到 Brand OS 的第一方 OAuth/OIDC、组织/远程工作区/项目映射和撤权联动；
+- 图片、视频、录音、PPT、Office、PDF 上传与分析；
+- Brand OS MCP 在 Den 中的公司级分发；
+- Den Skills、共享模型和桌面策略目录；
+- Dify 与四个可选组件；
+- 真实团队、恢复、容量、签名更新与生产准入。
+
+## 技术基线
+
+| 层 | 当前实现或选择 | 状态 |
+|:---|:---|:---|
+| 领域与服务 | Python 3.12、版本化 Schema、端口/适配器 | Phase 1-2 已实现 |
+| 本地权威 | SQLite + 内容寻址证据区 | F3.1 后只读归档 |
+| 团队权威 | PostgreSQL + S3 兼容对象存储 | 基线已实现，真实生产待部署 |
+| 员工客户端 | OpenWork `v0.17.36@ddf3e482` 的公司 fork | FoxWork F1.9/F3.2 基线已验证 |
+| 账号控制面 | OpenWork Den `ee/**`，FSL-1.1-MIT | F3.2 采用门已通过 |
+| Agent Runtime | OpenCode/Sidecar 本机运行 + Den 管理远程 Worker | 本机已可用；远程 Worker 待 F3.3 真实验证 |
+| AI 接口 | CLI、stdio MCP、版本化 HTTP；远程 MCP 待 F3.12 | 部分完成 |
+| 工作流 | 直接 Worker 基线，Dify 待 F3.14 | 未完成 |
+| 检索 | PostgreSQL FTS 基线，Zvec 待 F3.15 评估 | 可替换 |
+
+## 入口
+
+- CLI：`uv run brand-os ...`
+- 本地 stdio MCP：与 CLI 复用 `LocalAIService`
+- HTTP API：`/api/v1/employee/**` 与 `/api/v1/agent/**`
+- 健康：`/livez`、`/readyz`
+- 员工界面：FoxWork
+- 账号/能力/远程工作区管理：全中文 Den Web 管理面
+- AI 能力：Brand OS MCP 注册到 Den 后由成员/团队授权
 
 ## Task Packet
 
-Task Packet 是多模型一致性的唯一任务入口，不是全项目历史摘要。它至少包含：
+Task Packet 是模型开始工作前的不可变任务快照，而不是全项目历史摘要。它绑定项目/状态版本、任务、角色、工作模式、批准事实、决定、约束、开放问题、证据、数据外发范围、模型允许列表和输出 Schema。
 
-- 项目与当前状态版本；
-- 本轮任务、目标和输出契约；
-- `EXPLORE` 或 `EXECUTE` 工作模式；
-- 本轮品牌角色和质量标准；
-- 已批准事实、决定和约束；
-- 开放问题和相关证据；
-- 需要防止误用的过期项；
-- 证据回源定位和 Packet 内容摘要。
+Codex、Claude、Den Agent 或 Dify 对比时使用同一 Packet。模型差异可以体现在推理和表达，不能体现在项目事实、证据集合或工作模式。
 
-同一对比任务中，Codex、Claude 或其他模型必须获得相同 Packet 版本。模型差异可以体现在推理和表达，不能体现在项目事实、工作模式或证据集合。
+## 权威边界
 
-## 当前成功标准
+- 原件版本由 SHA-256、来源和 S3 VersionId 证明；
+- 正式状态由具名员工批准事件形成；
+- Den MySQL 只定义账号、组织和 AI 能力授权；
+- PostgreSQL/S3 只定义品牌业务权威；
+- OpenWork/Den/OpenCode Session、缓存、索引、Memory 和模型摘要可删除重建；
+- AI、MCP、Skill、Dify、FlowLong 和服务账号只能读取或创建 Proposal。
 
-- Fox 重复解释鸿日背景的次数下降；
+## 成功标准
+
+- 员工安装一个 FoxWork、登录一次即可开始工作；
+- 不需要手工配置模型 API Key、MCP Token、Skills 或第二套账号；
 - 新 AI 冷启动能准确说明当前阶段、决定、开放问题和任务；
-- 会议分类没有非法状态升级；
-- 重要结论回源率为 100%；
-- 新会议只产生增量变化，不覆盖历史；
-- 模型切换后项目事实与证据保持一致；
-- 探索输出形成真实选择和代价，执行输出服从已批准方向；
-- 策略和文案通过 Fox 的匿名品牌质量评审。
-
-虚构事实、讨论升级成决定、暂定日期写成死线、过期方案当当前方向、关键结论无法回源、未经确认改变状态、探索模式强行唯一答案，任一发生即不通过。
-
-## 后续实施模块
-
-下列模块已按阶段进入活动计划：
-
-| 模块 | 当前阶段 | 主要验收 |
-|:---|:---|:---|
-| PostgreSQL、对象存储、OIDC、RBAC/RLS | Phase 2 | 唯一权威、项目隔离、撤权和恢复 |
-| 幂等、并发、Outbox、审计、PITR | Phase 2 | 无静默覆盖、可重放、可对账 |
-| OpenWork 联网、远程 MCP、Skills、Dify | Phase 3 | 单一客户端、人工/Agent 权限分离、NoOp 回退 |
-| Zvec、Open Notebook、Nubase、FlowLong | Phase 3 | 逐项许可、收益、故障和退出；可拒绝 |
-| HA、容量、签名更新和灾备档位 | Phase 4 | 由真实负载、故障和恢复演练决定 |
-| 完整 Web/PWA | 不采用 | 员工只使用公司定制 OpenWork |
-| FoxWork 团队文件线 | 独立议题 | 不自动合入品牌项目资料和状态范围 |
-
-当前设计详见[部署拓扑评估](deployment-topology-evaluation.md)。架构已批准不等于功能已完成，仍必须逐阶段过门。
+- 非法状态升级为 0，重要结论回源率 100%；
+- 多媒体分析可回到原件版本、页码、幻灯片或时间码；
+- 模型切换后正式事实与证据一致；
+- 账号/团队/项目/MCP/模型撤权在所有入口一致生效；
+- 多客户端写入无静默覆盖，故障后能恢复和对账；
+- Fox 品牌盲评与真实工作效率达到既定基线。
 
 ## 项目治理
 
-- 根目录需求源是本轮产品范围依据；
-- `AGENTS.md` 只管理软件开发约束，不能替代运行时品牌 Agent 宪法；
-- 品牌 Agent 宪法、工作模式协议、鸿日项目规则和 Task Packet 必须分层；
-- 业务事实不进入开发 AGENTS、Skills 或模型对话记忆；
-- 本轮已完成第二次 plan/progress rescope；旧任务只保留追溯，不再作为当前完成度来源。
+- 活动进度以 `docs/progress/MASTER.md` 为入口，以 `docs/plan/task-breakdown.md` 为任务真源；
+- 架构决定写入 `docs/adr/`，当前以 ADR-0007/0006/0005 为准；
+- `AGENTS.md` 约束开发，运行时品牌行为由专门协议和 Task Packet 约束；
+- 当前没有获准的仓库内 Memory 文件；
+- 历史 49 项和“不部署 Den”方案保留追溯，不得混入当前完成度。

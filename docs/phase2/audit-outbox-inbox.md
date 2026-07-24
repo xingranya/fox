@@ -58,7 +58,7 @@ sequenceDiagram
 
 `grant_outbox_worker_role` 只授予 `audit_records`、`outbox_*`、`inbox_messages`、`dead_letter_messages` 和 `background_worker_leases` 的运行权限，并撤销 `projects`、`events`、`proposals`、`human_actions`、`state_items` 等正式表的权限。它不能批准 Proposal，也不能推进项目版本。
 
-运行时角色、MCP、工作流和 BISHENG/Dify 等服务账号仍不能冒充人工主体。BISHENG 继续只是当前 49 项之后的候选工作流适配器；它未来若获 Fox 单独批准，也只能消费受控 Outbox/应用 API，不能直连正式表或定义正式状态。
+运行时角色、MCP、工作流和 BISHENG/Dify 等服务账号仍不能冒充人工主体。BISHENG 继续只是 Phase 4 真实试点后的候选工作流适配器，不计入当前 56 项；它未来若获 Fox 单独批准，也只能消费受控 Outbox/应用 API，不能直连正式表或定义正式状态。
 
 ## 验证结果
 
